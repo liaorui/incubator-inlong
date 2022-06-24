@@ -130,6 +130,9 @@
         <httpclient.version>4.5.13</httpclient.version>
         <okhttp.version>3.14.9</okhttp.version>
         <retrofit.version>2.9.0</retrofit.version>
+        <okhttp2.version>2.7.5</okhttp2.version>
+        <okio.version>1.12.0</okio.version>
+        <logging-interceptor.version>2.7.5</logging-interceptor.version>
 
         <spring.boot.version>2.6.6</spring.boot.version>
         <spring.version>5.3.20</spring.version>
@@ -170,6 +173,7 @@
         <commons.lang3.version>3.11</commons.lang3.version>
         <commons.collections.version>3.2.2</commons.collections.version>
         <commons.collections4.version>4.3</commons.collections4.version>
+        <commons-logging.version>1.2</commons-logging.version>
 
         <guava.version>31.0.1-jre</guava.version>
         <lombok.version>1.18.22</lombok.version>
@@ -239,7 +243,7 @@
         <jcommander.version>1.78</jcommander.version>
         <je.version>7.3.7</je.version>
         <tencentcloud.cls.version>1.0.5</tencentcloud.cls.version>
-        <tencentcloud.api.version>3.1.439</tencentcloud.api.version>
+        <tencentcloud.api.version>3.1.438-SNAPSHOT</tencentcloud.api.version>
         <cos.hadoop.version>2.7.5-5.9.3</cos.hadoop.version>
         <cos.bundle.version>5.6.35</cos.bundle.version>
         <dlc.client.version>1.0</dlc.client.version>
@@ -544,14 +548,14 @@
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
                 <version>${oracle.jdbc.version}</version>
-                <scope>provided</scope>
+            <!--    <scope>provided</scope>-->
             </dependency>
             <!-- mysql-connector-java is LGPL license, we use it test only -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.jdbc.version}</version>
-                <scope>provided</scope>
+              <!--  <scope>provided</scope>-->
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -820,6 +824,21 @@
                 <artifactId>converter-jackson</artifactId>
                 <version>${retrofit.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>${okhttp2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>${okio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp</groupId>
+                <artifactId>logging-interceptor</artifactId>
+                <version>${logging-interceptor.version}</version>
+            </dependency>
             <!-- elastic search -->
             <dependency>
                 <groupId>org.elasticsearch.client</groupId>
@@ -1024,12 +1043,12 @@
                 <artifactId>flink-connector-mysql-cdc</artifactId>
                 <version>${flink.connector.mysql.cdc.version}</version>
                 <!-- mysql-connector-java is LGPL license and needs to be excluded -->
-                <exclusions>
+       <!--         <exclusions>
                     <exclusion>
                         <groupId>mysql</groupId>
                         <artifactId>mysql-connector-java</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
             </dependency>
 
             <dependency>
@@ -1043,12 +1062,12 @@
                 <artifactId>flink-connector-oracle-cdc</artifactId>
                 <version>${flink.connector.oracle.cdc.version}</version>
                 <!-- ojdbc8 is FUTC license and needs to be excluded -->
-                <exclusions>
+            <!--    <exclusions>
                     <exclusion>
                         <groupId>com.oracle.ojdbc</groupId>
                         <artifactId>ojdbc8</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
             </dependency>
 
             <dependency>
@@ -1300,6 +1319,11 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-collections4</artifactId>
                 <version>${commons.collections4.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>${commons-logging.version}</version>
             </dependency>
             <!-- metric -->
             <dependency>
