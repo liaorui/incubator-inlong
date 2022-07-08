@@ -254,9 +254,9 @@ public class InnerInlongManagerClient {
         AssertUtils.notEmpty(groupId, "InlongGroupId should not be empty");
         AssertUtils.notEmpty(streamId, "InlongStreamId should not be empty");
         try {
-            Response<Boolean> response = executeHttpCall(inlongStreamApi.isStreamExists(groupId, streamId));
+            Response<InlongStreamInfo> response = executeHttpCall(inlongStreamApi.getStream(groupId, streamId));
             assertRespSuccess(response);
-            return response.getData();
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
