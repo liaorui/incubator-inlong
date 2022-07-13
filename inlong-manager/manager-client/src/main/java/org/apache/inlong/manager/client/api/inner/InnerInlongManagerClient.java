@@ -256,10 +256,16 @@ public class InnerInlongManagerClient {
         try {
             Response<Boolean> response = executeHttpCall(inlongStreamApi.isStreamExists(groupId, streamId));
             assertRespSuccess(response);
-            return true;
+            return response.getData();
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            try {
+                Response<InlongStreamInfo> response = executeHttpCall(inlongStreamApi.getStream(groupId, streamId));
+                return response.getData() != null;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return false;
+            }
         }
     }
 
