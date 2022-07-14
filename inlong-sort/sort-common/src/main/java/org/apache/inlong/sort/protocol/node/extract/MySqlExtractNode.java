@@ -135,6 +135,7 @@ public class MySqlExtractNode extends ExtractNode implements Serializable {
         String formatTable = tableNames.size() == 1 ? tableNames.get(0) :
                 String.format("(%s)", StringUtils.join(tableNames, "|"));
         options.put("table-name", String.format("%s", formatTable));
+        options.remove("append-mode");
         return options;
     }
 }
