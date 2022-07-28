@@ -108,7 +108,7 @@ public class FieldRelationUtils {
                         inputField = new FieldInfo(fieldInfo.getName(), fieldInfo.getNodeId(),
                                 fieldInfo.getFormatInfo());
                     }
-                    FieldInfo outputField = new FieldInfo(fieldInfo.getName(), transformName,
+                    FieldInfo outputField = new FieldInfo(fieldInfo.getName(), null,
                             fieldInfo.getFormatInfo());
                     return new FieldRelation(inputField, outputField);
                 }).collect(Collectors.toList());
