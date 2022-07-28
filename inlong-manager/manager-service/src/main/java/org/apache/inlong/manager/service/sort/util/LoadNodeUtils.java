@@ -502,7 +502,7 @@ public class LoadNodeUtils {
         return fieldList.stream()
                 .filter(sinkField -> StringUtils.isNotEmpty(sinkField.getSourceFieldName()))
                 .map(field -> {
-                    FieldInfo outputField = new FieldInfo(field.getFieldName(), sinkName,
+                    FieldInfo outputField = new FieldInfo(field.getFieldName(), null,
                             FieldInfoUtils.convertFieldFormat(field.getFieldType(), field.getFieldFormat()));
                     FunctionParam inputField;
                     String fieldKey = String.format("%s-%s", field.getOriginNodeName(), field.getSourceFieldName());
