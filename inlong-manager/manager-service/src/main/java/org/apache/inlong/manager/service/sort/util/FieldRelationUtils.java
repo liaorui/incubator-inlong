@@ -25,6 +25,8 @@ import org.apache.inlong.manager.common.enums.TransformType;
 import org.apache.inlong.manager.common.pojo.stream.StreamField;
 import org.apache.inlong.manager.common.pojo.transform.TransformDefinition;
 import org.apache.inlong.manager.common.pojo.transform.TransformResponse;
+import org.apache.inlong.manager.common.pojo.transform.encrypt.EncryptDefinition;
+import org.apache.inlong.manager.common.pojo.transform.encrypt.EncryptDefinition.EncryptRule;
 import org.apache.inlong.manager.common.pojo.transform.replacer.StringReplacerDefinition;
 import org.apache.inlong.manager.common.pojo.transform.replacer.StringReplacerDefinition.ReplaceMode;
 import org.apache.inlong.manager.common.pojo.transform.replacer.StringReplacerDefinition.ReplaceRule;
@@ -39,6 +41,7 @@ import org.apache.inlong.sort.protocol.transformation.ConstantParam;
 import org.apache.inlong.sort.protocol.transformation.FieldRelation;
 import org.apache.inlong.sort.protocol.transformation.StringConstantParam;
 import org.apache.inlong.sort.protocol.transformation.function.CascadeFunctionWrapper;
+import org.apache.inlong.sort.protocol.transformation.function.EncryptFunction;
 import org.apache.inlong.sort.protocol.transformation.function.RegexpReplaceFirstFunction;
 import org.apache.inlong.sort.protocol.transformation.function.RegexpReplaceFunction;
 import org.apache.inlong.sort.protocol.transformation.function.SplitIndexFunction;
@@ -70,6 +73,9 @@ public class FieldRelationUtils {
             case STRING_REPLACER:
                 StringReplacerDefinition replacerDefinition = (StringReplacerDefinition) transformDefinition;
                 return createReplacerFieldRelations(fieldList, transformName, replacerDefinition, preNodes);
+            case ENCRYPT:
+                EncryptDefinition encryptDefinition = (EncryptDefinition) transformDefinition;
+                return createEncryptFieldRelations(fieldList, transformName, encryptDefinition, preNodes);
             case DE_DUPLICATION:
             case FILTER:
                 return createFieldRelations(fieldList, transformName);
@@ -156,6 +162,25 @@ public class FieldRelationUtils {
     }
 
     /**
+     * Create relation of fields in encrypt function.
+     */
+    private static List<FieldRelation> createEncryptFieldRelations(List<StreamField> fieldList, String transformName,
+            EncryptDefinition encryptDefinition, String preNodes) {
+        Preconditions.checkNotEmpty(preNodes, "PreNodes of splitter should not be null");
+        String preNode = preNodes.split(",")[0];
+        List<EncryptRule> encryptRules = encryptDefinition.getEncryptRules();
+        Set<String> encryptFields = Sets.newHashSet();
+        List<FieldRelation> fieldRelations = encryptRules.stream()
+                .map(replaceRule -> parseEncryptRule(replaceRule, encryptFields, transformName, preNode))
+                .collect(Collectors.toList());
+        List<StreamField> filteredFieldList = fieldList.stream()
+                .filter(streamFieldInfo -> !encryptFields.contains(streamFieldInfo.getFieldName()))
+                .collect(Collectors.toList());
+        fieldRelations.addAll(createFieldRelations(filteredFieldList, transformName));
+        return fieldRelations;
+    }
+
+    /**
      * Create relation of fields in cascade function.
      */
     private static List<FieldRelation> cascadeFunctionRelations(List<FieldRelation> fieldRelations) {
@@ -201,6 +226,25 @@ public class FieldRelationUtils {
                     new StringConstantParam(regex), new StringConstantParam(targetValue));
             return new FieldRelation(regexpReplaceFirstFunction, targetFieldInfo);
         }
+    }
+
+    /**
+     * Parse rule of encrypt.
+     */
+    private static FieldRelation parseEncryptRule(EncryptRule encryptRule, Set<String> replaceFields,
+            String transformName, String preNode) {
+        StreamField sourceField = encryptRule.getSourceField();
+        final String fieldName = sourceField.getFieldName();
+        String key = encryptRule.getKey();
+        String encrypt = encryptRule.getEncrypt();
+        FieldInfo fieldInfo = FieldInfoUtils.parseStreamField(sourceField);
+        fieldInfo.setNodeId(preNode);
+        FieldInfo targetFieldInfo = new FieldInfo(fieldName, transformName,
+                FieldInfoUtils.convertFieldFormat(FieldType.STRING.name()));
+        replaceFields.add(fieldName);
+        EncryptFunction encryptFunction = new EncryptFunction(fieldInfo, new StringConstantParam(key),
+                new StringConstantParam(encrypt));
+        return new FieldRelation(encryptFunction, targetFieldInfo);
     }
 
     /**
