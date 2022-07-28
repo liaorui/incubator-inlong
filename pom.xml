@@ -247,7 +247,7 @@
         <tencentcloud.api.version>3.1.438-SNAPSHOT</tencentcloud.api.version>
         <cos.hadoop.version>2.7.5-5.9.3</cos.hadoop.version>
         <cos.bundle.version>5.6.35</cos.bundle.version>
-        <dlc.client.version>1.0</dlc.client.version>
+        <dlc.client.version>1.1.1</dlc.client.version>
         <esri-geometry-api.version>2.0.0</esri-geometry-api.version>
         <HikariCP.version>4.0.3</HikariCP.version>
 
