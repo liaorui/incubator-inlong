@@ -29,6 +29,7 @@ import org.apache.inlong.manager.common.exceptions.BusinessException;
 
 import javax.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Postgres source info
@@ -68,6 +69,9 @@ public class PostgresSourceDTO {
     @ApiModelProperty("List of tables name")
     private List<String> tableNameList;
 
+    @ApiModelProperty("Properties for PostgreSQL")
+    private Map<String, Object> properties;
+
     /**
      * Get the dto instance from the request
      */
@@ -82,6 +86,7 @@ public class PostgresSourceDTO {
                 .tableNameList(request.getTableNameList())
                 .primaryKey(request.getPrimaryKey())
                 .decodingPluginName(request.getDecodingPluginName())
+                .properties(request.getProperties())
                 .build();
     }
 

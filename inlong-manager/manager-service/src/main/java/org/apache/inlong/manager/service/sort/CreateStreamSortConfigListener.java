@@ -36,6 +36,7 @@ import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
 import org.apache.inlong.manager.common.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.common.pojo.stream.InlongStreamExtInfo;
 import org.apache.inlong.manager.common.pojo.stream.InlongStreamInfo;
+import org.apache.inlong.manager.common.pojo.stream.StreamField;
 import org.apache.inlong.manager.common.pojo.workflow.form.StreamResourceProcessForm;
 import org.apache.inlong.manager.common.settings.InlongGroupSettings;
 import org.apache.inlong.manager.service.cluster.InlongClusterService;
@@ -55,7 +56,9 @@ import org.apache.inlong.sort.protocol.transformation.relation.NodeRelation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -160,8 +163,22 @@ public class CreateStreamSortConfigListener implements SortOperateListener {
     private List<Node> createNodesForStream(List<StreamSource> sources, List<StreamSink> streamSinks) {
         List<Node> nodes = Lists.newArrayList();
         nodes.addAll(ExtractNodeUtils.createExtractNodes(sources));
-        nodes.addAll(LoadNodeUtils.createLoadNodes(streamSinks));
+        Map<String, StreamField> constantFieldMap = new HashMap<>();
+        sources.forEach(s -> parseConstantFieldMap(s.getSourceName(), s.getFieldList(), constantFieldMap));
+        nodes.addAll(LoadNodeUtils.createLoadNodes(streamSinks, constantFieldMap));
         return nodes;
+    }
+
+    private void parseConstantFieldMap(String nodeId, List<StreamField> fields,
+            Map<String, StreamField> constantFieldMap) {
+        if (CollectionUtils.isEmpty(fields)) {
+            return;
+        }
+        for (StreamField field : fields) {
+            if (field.getFieldValue() != null) {
+                constantFieldMap.put(String.format("%s-%s", nodeId, field.getFieldName()), field);
+            }
+        }
     }
 
     private List<NodeRelation> createNodeRelationsForStream(List<StreamSource> sources, List<StreamSink> streamSinks) {

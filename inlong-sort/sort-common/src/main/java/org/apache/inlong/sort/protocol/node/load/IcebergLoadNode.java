@@ -26,7 +26,6 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCre
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTypeName;
 import org.apache.inlong.sort.protocol.FieldInfo;
-import org.apache.inlong.sort.protocol.constant.IcebergConstant;
 import org.apache.inlong.sort.protocol.constant.IcebergConstant.CatalogType;
 import org.apache.inlong.sort.protocol.enums.FilterStrategy;
 import org.apache.inlong.sort.protocol.node.LoadNode;
@@ -59,7 +58,7 @@ public class IcebergLoadNode extends LoadNode implements Serializable {
     private String primaryKey;
 
     @JsonProperty("catalogType")
-    private IcebergConstant.CatalogType catalogType;
+    private CatalogType catalogType;
 
     @JsonProperty("uri")
     private String uri;
@@ -79,7 +78,7 @@ public class IcebergLoadNode extends LoadNode implements Serializable {
             @Nonnull @JsonProperty("dbName") String dbName,
             @Nonnull @JsonProperty("tableName") String tableName,
             @JsonProperty("primaryKey") String primaryKey,
-            @JsonProperty("catalogType") IcebergConstant.CatalogType catalogType,
+            @JsonProperty("catalogType") CatalogType catalogType,
             @JsonProperty("uri") String uri,
             @JsonProperty("warehouse") String warehouse) {
         super(id, name, fields, fieldRelations, filters, filterStrategy, sinkParallelism, properties);
@@ -94,7 +93,9 @@ public class IcebergLoadNode extends LoadNode implements Serializable {
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
-        options.put("connector", "iceberg");
+        options.put("connector", "iceberg-inlong");
+        // for test sink.ignore.changelog
+        // options.put("sink.ignore.changelog", "true");
         options.put("catalog-database", dbName);
         options.put("catalog-table", tableName);
         options.put("default-database", dbName);

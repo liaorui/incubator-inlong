@@ -28,6 +28,7 @@ import org.apache.inlong.manager.common.enums.ErrorCodeEnum;
 import org.apache.inlong.manager.common.exceptions.BusinessException;
 
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 /**
  * MongoDB source info
@@ -58,6 +59,9 @@ public class MongoDBSourceDTO {
     @ApiModelProperty("MongoDB collection")
     private String collection;
 
+    @ApiModelProperty("Properties for MongoDB")
+    private Map<String, Object> properties;
+
     /**
      * Get the dto instance from the request
      */
@@ -69,6 +73,7 @@ public class MongoDBSourceDTO {
                 .password(request.getPassword())
                 .database(request.getDatabase())
                 .collection(request.getCollection())
+                .properties(request.getProperties())
                 .build();
     }
 

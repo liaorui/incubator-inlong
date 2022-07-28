@@ -36,7 +36,9 @@ import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSourceReq
 import org.apache.inlong.manager.common.pojo.stream.StreamField;
 
 import javax.validation.constraints.NotNull;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Request info of source
@@ -103,4 +105,6 @@ public class SourceRequest {
     @ApiModelProperty("Field list, only support when inlong group in light weight mode")
     private List<StreamField> fieldList;
 
+    @ApiModelProperty("Other properties if needed")
+    private Map<String, Object> properties = new LinkedHashMap<>();
 }

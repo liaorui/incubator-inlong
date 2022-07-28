@@ -41,6 +41,8 @@ import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSource;
 import org.apache.inlong.manager.common.pojo.stream.StreamNode;
 
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Stream source info, including source name, agent ip, etc.
@@ -123,8 +125,10 @@ public abstract class StreamSource extends StreamNode {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date modifyTime;
 
+    @ApiModelProperty("Properties for source")
+    private Map<String, Object> properties = new LinkedHashMap<>();
+
     public SourceRequest genSourceRequest() {
         return null;
     }
-
 }

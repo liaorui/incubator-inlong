@@ -28,6 +28,7 @@ import org.apache.inlong.manager.common.enums.ErrorCodeEnum;
 import org.apache.inlong.manager.common.exceptions.BusinessException;
 
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 /**
  * Binlog source info
@@ -112,6 +113,9 @@ public class MySQLBinlogSourceDTO {
     @ApiModelProperty(value = "Primary key must be shared by all tables", required = false)
     private String primaryKey;
 
+    @ApiModelProperty("Properties for MySQL")
+    private Map<String, Object> properties;
+
     /**
      * Get the dto instance from the request
      */
@@ -133,6 +137,7 @@ public class MySQLBinlogSourceDTO {
                 .monitoredDdl(request.getMonitoredDdl())
                 .allMigration(request.isAllMigration())
                 .primaryKey(request.getPrimaryKey())
+                .properties(request.getProperties())
                 .build();
     }
 
