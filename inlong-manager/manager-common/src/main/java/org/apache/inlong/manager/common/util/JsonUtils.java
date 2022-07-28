@@ -201,6 +201,7 @@ public class JsonUtils {
                         if (extendClassDefine == null) {
                             return;
                         }
+
                         // Register the subtype and use the NamedType to build the relation
                         objectMapper.registerSubtypes(new NamedType(clazz, extendClassDefine.value()));
                     });
