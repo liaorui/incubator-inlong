@@ -138,7 +138,7 @@ public class FieldRelationUtils {
                                 streamField.getOriginNodeName(), formatInfo);
                     }
                     FieldInfo outputField = new FieldInfo(streamField.getFieldName(),
-                            transformName, formatInfo);
+                            null, formatInfo);
                     return new FieldRelation(inputField, outputField);
                 }).collect(Collectors.toList());
     }
