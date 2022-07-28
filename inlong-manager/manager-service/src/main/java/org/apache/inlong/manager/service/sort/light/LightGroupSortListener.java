@@ -125,8 +125,10 @@ public class LightGroupSortListener implements SortOperateListener {
             List<StreamSource> streamSources = sourceMap.get(streamId);
             streamSources.forEach(s -> parseConstantFieldMap(s.getSourceName(), s.getFieldList(), constantFieldMap));
             List<TransformResponse> transformResponseList = transformMap.get(streamId);
-            transformResponseList
-                    .forEach(s -> parseConstantFieldMap(s.getTransformName(), s.getFieldList(), constantFieldMap));
+            if (CollectionUtils.isNotEmpty(transformResponseList)) {
+                transformResponseList
+                        .forEach(s -> parseConstantFieldMap(s.getTransformName(), s.getFieldList(), constantFieldMap));
+            }
             List<Node> nodes = this.createNodesForStream(sourceMap.get(streamId),
                     transformMap.get(streamId), sinkMap.get(streamId), constantFieldMap);
             StreamInfo streamInfo = new StreamInfo(streamId, nodes,
@@ -155,7 +157,7 @@ public class LightGroupSortListener implements SortOperateListener {
     private List<Node> createNodesForStream(
             List<StreamSource> sourceInfos,
             List<TransformResponse> transformResponses,
-            List<StreamSink> streamSinks,Map<String, StreamField> constantFieldMap) {
+            List<StreamSink> streamSinks, Map<String, StreamField> constantFieldMap) {
         List<Node> nodes = Lists.newArrayList();
         nodes.addAll(ExtractNodeUtils.createExtractNodes(sourceInfos));
         nodes.addAll(TransformNodeUtils.createTransformNodes(transformResponses, constantFieldMap));
