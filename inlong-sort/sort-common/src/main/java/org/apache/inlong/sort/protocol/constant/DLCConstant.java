@@ -52,6 +52,10 @@ public class DLCConstant {
      * Managed account uid.
      */
     public static final String DLC_MANAGED_ACCOUNT_UID = "qcloud.dlc.managed.account.uid";
+    /**
+     * dlc jdbc url
+     */
+    public static final String DLC_JDBC_URL = "qcloud.dlc.jdbc.url";
 
     // ============================== FS CREDENTIALS AUTH PARAMS =====================================
     public static final String FS_LAKEFS_IMPL  = "fs.lakefs.impl";
