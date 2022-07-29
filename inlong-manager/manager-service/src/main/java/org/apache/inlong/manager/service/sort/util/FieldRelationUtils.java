@@ -20,6 +20,7 @@ package org.apache.inlong.manager.service.sort.util;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import java.util.Objects;
 import org.apache.inlong.manager.common.enums.FieldType;
 import org.apache.inlong.manager.common.enums.TransformType;
 import org.apache.inlong.manager.common.pojo.stream.StreamField;
@@ -235,7 +236,7 @@ public class FieldRelationUtils {
             String transformName, String preNode) {
         StreamField sourceField = encryptRule.getSourceField();
         final String fieldName = sourceField.getFieldName();
-        String key = encryptRule.getKey();
+        String key = Objects.isNull(encryptRule.getKey()) ? "" : encryptRule.getKey();
         String encrypt = encryptRule.getEncrypt();
         FieldInfo fieldInfo = FieldInfoUtils.parseStreamField(sourceField);
         fieldInfo.setNodeId(preNode);

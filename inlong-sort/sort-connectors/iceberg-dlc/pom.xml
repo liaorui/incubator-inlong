@@ -132,13 +132,6 @@
         </dependency>
     </dependencies>
 
-    <repositories>
-        <repository>
-            <id>dlc-snapshot</id>
-            <url>https://mirrors.tencent.com/repository/maven/dlc-snapshot</url>
-       </repository>
-    </repositories>
-
     <build>
         <plugins>
             <plugin>
