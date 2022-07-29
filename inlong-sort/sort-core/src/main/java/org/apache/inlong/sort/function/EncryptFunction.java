@@ -178,7 +178,7 @@ public class EncryptFunction extends ScalarFunction {
         DESEDE(1),
 
         /**
-         * DESEDE
+         * AES
          */
         AES(2);
 
