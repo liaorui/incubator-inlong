@@ -149,7 +149,7 @@ public class LightGroupSortListener implements SortOperateListener {
         }
         for (StreamField field : fields) {
             if (field.getFieldValue() != null) {
-                constantFieldMap.put(String.format("%s-%s", nodeId, field.getFieldName()), field);
+                constantFieldMap.put(field.getFieldName(), field);
             }
         }
     }

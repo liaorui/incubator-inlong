@@ -505,8 +505,8 @@ public class LoadNodeUtils {
                     FieldInfo outputField = new FieldInfo(field.getFieldName(), null,
                             FieldInfoUtils.convertFieldFormat(field.getFieldType(), field.getFieldFormat()));
                     FunctionParam inputField;
-                    String fieldKey = String.format("%s-%s", field.getOriginNodeName(), field.getSourceFieldName());
-                    StreamField constantField = constantFieldMap.get(fieldKey);
+                    // String fieldKey = String.format("%s-%s", field.getOriginNodeName(), field.getSourceFieldName());
+                    StreamField constantField = constantFieldMap.get(field.getSourceFieldName());
                     if (constantField != null) {
                         if (outputField.getFormatInfo() != null
                                 && outputField.getFormatInfo().getTypeInfo() == StringTypeInfo.INSTANCE) {
