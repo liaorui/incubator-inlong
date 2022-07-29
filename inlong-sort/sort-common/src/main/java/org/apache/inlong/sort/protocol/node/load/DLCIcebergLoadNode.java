@@ -90,7 +90,7 @@ public class DLCIcebergLoadNode extends LoadNode implements Serializable {
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
-        options.put("connector", "iceberg");
+        options.put("connector", "dlc-inlong");
         options.put("catalog-database", dbName);
         options.put("catalog-table", tableName);
         options.put("default-database", dbName);
@@ -103,6 +103,17 @@ public class DLCIcebergLoadNode extends LoadNode implements Serializable {
             options.put("warehouse", warehouse);
         }
         options.putAll(DLCConstant.DLC_DEFAULT_IMPL);
+        // for filesystem auth
+        options.put(DLCConstant.FS_COS_REGION, options.get(DLCConstant.DLC_REGION));
+        options.put(DLCConstant.FS_COS_SECRET_ID, options.get(DLCConstant.DLC_SECRET_ID));
+        options.put(DLCConstant.FS_COS_SECRET_KEY, options.get(DLCConstant.DLC_SECRET_KEY));
+
+        options.put(DLCConstant.FS_AUTH_DLC_ENDPOINT_KEY, DLCConstant.DLC_ENDPOINT);
+        options.put(DLCConstant.FS_AUTH_DLC_SECRET_ID, options.get(DLCConstant.DLC_SECRET_ID));
+        options.put(DLCConstant.FS_AUTH_DLC_SECRET_KEY, options.get(DLCConstant.DLC_SECRET_KEY));
+        options.put(DLCConstant.FS_AUTH_DLC_REGION, options.get(DLCConstant.DLC_REGION));
+        options.put(DLCConstant.FS_AUTH_DLC_ACCOUNT_APPID, options.get(DLCConstant.DLC_USER_APPID));
+        options.put(DLCConstant.FS_AUTH_DLC_MANAGED_ACCOUNT_UID, options.get(DLCConstant.DLC_MANAGED_ACCOUNT_UID));
         return options;
     }
 
@@ -126,9 +137,8 @@ public class DLCIcebergLoadNode extends LoadNode implements Serializable {
         Preconditions.checkNotNull(properties.get(DLCConstant.DLC_SECRET_ID), "dlc secret-id is null");
         Preconditions.checkNotNull(properties.get(DLCConstant.DLC_SECRET_KEY), "dlc secret-key is null");
         Preconditions.checkNotNull(properties.get(DLCConstant.DLC_REGION), "dlc region is null");
-
-        Preconditions.checkNotNull(properties.get(DLCConstant.FS_COS_REGION), "cos region is null");
-        Preconditions.checkNotNull(properties.get(DLCConstant.FS_COS_SECRET_ID), "cos secret-id is null");
-        Preconditions.checkNotNull(properties.get(DLCConstant.FS_COS_SECRET_KEY), "cos secret-key is null");
+        Preconditions.checkNotNull(properties.get(DLCConstant.DLC_USER_APPID), "dlc user appid is null");
+        Preconditions.checkNotNull(
+                properties.get(DLCConstant.DLC_MANAGED_ACCOUNT_UID), "dlc managed account appid is null");
     }
 }
