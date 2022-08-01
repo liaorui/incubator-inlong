@@ -112,7 +112,8 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
                             urlParams.put(param[0], param[1]);
                         }
                     });
-            Optional.of(properties.get(COMPACT_RESOUCE_POOL)).ifPresent(v -> urlParams.put(URL_DATA_RESOURCE_NAME, v));
+            Optional.ofNullable(properties.get(COMPACT_RESOUCE_POOL))
+                    .ifPresent(v -> urlParams.put(URL_DATA_RESOURCE_NAME, v));
         } else {
             endpoint = properties.getOrDefault(URL_ENDPOINT, URL_ENDPOINT_DEFAULT);
             urlParams.put(URL_TASK_TYPE, properties.getOrDefault(URL_TASK_TYPE, URL_TASK_TYPE_DEFAULT));
@@ -147,7 +148,7 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
         String rewriteOptions = String.join(",",
                 ACTION_AUTO_COMPACT_OPTIONS.stream()
                     .filter(properties::containsKey)
-                    .map(k -> k.substring(COMPACT_PREFIX.length()) + "," + properties.get(k))
+                    .map(k -> String.format("'%s', '%s'", k.substring(COMPACT_PREFIX.length()), properties.get(k)))
                     .collect(Collectors.toList()));
         String rewriteTableSql;
         if (rewriteOptions.isEmpty()) {

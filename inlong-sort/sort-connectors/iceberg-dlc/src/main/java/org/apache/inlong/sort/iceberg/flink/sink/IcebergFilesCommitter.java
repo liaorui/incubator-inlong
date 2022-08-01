@@ -49,6 +49,7 @@ import org.apache.iceberg.types.Comparators;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.inlong.sort.iceberg.flink.CompactTableProperties;
+import org.apache.inlong.sort.iceberg.flink.actions.RewriteResult;
 import org.apache.inlong.sort.iceberg.flink.actions.SyncRewriteDataFilesAction;
 import org.apache.inlong.sort.iceberg.flink.actions.SyncRewriteDataFilesActionOption;
 import org.slf4j.Logger;
@@ -216,7 +217,8 @@ class IcebergFilesCommitter extends AbstractStreamOperator<Void>
             this.maxCommittedCheckpointId = checkpointId;
             // every interval checkpoint do a small file compact
             if (compactAction != null) {
-                compactAction.execute();
+                RewriteResult result = compactAction.execute();
+                LOG.info("compact action result: {}", result);
             }
         }
     }

@@ -18,6 +18,7 @@
 package org.apache.inlong.manager.service.sort.light;
 
 import com.google.common.collect.Lists;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.inlong.manager.common.exceptions.WorkflowListenerException;
 import org.apache.inlong.manager.common.pojo.group.InlongGroupExtInfo;
@@ -25,6 +26,7 @@ import org.apache.inlong.manager.common.pojo.group.InlongGroupInfo;
 import org.apache.inlong.manager.common.pojo.sink.StreamSink;
 import org.apache.inlong.manager.common.pojo.source.StreamSource;
 import org.apache.inlong.manager.common.pojo.stream.InlongStreamInfo;
+import org.apache.inlong.manager.common.pojo.stream.StreamField;
 import org.apache.inlong.manager.common.pojo.transform.TransformResponse;
 import org.apache.inlong.manager.common.pojo.workflow.form.LightGroupResourceProcessForm;
 import org.apache.inlong.manager.common.settings.InlongGroupSettings;
@@ -119,28 +121,47 @@ public class LightGroupSortListener implements SortOperateListener {
         List<StreamInfo> streamInfos = new ArrayList<>();
         for (InlongStreamInfo stream : streamInfoList) {
             String streamId = stream.getInlongStreamId();
+            Map<String, StreamField> constantFieldMap = new HashMap<>();
+            List<StreamSource> streamSources = sourceMap.get(streamId);
+            streamSources.forEach(s -> parseConstantFieldMap(s.getSourceName(), s.getFieldList(), constantFieldMap));
+            List<TransformResponse> transformResponseList = transformMap.get(streamId);
+            if (CollectionUtils.isNotEmpty(transformResponseList)) {
+                transformResponseList
+                        .forEach(s -> parseConstantFieldMap(s.getTransformName(), s.getFieldList(), constantFieldMap));
+            }
             List<Node> nodes = this.createNodesForStream(sourceMap.get(streamId),
-                    transformMap.get(streamId), sinkMap.get(streamId));
+                    transformMap.get(streamId), sinkMap.get(streamId), constantFieldMap);
             StreamInfo streamInfo = new StreamInfo(streamId, nodes,
                     NodeRelationUtils.createNodeRelationsForStream(stream));
             streamInfos.add(streamInfo);
 
             // Rebuild joinerNode relation
-            List<TransformResponse> transformResponseList = transformMap.get(streamId);
             NodeRelationUtils.optimizeNodeRelation(streamInfo, transformResponseList);
         }
 
         return new GroupInfo(groupInfo.getInlongGroupId(), streamInfos);
     }
 
+    private void parseConstantFieldMap(String nodeId, List<StreamField> fields,
+            Map<String, StreamField> constantFieldMap) {
+        if (CollectionUtils.isEmpty(fields)) {
+            return;
+        }
+        for (StreamField field : fields) {
+            if (field.getFieldValue() != null) {
+                constantFieldMap.put(field.getFieldName(), field);
+            }
+        }
+    }
+
     private List<Node> createNodesForStream(
             List<StreamSource> sourceInfos,
             List<TransformResponse> transformResponses,
-            List<StreamSink> streamSinks) {
+            List<StreamSink> streamSinks, Map<String, StreamField> constantFieldMap) {
         List<Node> nodes = Lists.newArrayList();
         nodes.addAll(ExtractNodeUtils.createExtractNodes(sourceInfos));
-        nodes.addAll(TransformNodeUtils.createTransformNodes(transformResponses));
-        nodes.addAll(LoadNodeUtils.createLoadNodes(streamSinks));
+        nodes.addAll(TransformNodeUtils.createTransformNodes(transformResponses, constantFieldMap));
+        nodes.addAll(LoadNodeUtils.createLoadNodes(streamSinks, constantFieldMap));
         return nodes;
     }
 

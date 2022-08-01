@@ -28,6 +28,7 @@ import org.apache.inlong.manager.common.enums.ErrorCodeEnum;
 import org.apache.inlong.manager.common.exceptions.BusinessException;
 
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 /**
  * kafka source information data transfer object.
@@ -60,6 +61,9 @@ public class KafkaSourceDTO {
     @ApiModelProperty(value = "Topic partition offset",
             notes = "For example, '0#100_1#10' means the offset of partition 0 is 100, the offset of partition 1 is 10")
     private String topicPartitionOffset;
+
+    @ApiModelProperty("Properties for Kafka")
+    private Map<String, Object> properties;
 
     /**
      * The strategy of auto offset reset.
@@ -106,6 +110,7 @@ public class KafkaSourceDTO {
                 .ignoreParseErrors(request.isIgnoreParseErrors())
                 .timestampFormatStandard(request.getTimestampFormatStandard())
                 .primaryKey(request.getPrimaryKey())
+                .properties(request.getProperties())
                 .build();
     }
 

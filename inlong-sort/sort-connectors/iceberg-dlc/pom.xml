@@ -76,7 +76,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
@@ -103,8 +102,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-flink-runtime-1.13</artifactId>
+            <groupId>org.apache.inlong</groupId>
+            <artifactId>sort-connector-iceberg</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -147,6 +147,7 @@
                         <configuration>
                             <artifactSet>
                                 <includes>
+                                    <include>org.apache.inlong:*</include>
                                     <include>org.apache.iceberg:*</include>
                                     <include>org.apache.hive:hive-exec</include>
 
@@ -165,6 +166,15 @@
                                     <include>javax.xml.bind:jaxb-api</include>
                                 </includes>
                             </artifactSet>
+                            <filters>
+                                <filter>
+                                    <artifact>org.apache.inlong:sort-connector-*</artifact>
+                                    <includes>
+                                        <include>org/apache/inlong/**</include>
+                                        <include>META-INF/services/org.apache.flink.table.factories.Factory</include>
+                                    </includes>
+                                </filter>
+                            </filters>
                             <relocations>
                                 <relocation>
                                     <pattern>org.apache.parquet</pattern>
@@ -177,7 +187,6 @@
             </plugin>
         </plugins>
     </build>
-
 
     <repositories>
         <repository>
@@ -202,5 +211,4 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-    </repositories>
-</project>
+    </repositories></project>

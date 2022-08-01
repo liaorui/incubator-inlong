@@ -18,11 +18,6 @@
 package org.apache.inlong.sort.protocol.node.load;
 
 import com.google.common.base.Preconditions;
-import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -34,6 +29,12 @@ import org.apache.inlong.sort.protocol.enums.FilterStrategy;
 import org.apache.inlong.sort.protocol.node.LoadNode;
 import org.apache.inlong.sort.protocol.transformation.FieldRelation;
 import org.apache.inlong.sort.protocol.transformation.FilterFunction;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 /**
  * elasticSearch load node
@@ -97,18 +98,22 @@ public class ElasticsearchLoadNode extends LoadNode implements Serializable {
         this.version = version;
     }
 
+    /**
+     * if you want to set field routing, set the routing.field-name
+     */
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
-        options.put("connector", "elasticsearch-7");
+        options.put("connector", "elasticsearch-7-inlong");
         if (version == 6) {
-            options.put("connector", "elasticsearch-6");
+            options.put("connector", "elasticsearch-6-inlong");
             options.put("document-type", documentType);
         }
         options.put("hosts", hosts);
         options.put("index", index);
         options.put("password", password);
         options.put("username", username);
+        options.put("routing.field-name", primaryKey);
         return options;
     }
 

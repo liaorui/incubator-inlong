@@ -19,7 +19,6 @@ package org.apache.inlong.manager.service.sort.util;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -106,12 +105,10 @@ public class ExtractNodeUtils {
      * @return MySql extract node info
      */
     public static MySqlExtractNode createExtractNode(MySQLBinlogSource binlogSource) {
-        final String id = binlogSource.getSourceName();
-        final String name = binlogSource.getSourceName();
         final String database = binlogSource.getDatabaseWhiteList();
         final String primaryKey = binlogSource.getPrimaryKey();
         final String hostName = binlogSource.getHostname();
-        final String userName = binlogSource.getUser();
+        final String username = binlogSource.getUser();
         final String password = binlogSource.getPassword();
         final Integer port = binlogSource.getPort();
         Integer serverId = null;
@@ -120,34 +117,30 @@ public class ExtractNodeUtils {
         }
         String tables = binlogSource.getTableWhiteList();
         final List<String> tableNames = Splitter.on(",").splitToList(tables);
-        final List<StreamField> streamFields = binlogSource.getFieldList();
-        final List<FieldInfo> fieldInfos = streamFields.stream()
-                .map(streamField -> FieldInfoUtils.parseStreamFieldInfo(streamField, name))
-                .collect(Collectors.toList());
+        List<FieldInfo> fieldInfos = parseFieldInfos(binlogSource.getFieldList(), binlogSource.getSourceName());
         final String serverTimeZone = binlogSource.getServerTimezone();
         boolean incrementalSnapshotEnabled = true;
 
         // TODO Needs to be configurable for those parameters
-        Map<String, String> properties = Maps.newHashMap();
+        Map<String, String> properties = parseProperties(binlogSource.getProperties());
         if (binlogSource.isAllMigration()) {
             // Unique properties when migrate all tables in database
             incrementalSnapshotEnabled = false;
             properties.put("migrate-all", "true");
         }
-        properties.put("append-mode", "true");
         if (StringUtils.isEmpty(primaryKey)) {
             incrementalSnapshotEnabled = false;
             properties.put("scan.incremental.snapshot.enabled", "false");
         }
-        return new MySqlExtractNode(id,
-                name,
+        return new MySqlExtractNode(binlogSource.getSourceName(),
+                binlogSource.getSourceName(),
                 fieldInfos,
                 null,
                 properties,
                 primaryKey,
                 tableNames,
                 hostName,
-                userName,
+                username,
                 password,
                 database,
                 port,
@@ -163,12 +156,7 @@ public class ExtractNodeUtils {
      * @return Kafka extract node info
      */
     public static KafkaExtractNode createExtractNode(KafkaSource kafkaSource) {
-        String id = kafkaSource.getSourceName();
-        String name = kafkaSource.getSourceName();
-        List<StreamField> streamFields = kafkaSource.getFieldList();
-        List<FieldInfo> fieldInfos = streamFields.stream()
-                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, name))
-                .collect(Collectors.toList());
+        List<FieldInfo> fieldInfos = parseFieldInfos(kafkaSource.getFieldList(), kafkaSource.getSourceName());
         String topic = kafkaSource.getTopic();
         String bootstrapServers = kafkaSource.getBootstrapServers();
         Format format;
@@ -204,12 +192,12 @@ public class ExtractNodeUtils {
         }
         final String primaryKey = kafkaSource.getPrimaryKey();
         String groupId = kafkaSource.getGroupId();
-
-        return new KafkaExtractNode(id,
-                name,
+        Map<String, String> properties = parseProperties(kafkaSource.getProperties());
+        return new KafkaExtractNode(kafkaSource.getSourceName(),
+                kafkaSource.getSourceName(),
                 fieldInfos,
                 null,
-                Maps.newHashMap(),
+                properties,
                 topic,
                 bootstrapServers,
                 format,
@@ -225,12 +213,7 @@ public class ExtractNodeUtils {
      * @return Pulsar extract node info
      */
     public static PulsarExtractNode createExtractNode(PulsarSource pulsarSource) {
-        String id = pulsarSource.getSourceName();
-        String name = pulsarSource.getSourceName();
-        List<StreamField> streamFields = pulsarSource.getFieldList();
-        List<FieldInfo> fieldInfos = streamFields.stream()
-                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, name))
-                .collect(Collectors.toList());
+        List<FieldInfo> fieldInfos = parseFieldInfos(pulsarSource.getFieldList(), pulsarSource.getSourceName());
         String fullTopicName =
                 pulsarSource.getTenant() + "/" + pulsarSource.getNamespace() + "/" + pulsarSource.getTopic();
 
@@ -264,12 +247,12 @@ public class ExtractNodeUtils {
         final String primaryKey = pulsarSource.getPrimaryKey();
         final String serviceUrl = pulsarSource.getServiceUrl();
         final String adminUrl = pulsarSource.getAdminUrl();
-
-        return new PulsarExtractNode(id,
-                name,
+        Map<String, String> properties = parseProperties(pulsarSource.getProperties());
+        return new PulsarExtractNode(pulsarSource.getSourceName(),
+                pulsarSource.getSourceName(),
                 fieldInfos,
                 null,
-                Maps.newHashMap(),
+                properties,
                 fullTopicName,
                 adminUrl,
                 serviceUrl,
@@ -281,22 +264,18 @@ public class ExtractNodeUtils {
     /**
      * Create PostgreSQL extract node
      *
-     * @param postgresSource PostgreSQL source info
+     * @param postgreSQLSource PostgreSQL source info
      * @return PostgreSQL extract node info
      */
-    public static PostgresExtractNode createExtractNode(PostgresSource postgresSource) {
-        List<StreamField> streamFields = postgresSource.getFieldList();
-        String id = postgresSource.getSourceName();
-        String name = postgresSource.getSourceName();
-        List<FieldInfo> fields = streamFields.stream()
-                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, name))
-                .collect(Collectors.toList());
-        return new PostgresExtractNode(id, name, fields, null, null,
-                postgresSource.getPrimaryKey(), postgresSource.getTableNameList(),
-                postgresSource.getHostname(), postgresSource.getUsername(),
-                postgresSource.getPassword(), postgresSource.getDatabase(),
-                postgresSource.getSchema(), postgresSource.getPort(),
-                postgresSource.getDecodingPluginName());
+    public static PostgresExtractNode createExtractNode(PostgresSource postgreSQLSource) {
+        List<FieldInfo> fieldInfos = parseFieldInfos(postgreSQLSource.getFieldList(), postgreSQLSource.getSourceName());
+        Map<String, String> properties = parseProperties(postgreSQLSource.getProperties());
+        return new PostgresExtractNode(postgreSQLSource.getSourceName(), postgreSQLSource.getSourceName(),
+                fieldInfos, null, properties, postgreSQLSource.getPrimaryKey(),
+                postgreSQLSource.getTableNameList(), postgreSQLSource.getHostname(),
+                postgreSQLSource.getUsername(), postgreSQLSource.getPassword(),
+                postgreSQLSource.getDatabase(), postgreSQLSource.getSchema(),
+                postgreSQLSource.getPort(), postgreSQLSource.getDecodingPluginName());
     }
 
     /**
@@ -306,19 +285,13 @@ public class ExtractNodeUtils {
      * @return oracle extract node info
      */
     public static OracleExtractNode createExtractNode(OracleSource source) {
-        String name = source.getSourceName();
-        List<StreamField> streamFieldInfos = source.getFieldList();
-        final List<FieldInfo> fieldInfos = streamFieldInfos.stream()
-                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, name))
-                .collect(Collectors.toList());
-
-        Map<String, String> properties = Maps.newHashMap();
+        List<FieldInfo> fieldInfos = parseFieldInfos(source.getFieldList(), source.getSourceName());
         ScanStartUpMode scanStartupMode = StringUtils.isBlank(source.getScanStartupMode())
                 ? null : ScanStartUpMode.forName(source.getScanStartupMode());
-
+        Map<String, String> properties = parseProperties(source.getProperties());
         return new OracleExtractNode(
-                name,
-                name,
+                source.getSourceName(),
+                source.getSourceName(),
                 fieldInfos,
                 null,
                 properties,
@@ -335,22 +308,17 @@ public class ExtractNodeUtils {
     }
 
     /**
-     * Create SqlServer extract node
+     * Create SQLServer extract node
      *
-     * @param source SqlServer source info
-     * @return SqlServer extract node info
+     * @param source SQLServer source info
+     * @return SQLServer extract node info
      */
     public static SqlServerExtractNode createExtractNode(SqlServerSource source) {
-        String name = source.getSourceName();
-        List<StreamField> streamFields = source.getFieldList();
-        List<FieldInfo> fieldInfos = streamFields.stream()
-                .map(fieldInfo -> FieldInfoUtils.parseStreamFieldInfo(fieldInfo, name))
-                .collect(Collectors.toList());
-
-        Map<String, String> properties = Maps.newHashMap();
+        List<FieldInfo> fieldInfos = parseFieldInfos(source.getFieldList(), source.getSourceName());
+        Map<String, String> properties = parseProperties(source.getProperties());
         return new SqlServerExtractNode(
-                name,
-                name,
+                source.getSourceName(),
+                source.getSourceName(),
                 fieldInfos,
                 null,
                 properties,
@@ -373,15 +341,11 @@ public class ExtractNodeUtils {
      * @return MongoDB extract node info
      */
     public static MongoExtractNode createExtractNode(MongoDBSource source) {
-        String name = source.getSourceName();
-        List<StreamField> streamFields = source.getFieldList();
-        List<FieldInfo> fieldInfos = streamFields.stream()
-                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, name))
-                .collect(Collectors.toList());
-        Map<String, String> properties = Maps.newHashMap();
+        List<FieldInfo> fieldInfos = parseFieldInfos(source.getFieldList(), source.getSourceName());
+        Map<String, String> properties = parseProperties(source.getProperties());
         return new MongoExtractNode(
-                name,
-                name,
+                source.getSourceName(),
+                source.getSourceName(),
                 fieldInfos,
                 null,
                 properties,
@@ -391,6 +355,31 @@ public class ExtractNodeUtils {
                 source.getPassword(),
                 source.getDatabase()
         );
+    }
+
+    /**
+     * Parse FieldInfos
+     *
+     * @param streamFields The stream fields
+     * @param nodeId The node id
+     * @return FieldInfo list
+     */
+    private static List<FieldInfo> parseFieldInfos(List<StreamField> streamFields, String nodeId) {
+        // Filter constant fields
+        return streamFields.stream().filter(s -> s.getFieldValue() == null)
+                .map(streamFieldInfo -> FieldInfoUtils.parseStreamFieldInfo(streamFieldInfo, nodeId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Parse properties
+     *
+     * @param properties The properties with string key and object value
+     * @return The properties with string key and string value
+     */
+    private static Map<String, String> parseProperties(Map<String, Object> properties) {
+        return properties.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
     }
 
 }

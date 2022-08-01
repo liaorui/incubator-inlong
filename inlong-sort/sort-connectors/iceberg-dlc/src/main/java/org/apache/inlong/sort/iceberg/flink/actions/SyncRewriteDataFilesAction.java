@@ -77,6 +77,7 @@ public class SyncRewriteDataFilesAction implements
         String rewriteTableSql = options.rewriteSql();
         try {
             Statement statement = connection.createStatement();
+            LOG.info("Do compact: {}", rewriteTableSql);
             boolean firstIsResultSet = statement.execute(rewriteTableSql);
             if (firstIsResultSet) {
                 ResultSet rs = statement.getResultSet();
@@ -98,7 +99,7 @@ public class SyncRewriteDataFilesAction implements
             statement.close();
             connection.close();
         } catch (SQLException e) {
-            LOG.warn("[Result:]Execute rewrite sql err.", e);
+            LOG.warn("[Result:]Execute rewrite sql({}) err.", rewriteTableSql, e);
             return new RewriteResult("fail.");
         }
         return new RewriteResult("success.");
@@ -119,8 +120,8 @@ public class SyncRewriteDataFilesAction implements
                     options.secretKey());
             // get meta data
             DatabaseMetaData metaData = connection.getMetaData();
-            LOG.info("DLC product = {}.", metaData.getDatabaseProductName());
-            LOG.info("DLC jdbc version = {}, ", metaData.getDriverMajorVersion(), metaData.getDriverMinorVersion());
+            LOG.info("DLC product = {}, DLC jdbc version = {}, DLC jdbc = '{}'",
+                    metaData.getDatabaseProductName(), metaData.getDriverMajorVersion(), url);
         } catch (SQLException e) {
             LOG.error("Create connection err.Please check configuration. Request URL: {}.", url, e);
         } catch (ClassNotFoundException e) {
