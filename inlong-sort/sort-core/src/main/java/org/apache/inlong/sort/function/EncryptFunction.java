@@ -45,7 +45,6 @@ public class EncryptFunction extends ScalarFunction {
 
     private static final Base64 base64 = new Base64();
 
-
     /**
      * eval is String encryption execution method
      *
@@ -126,7 +125,6 @@ public class EncryptFunction extends ScalarFunction {
      *
      * @param plaintextBytes it is data to be encoded
      * @return
-     * @throws Exception
      */
     public static String encryptBASE64(byte[] plaintextBytes) throws Exception {
         return new String(base64.encode(plaintextBytes), ENCODING);
