@@ -106,7 +106,7 @@ public class FlinkSqlParser implements Parser {
     private void registerUDF() {
         tableEnv.createTemporarySystemFunction("REGEXP_REPLACE_FIRST", RegexpReplaceFirstFunction.class);
         tableEnv.createTemporarySystemFunction("REGEXP_REPLACE", RegexpReplaceFunction.class);
-		tableEnv.createTemporarySystemFunction("ENCRYPT", EncryptFunction.class);
+        tableEnv.createTemporarySystemFunction("ENCRYPT", EncryptFunction.class);
     }
 
     /**
