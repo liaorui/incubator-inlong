@@ -65,6 +65,9 @@ public class EncryptFunctionTest extends AbstractTestBase {
         data.add(Row.of("abc"));
         TypeInformation<?>[] types = {
                 BasicTypeInfo.STRING_TYPE_INFO};
+//        data.add(Row.of(12));
+//        TypeInformation<?>[] types = {
+//                BasicTypeInfo.INT_TYPE_INFO};
         String[] names = {"f1"};
         RowTypeInfo typeInfo = new RowTypeInfo(types, names);
         DataStream<Row> dataStream = env.fromCollection(data).returns(typeInfo);

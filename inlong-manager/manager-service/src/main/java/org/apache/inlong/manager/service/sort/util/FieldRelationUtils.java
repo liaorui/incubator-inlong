@@ -81,7 +81,8 @@ public class FieldRelationUtils {
                         replacerDefinition, preNodes, constantFieldMap);
             case ENCRYPT:
                 EncryptDefinition encryptDefinition = (EncryptDefinition) transformDefinition;
-                return createEncryptFieldRelations(fieldList, transformName, encryptDefinition, preNodes);
+                return createEncryptFieldRelations(fieldList, transformName, encryptDefinition,
+                        preNodes, constantFieldMap);
             case DE_DUPLICATION:
             case FILTER:
                 return createFieldRelations(fieldList, transformName, constantFieldMap);
@@ -198,7 +199,7 @@ public class FieldRelationUtils {
      * Create relation of fields in encrypt function.
      */
     private static List<FieldRelation> createEncryptFieldRelations(List<StreamField> fieldList, String transformName,
-            EncryptDefinition encryptDefinition, String preNodes) {
+            EncryptDefinition encryptDefinition, String preNodes, Map<String, StreamField> constantFieldMap) {
         Preconditions.checkNotEmpty(preNodes, "PreNodes of splitter should not be null");
         String preNode = preNodes.split(",")[0];
         List<EncryptRule> encryptRules = encryptDefinition.getEncryptRules();
@@ -209,7 +210,7 @@ public class FieldRelationUtils {
         List<StreamField> filteredFieldList = fieldList.stream()
                 .filter(streamFieldInfo -> !encryptFields.contains(streamFieldInfo.getFieldName()))
                 .collect(Collectors.toList());
-        fieldRelations.addAll(createFieldRelations(filteredFieldList, transformName));
+        fieldRelations.addAll(createFieldRelations(filteredFieldList, transformName, constantFieldMap));
         return fieldRelations;
     }
 
