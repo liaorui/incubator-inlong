@@ -74,6 +74,7 @@ public class FilterFunctionUtils {
             case SPLITTER:
             case JOINER:
             case STRING_REPLACER:
+            case ENCRYPT:
                 return Lists.newArrayList();
             default:
                 throw new UnsupportedOperationException(
@@ -126,6 +127,7 @@ public class FilterFunctionUtils {
             case SPLITTER:
             case JOINER:
             case STRING_REPLACER:
+            case ENCRYPT:
                 return null;
             default:
                 throw new UnsupportedOperationException(
