@@ -25,6 +25,8 @@ import lombok.NoArgsConstructor;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTypeName;
+import org.apache.inlong.sort.formats.common.LocalZonedTimestampFormatInfo;
+import org.apache.inlong.sort.formats.common.TimestampFormatInfo;
 import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.constant.DLCConstant;
 import org.apache.inlong.sort.protocol.constant.IcebergConstant.CatalogType;
@@ -79,12 +81,29 @@ public class DLCIcebergLoadNode extends LoadNode implements Serializable {
             @JsonProperty("uri") String uri,
             @JsonProperty("warehouse") String warehouse) {
         super(id, name, fields, fieldRelationShips, filters, filterStrategy, sinkParallelism, properties);
+        changeTimeStampToLocalZonedTimeStamp(fields, fieldRelationShips);
         this.tableName = Preconditions.checkNotNull(tableName, "table name is null");
         this.dbName = Preconditions.checkNotNull(dbName, "db name is null");
         this.primaryKey = primaryKey;
         this.uri = uri == null ? DLCConstant.DLC_ENDPOINT : uri;
         this.warehouse = warehouse;
         validateAuth(properties);
+    }
+
+    private void changeTimeStampToLocalZonedTimeStamp(List<FieldInfo> fields, List<FieldRelation> fieldRelationShips) {
+        for (FieldInfo fieldInfo : fields) {
+            if (fieldInfo.getFormatInfo() != null && fieldInfo.getFormatInfo() instanceof TimestampFormatInfo) {
+                fieldInfo.setFormatInfo(new LocalZonedTimestampFormatInfo());
+            }
+        }
+        for (FieldRelation fieldRelation : fieldRelationShips) {
+            boolean flag =
+                    fieldRelation.getOutputField() != null && fieldRelation.getOutputField().getFormatInfo() != null
+                            && fieldRelation.getOutputField().getFormatInfo() instanceof TimestampFormatInfo;
+            if (flag) {
+                fieldRelation.getOutputField().setFormatInfo(new LocalZonedTimestampFormatInfo());
+            }
+        }
     }
 
     @Override
