@@ -1,0 +1,155 @@
+syntax = "proto3";
+package subscribe;
+
+option java_package = "com.tencent.subscribe";
+option java_outer_classname = "SubscribeDataProto";
+
+message DMLEvent {
+    DMLType  dmlEventType   = 1;   // DML的类型，包括insert，update，delete
+    repeated Column columns = 2;   // 列信息，包括列名，原始数据类型，是否主键等
+    repeated RowChange rows = 3;   // 行数据变更
+}
+
+message Column {
+    string   name              = 1;  //字段（列）名称
+    string   originalType      = 2;  //源字段类型
+    bool     isKey             = 3;  //是否为主键
+    repeated KVPair properties = 15; //extra infos
+}
+
+message RowChange {
+    repeated Data oldColumns   = 1;   //变更前镜像
+    repeated Data newColumns   = 2;   //变更后镜像
+    repeated KVPair properties = 15;
+}
+
+message Data {
+    DataType     dataType = 1;
+    string       charset  = 2;  //DataType_STRING的编码类型, 值存储在bv里面
+    string       sv       = 3;  //DataType_INT8/16/32/64/UINT8/16/32/64/Float32/64/DataType_DECIMAL的字符串值
+    bytes        bv       = 4;  //DataType_STRING/DataType_BYTES的值
+}
+
+message DDLEvent {
+    string schemaName    = 1;  //执行ddl时的schemaName
+    string sql           = 2;  //变更的语句
+    uint32 executionTime = 3;  //ddl执行时长
+}
+
+message BeginEvent {
+    string transactionId = 1;  //事务号
+    int64  threadId      = 2;  //执行事务的线程ID
+}
+
+message CommitEvent {
+    string transactionId = 1; //事务号
+}
+
+message RollbackEvent {
+}
+
+message HeartbeatEvent {
+    int64 epoch = 1;
+}
+
+message CheckpointEvent {
+    string syncedGtid = 1;
+    bool   fakeGtid   = 2;
+    string fileName   = 3;
+    uint64 position   = 4;
+}
+
+message Event {
+    BeginEvent      beginEvent      = 1;
+    DMLEvent        dmlEvent        = 2;
+    CommitEvent     commitEvent     = 3;
+    DDLEvent        ddlEvent        = 4;
+    RollbackEvent   rollbackEvent   = 5;
+    HeartbeatEvent  heartbeatEvent  = 6;
+    CheckpointEvent checkpointEvent = 7;
+    repeated KVPair properties      = 15;
+}
+
+message Entry {
+    Header header = 1;       //事件的头部
+    Event event   = 2;
+}
+
+message Header {
+    int32       version        = 1;
+    SourceType  sourceType     = 2;   //源库的类型信息，包括mysql，oracle等类型
+    MessageType messageType    = 3;   //消息的类型
+
+    uint32 timestamp           = 4;   //Event在原始binlog中的时间戳
+    int64  serverId            = 5;   //源的serverId
+
+    string fileName            = 6;   //源binlog的文件名称
+    uint64 position            = 7;   //事件在源binlog文件中的偏移量
+    string gtid                = 8;   //当前事务的gtid
+
+    string schemaName          = 9;   //变更影响的schema
+    string tableName           = 10;  //变更影响的table
+
+    uint64 seqId               = 11;  //如果event分片，同一分片的seqId一致
+    uint64 eventIndex          = 12;  //大的event分片，序号从0开始，当前版本无意义，留待后续扩展用
+    bool   isLast              = 13;  //当前event是不是event分片的最后一块，是则为true，当前版本无意义，留待后续扩展用
+
+    repeated KVPair properties = 15;
+}
+
+message KVPair {
+    string key   = 1;
+    string value = 2;
+}
+
+enum DMLType {
+    INSERT = 0;
+    UPDATE = 1;
+    DELETE = 2;
+}
+
+enum MessageType {
+    BEGIN      = 0;
+    COMMIT     = 1;
+    DML        = 2;
+    DDL        = 3;
+    ROLLBACK   = 4;
+    HEARTBEAT  = 5;
+    CHECKPOINT = 6;
+}
+
+enum SourceType {
+    ORACLE  = 0;
+    MYSQL   = 1;
+    PGSQL   = 2;
+    MARIADB = 3;
+}
+
+enum DataType {
+    NIL     = 0; //值为NULL
+    INT8    = 1;
+    INT16   = 2;
+    INT32   = 3;
+    INT64   = 4;
+    UINT8   = 5;
+    UINT16  = 6;
+    UINT32  = 7;
+    UINT64  = 8;
+    FLOAT32 = 9;
+    FLOAT64 = 10;
+    BYTES   = 11;
+    DECIMAL = 12;
+    STRING  = 13;
+    NA      = 14; //值不存在(N/A)
+}
+
+message Envelope {
+    int32  version = 1; //protocol version, 决定了data内容如何解码
+    uint32 total   = 2;
+    uint32 index   = 3;
+    bytes  data    = 4; //当前version为1, 表示data中数据为Entries被PB序列化之后的结果, 通过PB反序列化可以得到一个Entries对象。
+}
+
+message Entries {
+    repeated Entry items = 1; //entry list
+}
