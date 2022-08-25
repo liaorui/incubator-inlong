@@ -37,7 +37,7 @@ public enum SourceType {
     ORACLE("ORACLE", TaskTypeEnum.ORACLE),
     SQLSERVER("SQLSERVER", TaskTypeEnum.SQLSERVER),
     MONGODB("MONGODB", TaskTypeEnum.MONGODB),
-
+    TDSQL_KAFKA("TDSQL_KAFKA", TaskTypeEnum.TDSQL_KAFKA),
     ;
 
     public static final String SOURCE_AUTO_PUSH = "AUTO_PUSH";
@@ -50,6 +50,7 @@ public enum SourceType {
     public static final String SOURCE_ORACLE = "ORACLE";
     public static final String SOURCE_SQLSERVER = "SQLSERVER";
     public static final String SOURCE_MONGODB = "MONGODB";
+    public static final String SOURCE_TDSQL_KAFKA = "TDSQL_KAFKA";
 
     @Getter
     private final String type;
