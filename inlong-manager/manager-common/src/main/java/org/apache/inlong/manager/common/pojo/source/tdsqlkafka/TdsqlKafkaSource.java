@@ -84,7 +84,7 @@ public class TdsqlKafkaSource extends StreamSource {
 
     @Override
     public SourceRequest genSourceRequest() {
-        return CommonBeanUtils.copyProperties(this, KafkaSourceRequest::new);
+        return CommonBeanUtils.copyProperties(this, TdsqlKafkaSourceRequest::new);
     }
 
 }

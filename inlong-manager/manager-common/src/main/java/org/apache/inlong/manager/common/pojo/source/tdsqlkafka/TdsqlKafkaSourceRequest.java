@@ -76,8 +76,8 @@ public class TdsqlKafkaSourceRequest extends SourceRequest {
     @ApiModelProperty("Primary key, needed when serialization type is csv, json, avro")
     private String primaryKey;
 
-    public KafkaSourceRequest() {
-        this.setSourceType(SourceType.KAFKA.toString());
+    public TdsqlKafkaSourceRequest() {
+        this.setSourceType(SourceType.TDSQL_KAFKA.toString());
     }
 
 }
