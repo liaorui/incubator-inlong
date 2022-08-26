@@ -71,8 +71,8 @@ public class ClientUtils {
      * @return Retrofit
      */
     public static Retrofit createRetrofit(ClientConfiguration configuration) {
-        String host = configuration.getBindHost();
-        int port = configuration.getBindPort();
+        final String host = configuration.getBindHost();
+        final int port = configuration.getBindPort();
 
         Authentication authentication = configuration.getAuthentication();
         Preconditions.checkNotNull(authentication, "inlong should be authenticated");
@@ -90,8 +90,8 @@ public class ClientUtils {
                 .build();
 
         String path = API_PATH_130;
-        if (StringUtils.isNotBlank(configuration.getVersion()) &&
-                !VersionUtils.checkInlongVersion(configuration.getVersion(), STABLE_API_VERSION)) {
+        if (StringUtils.isNotBlank(configuration.getVersion())
+                && !VersionUtils.checkInlongVersion(configuration.getVersion(), STABLE_API_VERSION)) {
             path = API_PATH_120;
         }
 
