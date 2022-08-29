@@ -49,6 +49,12 @@ public class TdsqlKafkaSourceDTO {
     @ApiModelProperty("Kafka servers address, such as: 127.0.0.1:9092")
     private String bootstrapServers;
 
+    @ApiModelProperty("Kafka sasl username")
+    private String username;
+
+    @ApiModelProperty("Kafka sasl password")
+    private String password;
+
     @ApiModelProperty(value = "Limit the amount of data read per second",
             notes = "Greater than or equal to 0, equal to zero means no limit")
     private String recordSpeedLimit;
@@ -73,7 +79,7 @@ public class TdsqlKafkaSourceDTO {
             notes = "including earliest, latest (the default), none")
     private String autoOffsetReset;
 
-    @ApiModelProperty("Data Serialization, support: json, canal, avro, etc")
+    @ApiModelProperty("Data Serialization, support: protobuf, avro, json")
     private String serializationType;
 
     @ApiModelProperty("database pattern used for filter in canal format")
@@ -88,7 +94,7 @@ public class TdsqlKafkaSourceDTO {
     @ApiModelProperty("Timestamp standard for binlog: SQL, ISO_8601")
     private String timestampFormatStandard;
 
-    @ApiModelProperty("Field needed when serializationType is csv,json,avro")
+    @ApiModelProperty("Field needed when serializationType is protobuf,json,avro")
     private String primaryKey;
 
     /**
@@ -99,6 +105,8 @@ public class TdsqlKafkaSourceDTO {
                 .topic(request.getTopic())
                 .groupId(request.getGroupId())
                 .bootstrapServers(request.getBootstrapServers())
+                .username(request.getUsername())
+                .password(request.getPassword())
                 .recordSpeedLimit(request.getRecordSpeedLimit())
                 .byteSpeedLimit(request.getByteSpeedLimit())
                 .topicPartitionOffset(request.getTopicPartitionOffset())

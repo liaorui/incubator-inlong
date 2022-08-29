@@ -34,7 +34,7 @@ import org.apache.inlong.manager.common.util.JsonTypeDefine;
 @SuperBuilder
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@ApiModel("Response of kafka source paging list")
+@ApiModel("Response of tdsql-kafka source paging list")
 @JsonTypeDefine(value = SourceType.SOURCE_TDSQL_KAFKA)
 public class TdsqlKafkaSourceListResponse extends SourceListResponse {
 
@@ -46,6 +46,12 @@ public class TdsqlKafkaSourceListResponse extends SourceListResponse {
 
     @ApiModelProperty("Kafka servers address")
     private String bootstrapServers;
+
+    @ApiModelProperty("Kafka sasl username")
+    private String username;
+
+    @ApiModelProperty("Kafka sasl password")
+    private String password;
 
     @ApiModelProperty("Limit the amount of data read per second")
     private String recordSpeedLimit;
@@ -61,11 +67,11 @@ public class TdsqlKafkaSourceListResponse extends SourceListResponse {
             notes = "including earliest, latest (the default), none")
     private String autoOffsetReset;
 
-    @ApiModelProperty("Primary key, needed when serialization type is csv, json, avro")
+    @ApiModelProperty("Primary key, needed when serialization type is protobuf, json, avro")
     private String primaryKey;
 
     public TdsqlKafkaSourceListResponse() {
-        this.setSourceType(SourceType.KAFKA.getType());
+        this.setSourceType(SourceType.TDSQL_KAFKA.getType());
     }
 
 }

@@ -34,15 +34,14 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTyp
 import org.apache.inlong.common.enums.MetaField;
 import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.Metadata;
-import org.apache.inlong.sort.protocol.constant.KafkaConstant;
+import org.apache.inlong.sort.protocol.constant.TdsqlKafkaConstant;
 import org.apache.inlong.sort.protocol.enums.KafkaScanStartupMode;
+import org.apache.inlong.sort.protocol.enums.TdsqlKafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.format.AvroFormat;
-import org.apache.inlong.sort.protocol.node.format.CanalJsonFormat;
-import org.apache.inlong.sort.protocol.node.format.CsvFormat;
-import org.apache.inlong.sort.protocol.node.format.DebeziumJsonFormat;
 import org.apache.inlong.sort.protocol.node.format.Format;
 import org.apache.inlong.sort.protocol.node.format.JsonFormat;
+import org.apache.inlong.sort.protocol.node.format.ProtobufFormat;
 import org.apache.inlong.sort.protocol.transformation.WatermarkField;
 
 /**
@@ -61,12 +60,20 @@ public class TdsqlKafkaExtractNode extends ExtractNode implements Metadata, Seri
     @Nonnull
     @JsonProperty("bootstrapServers")
     private String bootstrapServers;
+
+    @Nonnull
+    @JsonProperty("username")
+    private String username;
+
+    @JsonProperty("password")
+    private String password;
+
     @Nonnull
     @JsonProperty("format")
     private Format format;
 
     @JsonProperty("scanStartupMode")
-    private KafkaScanStartupMode kafkaScanStartupMode;
+    private TdsqlKafkaScanStartupMode tdsqlKafkaScanStartupMode;
 
     @JsonProperty("primaryKey")
     private String primaryKey;
@@ -84,15 +91,20 @@ public class TdsqlKafkaExtractNode extends ExtractNode implements Metadata, Seri
             @JsonProperty("properties") Map<String, String> properties,
             @Nonnull @JsonProperty("topic") String topic,
             @Nonnull @JsonProperty("bootstrapServers") String bootstrapServers,
+            @Nonnull @JsonProperty("username") String username,
+            @JsonProperty("password") String password,
             @Nonnull @JsonProperty("format") Format format,
-            @JsonProperty("scanStartupMode") KafkaScanStartupMode kafkaScanStartupMode,
+            @JsonProperty("scanStartupMode") TdsqlKafkaScanStartupMode tdsqlKafkaScanStartupMode,
             @JsonProperty("primaryKey") String primaryKey,
             @JsonProperty("groupId") String groupId) {
         super(id, name, fields, watermarkField, properties);
         this.topic = Preconditions.checkNotNull(topic, "kafka topic is empty");
         this.bootstrapServers = Preconditions.checkNotNull(bootstrapServers, "kafka bootstrapServers is empty");
+        this.username = Preconditions.checkNotNull(username, "kafka sasl username is empty");
+        this.password = password;
         this.format = Preconditions.checkNotNull(format, "kafka format is empty");
-        this.kafkaScanStartupMode = Preconditions.checkNotNull(kafkaScanStartupMode, "kafka scanStartupMode is empty");
+        this.tdsqlKafkaScanStartupMode = Preconditions.checkNotNull(tdsqlKafkaScanStartupMode,
+                "kafka scanStartupMode is empty");
         this.primaryKey = primaryKey;
         this.groupId = groupId;
     }
@@ -105,19 +117,24 @@ public class TdsqlKafkaExtractNode extends ExtractNode implements Metadata, Seri
             @JsonProperty("properties") Map<String, String> properties,
             @Nonnull @JsonProperty("topic") String topic,
             @Nonnull @JsonProperty("bootstrapServers") String bootstrapServers,
+            @Nonnull @JsonProperty("username") String username,
+            @JsonProperty("password") String password,
             @Nonnull @JsonProperty("format") Format format,
-            @JsonProperty("scanStartupMode") KafkaScanStartupMode kafkaScanStartupMode,
+            @JsonProperty("scanStartupMode") TdsqlKafkaScanStartupMode tdsqlKafkaScanStartupMode,
             @JsonProperty("primaryKey") String primaryKey,
             @JsonProperty("groupId") String groupId,
             @JsonProperty("scanSpecificOffsets") String scanSpecificOffsets) {
         super(id, name, fields, watermarkField, properties);
         this.topic = Preconditions.checkNotNull(topic, "kafka topic is empty");
         this.bootstrapServers = Preconditions.checkNotNull(bootstrapServers, "kafka bootstrapServers is empty");
+        this.username = Preconditions.checkNotNull(username, "kafka sasl username is empty");
+        this.password = password;
         this.format = Preconditions.checkNotNull(format, "kafka format is empty");
-        this.kafkaScanStartupMode = Preconditions.checkNotNull(kafkaScanStartupMode, "kafka scanStartupMode is empty");
+        this.tdsqlKafkaScanStartupMode = Preconditions.checkNotNull(tdsqlKafkaScanStartupMode,
+                "kafka scanStartupMode is empty");
         this.primaryKey = primaryKey;
         this.groupId = groupId;
-        if (kafkaScanStartupMode == KafkaScanStartupMode.SPECIFIC_OFFSETS) {
+        if (tdsqlKafkaScanStartupMode == TdsqlKafkaScanStartupMode.SPECIFIC_OFFSETS) {
             Preconditions.checkArgument(StringUtils.isNotEmpty(scanSpecificOffsets), "scanSpecificOffsets is empty");
             this.scanSpecificOffsets = scanSpecificOffsets;
         }
@@ -131,30 +148,24 @@ public class TdsqlKafkaExtractNode extends ExtractNode implements Metadata, Seri
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
-        options.put(KafkaConstant.TOPIC, topic);
-        options.put(KafkaConstant.PROPERTIES_BOOTSTRAP_SERVERS, bootstrapServers);
-        if (format instanceof JsonFormat || format instanceof AvroFormat || format instanceof CsvFormat) {
-            if (StringUtils.isEmpty(this.primaryKey)) {
-                options.put(KafkaConstant.CONNECTOR, KafkaConstant.KAFKA);
-                options.put(KafkaConstant.SCAN_STARTUP_MODE, kafkaScanStartupMode.getValue());
-                if (StringUtils.isNotEmpty(scanSpecificOffsets)) {
-                    options.put(KafkaConstant.SCAN_STARTUP_SPECIFIC_OFFSETS, scanSpecificOffsets);
-                }
-                options.putAll(format.generateOptions(false));
-            } else {
-                options.put(KafkaConstant.CONNECTOR, KafkaConstant.UPSERT_KAFKA);
-                options.putAll(format.generateOptions(true));
+        options.put(TdsqlKafkaConstant.TOPIC, topic);
+        options.put(TdsqlKafkaConstant.PROPERTIES_BOOTSTRAP_SERVERS, bootstrapServers);
+        if (format instanceof ProtobufFormat) {
+            options.put(TdsqlKafkaConstant.CONNECTOR, TdsqlKafkaConstant.TDSQL_SUBSCRIBE);
+            options.put(TdsqlKafkaConstant.SCAN_STARTUP_MODE, tdsqlKafkaScanStartupMode.getValue());
+            if (StringUtils.isNotEmpty(scanSpecificOffsets)) {
+                options.put(TdsqlKafkaConstant.SCAN_STARTUP_SPECIFIC_OFFSETS, scanSpecificOffsets);
             }
-        } else if (format instanceof CanalJsonFormat || format instanceof DebeziumJsonFormat) {
-            options.put(KafkaConstant.CONNECTOR, KafkaConstant.KAFKA);
-            options.put(KafkaConstant.SCAN_STARTUP_MODE, kafkaScanStartupMode.getValue());
-            options.put(KafkaConstant.SCAN_STARTUP_SPECIFIC_OFFSETS, scanSpecificOffsets);
             options.putAll(format.generateOptions(false));
+            options.put(TdsqlKafkaConstant.PROPERTIES_SECURITY_PROTOCOL, TdsqlKafkaConstant.SASL_PLAINTEXT);
+            options.put(TdsqlKafkaConstant.PROPERTIES_SASL_MECHANISM, TdsqlKafkaConstant.SCRAM_SHA_512);
+            options.put(TdsqlKafkaConstant.PROPERTIES_SASL_JAAS_CONFIG,
+                    String.format(TdsqlKafkaConstant.SCRAM_LONGIN_MODULE, username, password));
         } else {
             throw new IllegalArgumentException("kafka extract node format is IllegalArgument");
         }
         if (StringUtils.isNotEmpty(groupId)) {
-            options.put(KafkaConstant.PROPERTIES_GROUP_ID, groupId);
+            options.put(TdsqlKafkaConstant.PROPERTIES_GROUP_ID, groupId);
         }
         return options;
     }

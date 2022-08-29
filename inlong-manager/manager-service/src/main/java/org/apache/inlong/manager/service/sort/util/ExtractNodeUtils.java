@@ -40,6 +40,7 @@ import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.constant.OracleConstant.ScanStartUpMode;
 import org.apache.inlong.sort.protocol.enums.KafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.enums.PulsarScanStartupMode;
+import org.apache.inlong.sort.protocol.enums.TdsqlKafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.KafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.MongoExtractNode;
@@ -60,6 +61,7 @@ import org.apache.inlong.sort.protocol.node.format.JsonFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.inlong.sort.protocol.node.format.ProtobufFormat;
 
 /**
  * Parse SourceInfo to ExtractNode which sort needed
@@ -224,33 +226,21 @@ public class ExtractNodeUtils {
         Format format;
         DataTypeEnum dataType = DataTypeEnum.forName(kafkaSource.getSerializationType());
         switch (dataType) {
-            case CSV:
-                format = new CsvFormat();
-                break;
-            case AVRO:
-                format = new AvroFormat();
-                break;
-            case JSON:
-                format = new JsonFormat();
-                break;
-            case CANAL:
-                format = new CanalJsonFormat();
-                break;
-            case DEBEZIUM_JSON:
-                format = new DebeziumJsonFormat();
+            case PROTOBUF:
+                format = new ProtobufFormat();
                 break;
             default:
-                throw new IllegalArgumentException(String.format("Unsupported dataType=%s for kafka source", dataType));
+                throw new IllegalArgumentException(String.format("Unsupported dataType=%s for tdsql kafka source", dataType));
         }
         TdsqlKafkaOffset kafkaOffset = TdsqlKafkaOffset.forName(kafkaSource.getAutoOffsetReset());
-        KafkaScanStartupMode startupMode;
+        TdsqlKafkaScanStartupMode startupMode;
         switch (kafkaOffset) {
             case EARLIEST:
-                startupMode = KafkaScanStartupMode.EARLIEST_OFFSET;
+                startupMode = TdsqlKafkaScanStartupMode.EARLIEST_OFFSET;
                 break;
             case LATEST:
             default:
-                startupMode = KafkaScanStartupMode.LATEST_OFFSET;
+                startupMode = TdsqlKafkaScanStartupMode.LATEST_OFFSET;
         }
         final String primaryKey = kafkaSource.getPrimaryKey();
         String groupId = kafkaSource.getGroupId();
@@ -262,6 +252,8 @@ public class ExtractNodeUtils {
                 properties,
                 topic,
                 bootstrapServers,
+                kafkaSource.getUsername(),
+                kafkaSource.getPassword(),
                 format,
                 startupMode,
                 primaryKey,

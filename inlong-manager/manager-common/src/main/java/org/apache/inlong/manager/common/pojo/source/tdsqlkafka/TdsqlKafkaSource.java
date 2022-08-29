@@ -38,7 +38,7 @@ import org.apache.inlong.manager.common.util.JsonTypeDefine;
 @AllArgsConstructor
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@ApiModel(value = "Kafka source info")
+@ApiModel(value = "TDSQL-Kafka source info")
 @JsonTypeDefine(value = SourceType.SOURCE_TDSQL_KAFKA)
 public class TdsqlKafkaSource extends StreamSource {
 
@@ -50,6 +50,12 @@ public class TdsqlKafkaSource extends StreamSource {
 
     @ApiModelProperty("Kafka servers address")
     private String bootstrapServers;
+
+    @ApiModelProperty("Kafka sasl username")
+    private String username;
+
+    @ApiModelProperty("Kafka sasl password")
+    private String password;
 
     @ApiModelProperty("Limit the amount of data read per second")
     private String recordSpeedLimit;

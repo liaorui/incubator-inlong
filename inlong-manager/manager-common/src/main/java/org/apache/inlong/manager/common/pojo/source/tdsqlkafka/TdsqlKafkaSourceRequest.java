@@ -45,6 +45,12 @@ public class TdsqlKafkaSourceRequest extends SourceRequest {
     @ApiModelProperty("Kafka servers address, such as: 127.0.0.1:9092")
     private String bootstrapServers;
 
+    @ApiModelProperty("Kafka sasl username")
+    private String username;
+
+    @ApiModelProperty("Kafka sasl password")
+    private String password;
+
     @ApiModelProperty(value = "Limit the amount of data read per second",
             notes = "Greater than or equal to 0, equal to zero means no limit")
     private String recordSpeedLimit;
@@ -73,7 +79,7 @@ public class TdsqlKafkaSourceRequest extends SourceRequest {
     @ApiModelProperty("Timestamp standard for binlog: SQL, ISO_8601")
     private String timestampFormatStandard = "SQL";
 
-    @ApiModelProperty("Primary key, needed when serialization type is csv, json, avro")
+    @ApiModelProperty("Primary key, needed when serialization type is protobuf, json, avro")
     private String primaryKey;
 
     public TdsqlKafkaSourceRequest() {
