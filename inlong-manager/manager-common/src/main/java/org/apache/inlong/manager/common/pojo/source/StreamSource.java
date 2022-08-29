@@ -38,6 +38,7 @@ import org.apache.inlong.manager.common.pojo.source.oracle.OracleSource;
 import org.apache.inlong.manager.common.pojo.source.postgres.PostgresSource;
 import org.apache.inlong.manager.common.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSource;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.stream.StreamNode;
 
 import java.util.Date;
@@ -63,6 +64,7 @@ import java.util.Map;
         @JsonSubTypes.Type(value = PostgresSource.class, name = SourceType.SOURCE_POSTGRES),
         @JsonSubTypes.Type(value = PulsarSource.class, name = SourceType.SOURCE_PULSAR),
         @JsonSubTypes.Type(value = SqlServerSource.class, name = SourceType.SOURCE_SQL),
+        @JsonSubTypes.Type(value = TdsqlKafkaSource.class, name = SourceType.SOURCE_TDSQL_KAFKA)
 })
 @ApiModel("Stream source info")
 public abstract class StreamSource extends StreamNode {

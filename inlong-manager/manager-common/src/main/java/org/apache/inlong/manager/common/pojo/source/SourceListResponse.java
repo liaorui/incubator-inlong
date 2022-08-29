@@ -38,6 +38,7 @@ import org.apache.inlong.manager.common.pojo.source.pulsar.PulsarSourceListRespo
 import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSourceListResponse;
 
 import java.util.Date;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSourceListResponse;
 
 /**
  * Response info of the source list
@@ -57,6 +58,7 @@ import java.util.Date;
         @JsonSubTypes.Type(value = PostgresSourceListResponse.class, name = SourceType.SOURCE_POSTGRES),
         @JsonSubTypes.Type(value = PulsarSourceListResponse.class, name = SourceType.SOURCE_PULSAR),
         @JsonSubTypes.Type(value = SqlServerSourceListResponse.class, name = SourceType.SOURCE_SQL),
+        @JsonSubTypes.Type(value = TdsqlKafkaSourceListResponse.class, name = SourceType.SOURCE_TDSQL_KAFKA)
 })
 public class SourceListResponse {
 

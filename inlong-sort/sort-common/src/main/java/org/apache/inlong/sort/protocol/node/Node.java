@@ -45,6 +45,7 @@ import org.apache.inlong.sort.protocol.node.load.OracleLoadNode;
 import org.apache.inlong.sort.protocol.node.load.PostgresLoadNode;
 import org.apache.inlong.sort.protocol.node.load.SqlServerLoadNode;
 import org.apache.inlong.sort.protocol.node.load.TDSQLPostgresLoadNode;
+import org.apache.inlong.sort.protocol.node.load.TdsqlKafkaLoadNode;
 import org.apache.inlong.sort.protocol.node.transform.DistinctNode;
 import org.apache.inlong.sort.protocol.node.transform.TransformNode;
 
@@ -85,7 +86,8 @@ import java.util.TreeMap;
         @JsonSubTypes.Type(value = ElasticsearchLoadNode.class, name = "elasticsearchLoad"),
         @JsonSubTypes.Type(value = OracleLoadNode.class, name = "oracleLoad"),
         @JsonSubTypes.Type(value = GreenplumLoadNode.class, name = "greenplumLoad"),
-        @JsonSubTypes.Type(value = DLCIcebergLoadNode.class, name = "dlcIcebergLoad")
+        @JsonSubTypes.Type(value = DLCIcebergLoadNode.class, name = "dlcIcebergLoad"),
+        @JsonSubTypes.Type(value = TdsqlKafkaLoadNode.class, name = "tdsqlKafkaLoad")
 })
 public interface Node {
 
