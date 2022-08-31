@@ -53,7 +53,8 @@ public class TdsqlKafkaConstant {
 
     public static final String PROPERTIES_SASL_JAAS_CONFIG = "properties.sasl.jaas.config";
 
-    public static final String SCRAM_LONGIN_MODULE = "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";";
+    public static final String SCRAM_LONGIN_MODULE = "org.apache.kafka.common.security.scram.ScramLoginModule required "
+            + "username=\"%s\" password=\"%s\";";
 
     public static final String SCAN_STARTUP_SPECIFIC_OFFSETS = "scan.startup.specific-offsets";
 }
