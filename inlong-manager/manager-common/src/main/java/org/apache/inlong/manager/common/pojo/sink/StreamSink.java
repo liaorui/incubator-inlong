@@ -36,6 +36,7 @@ import org.apache.inlong.manager.common.auth.DefaultAuthentication;
 import org.apache.inlong.manager.common.enums.DataFormat;
 import org.apache.inlong.manager.common.enums.SinkType;
 import org.apache.inlong.manager.common.pojo.sink.ck.ClickHouseSink;
+import org.apache.inlong.manager.common.pojo.sink.dlc.DLCIcebergSink;
 import org.apache.inlong.manager.common.pojo.sink.es.ElasticsearchSink;
 import org.apache.inlong.manager.common.pojo.sink.greenplum.GreenplumSink;
 import org.apache.inlong.manager.common.pojo.sink.hbase.HBaseSink;
@@ -78,6 +79,7 @@ import java.util.Map;
         @JsonSubTypes.Type(value = OracleSink.class, name = SinkType.SINK_ORACLE),
         @JsonSubTypes.Type(value = PostgresSink.class, name = SinkType.SINK_POSTGRES),
         @JsonSubTypes.Type(value = SqlServerSink.class, name = SinkType.SINK_SQLSERVER),
+        @JsonSubTypes.Type(value = DLCIcebergSink.class, name = SinkType.SINK_DLCICEBERG),
         @JsonSubTypes.Type(value = TDSQLPostgreSQLSink.class, name = SinkType.SINK_TDSQLPOSTGRESQL),
 })
 public abstract class StreamSink extends StreamNode {
