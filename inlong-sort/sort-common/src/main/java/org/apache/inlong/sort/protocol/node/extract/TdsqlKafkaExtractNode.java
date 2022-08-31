@@ -18,6 +18,7 @@
 package org.apache.inlong.sort.protocol.node.extract;
 
 import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nonnull;
@@ -65,7 +66,10 @@ public class TdsqlKafkaExtractNode extends KafkaExtractNode implements Metadata,
      */
     @Override
     public Map<String, String> tableOptions() {
-        Map<String, String> options = super.tableOptions();
+        Map<String, String> options = new LinkedHashMap<>();
+        if (getProperties() != null && !getProperties().isEmpty()) {
+            options.putAll(getProperties());
+        }
         options.put(TdsqlKafkaConstant.TOPIC, getTopic());
         options.put(TdsqlKafkaConstant.PROPERTIES_BOOTSTRAP_SERVERS, getBootstrapServers());
         if (getFormat() instanceof ProtobufFormat) {
