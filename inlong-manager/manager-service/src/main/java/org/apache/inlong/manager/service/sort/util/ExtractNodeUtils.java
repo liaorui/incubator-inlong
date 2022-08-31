@@ -27,20 +27,18 @@ import org.apache.inlong.manager.common.enums.SourceType;
 import org.apache.inlong.manager.common.pojo.source.StreamSource;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaOffset;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.source.mongodb.MongoDBSource;
 import org.apache.inlong.manager.common.pojo.source.mysql.MySQLBinlogSource;
 import org.apache.inlong.manager.common.pojo.source.oracle.OracleSource;
 import org.apache.inlong.manager.common.pojo.source.postgres.PostgresSource;
 import org.apache.inlong.manager.common.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSource;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaOffset;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.stream.StreamField;
 import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.constant.OracleConstant.ScanStartUpMode;
 import org.apache.inlong.sort.protocol.enums.KafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.enums.PulsarScanStartupMode;
-import org.apache.inlong.sort.protocol.enums.TdsqlKafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.KafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.MongoExtractNode;
@@ -98,7 +96,7 @@ public class ExtractNodeUtils {
             case MONGODB:
                 return createExtractNode((MongoDBSource) sourceInfo);
             case TDSQL_KAFKA:
-                return createExtractNode((TdsqlKafkaSource)sourceInfo);
+                return createExtractNode((TdsqlKafkaSource) sourceInfo);
             default:
                 throw new IllegalArgumentException(
                         String.format("Unsupported sourceType=%s to create extractNode", sourceType));
@@ -230,17 +228,18 @@ public class ExtractNodeUtils {
                 format = new ProtobufFormat();
                 break;
             default:
-                throw new IllegalArgumentException(String.format("Unsupported dataType=%s for tdsql kafka source", dataType));
+                throw new IllegalArgumentException(
+                        String.format("Unsupported dataType=%s for tdsql kafka source", dataType));
         }
-        TdsqlKafkaOffset kafkaOffset = TdsqlKafkaOffset.forName(kafkaSource.getAutoOffsetReset());
-        TdsqlKafkaScanStartupMode startupMode;
+        KafkaOffset kafkaOffset = KafkaOffset.forName(kafkaSource.getAutoOffsetReset());
+        KafkaScanStartupMode startupMode;
         switch (kafkaOffset) {
             case EARLIEST:
-                startupMode = TdsqlKafkaScanStartupMode.EARLIEST_OFFSET;
+                startupMode = KafkaScanStartupMode.EARLIEST_OFFSET;
                 break;
             case LATEST:
             default:
-                startupMode = TdsqlKafkaScanStartupMode.LATEST_OFFSET;
+                startupMode = KafkaScanStartupMode.LATEST_OFFSET;
         }
         final String primaryKey = kafkaSource.getPrimaryKey();
         String groupId = kafkaSource.getGroupId();
@@ -252,8 +251,6 @@ public class ExtractNodeUtils {
                 properties,
                 topic,
                 bootstrapServers,
-                kafkaSource.getUsername(),
-                kafkaSource.getPassword(),
                 format,
                 startupMode,
                 primaryKey,

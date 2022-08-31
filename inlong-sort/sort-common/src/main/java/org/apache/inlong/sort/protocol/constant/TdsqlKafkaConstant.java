@@ -29,10 +29,6 @@ public class TdsqlKafkaConstant {
 
     public static final String TDSQL_SUBSCRIBE = "tdsql-subscribe";
 
-    public static final String TDSQL_DATABASE_NAME = "tdsql.database.name";
-
-    public static final String TDSQL_TABLE_NAME = "tdsql.table.name";
-
     public static final String TOPIC = "topic";
 
     public static final String SCAN_STARTUP_MODE = "scan.startup.mode";
@@ -40,21 +36,6 @@ public class TdsqlKafkaConstant {
     public static final String PROPERTIES_BOOTSTRAP_SERVERS = "properties.bootstrap.servers";
 
     public static final String PROPERTIES_GROUP_ID = "properties.group.id";
-
-    public static final String FORMAT = "format";
-
-    public static final String PROPERTIES_SECURITY_PROTOCOL = "properties.security.protocol";
-
-    public static final String SASL_PLAINTEXT = "SASL_PLAINTEXT";
-
-    public static final String PROPERTIES_SASL_MECHANISM = "properties.sasl.mechanism";
-
-    public static final String SCRAM_SHA_512 = "SCRAM-SHA-512";
-
-    public static final String PROPERTIES_SASL_JAAS_CONFIG = "properties.sasl.jaas.config";
-
-    public static final String SCRAM_LONGIN_MODULE = "org.apache.kafka.common.security.scram.ScramLoginModule required "
-            + "username=\"%s\" password=\"%s\";";
 
     public static final String SCAN_STARTUP_SPECIFIC_OFFSETS = "scan.startup.specific-offsets";
 }

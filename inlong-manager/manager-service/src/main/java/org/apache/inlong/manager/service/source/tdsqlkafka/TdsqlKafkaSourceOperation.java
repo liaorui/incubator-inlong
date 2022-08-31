@@ -28,10 +28,10 @@ import org.apache.inlong.manager.common.exceptions.BusinessException;
 import org.apache.inlong.manager.common.pojo.source.SourceListResponse;
 import org.apache.inlong.manager.common.pojo.source.SourceRequest;
 import org.apache.inlong.manager.common.pojo.source.StreamSource;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSourceDTO;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSourceListResponse;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSourceRequest;
 import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSourceDTO;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSourceListResponse;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSourceRequest;
 import org.apache.inlong.manager.common.util.CommonBeanUtils;
 import org.apache.inlong.manager.common.util.Preconditions;
 import org.apache.inlong.manager.dao.entity.StreamSourceEntity;
@@ -68,15 +68,15 @@ public class TdsqlKafkaSourceOperation extends AbstractSourceOperation {
         if (CollectionUtils.isEmpty(entityPage)) {
             return new PageInfo<>();
         }
-        return entityPage.toPageInfo(entity -> this.getFromEntity(entity, TdsqlKafkaSourceListResponse::new));
+        return entityPage.toPageInfo(entity -> this.getFromEntity(entity, KafkaSourceListResponse::new));
     }
 
     @Override
     protected void setTargetEntity(SourceRequest request, StreamSourceEntity targetEntity) {
-        TdsqlKafkaSourceRequest sourceRequest = (TdsqlKafkaSourceRequest) request;
+        KafkaSourceRequest sourceRequest = (KafkaSourceRequest) request;
         CommonBeanUtils.copyProperties(sourceRequest, targetEntity, true);
         try {
-            TdsqlKafkaSourceDTO dto = TdsqlKafkaSourceDTO.getFromRequest(sourceRequest);
+            KafkaSourceDTO dto = KafkaSourceDTO.getFromRequest(sourceRequest);
             targetEntity.setExtParams(objectMapper.writeValueAsString(dto));
         } catch (Exception e) {
             throw new BusinessException(ErrorCodeEnum.SOURCE_INFO_INCORRECT.getMessage());
@@ -92,7 +92,7 @@ public class TdsqlKafkaSourceOperation extends AbstractSourceOperation {
         String existType = entity.getSourceType();
         Preconditions.checkTrue(getSourceType().equals(existType),
                 String.format(ErrorCodeEnum.SOURCE_TYPE_NOT_SAME.getMessage(), getSourceType(), existType));
-        TdsqlKafkaSourceDTO dto = TdsqlKafkaSourceDTO.getFromJson(entity.getExtParams());
+        KafkaSourceDTO dto = KafkaSourceDTO.getFromJson(entity.getExtParams());
         CommonBeanUtils.copyProperties(entity, result, true);
         CommonBeanUtils.copyProperties(dto, result, true);
         return result;

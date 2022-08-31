@@ -18,57 +18,22 @@
 package org.apache.inlong.manager.common.pojo.source.tdsqlkafka;
 
 import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.inlong.manager.common.enums.SourceType;
-import org.apache.inlong.manager.common.pojo.source.SourceListResponse;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSourceListResponse;
 import org.apache.inlong.manager.common.util.JsonTypeDefine;
 
 /**
- * Response of tdsql-kafka source list
+ * Response of kafka source list
  */
 @Data
 @SuperBuilder
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@ApiModel("Response of tdsql-kafka source paging list")
+@ApiModel("Response of kafka source paging list")
 @JsonTypeDefine(value = SourceType.SOURCE_TDSQL_KAFKA)
-public class TdsqlKafkaSourceListResponse extends SourceListResponse {
-
-    @ApiModelProperty("Kafka topic")
-    private String topic;
-
-    @ApiModelProperty("Kafka consumer group")
-    private String groupId;
-
-    @ApiModelProperty("Kafka servers address")
-    private String bootstrapServers;
-
-    @ApiModelProperty("Kafka sasl username")
-    private String username;
-
-    @ApiModelProperty("Kafka sasl password")
-    private String password;
-
-    @ApiModelProperty("Limit the amount of data read per second")
-    private String recordSpeedLimit;
-
-    @ApiModelProperty("Limit the number of bytes read per second")
-    private String byteSpeedLimit;
-
-    @ApiModelProperty(value = "Topic partition offset",
-            notes = "For example, '0#100_1#10' means the offset of partition 0 is 100, the offset of partition 1 is 10")
-    private String topicPartitionOffset;
-
-    @ApiModelProperty(value = "The strategy of auto offset reset",
-            notes = "including earliest, latest (the default), none")
-    private String autoOffsetReset;
-
-    @ApiModelProperty("Primary key, needed when serialization type is protobuf, json, avro")
-    private String primaryKey;
+public class TdsqlKafkaSourceListResponse extends KafkaSourceListResponse {
 
     public TdsqlKafkaSourceListResponse() {
         this.setSourceType(SourceType.TDSQL_KAFKA.getType());

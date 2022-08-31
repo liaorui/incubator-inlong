@@ -18,79 +18,35 @@
 package org.apache.inlong.manager.common.pojo.source.tdsqlkafka;
 
 import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.apache.inlong.manager.common.enums.SourceType;
 import org.apache.inlong.manager.common.pojo.source.SourceRequest;
-import org.apache.inlong.manager.common.pojo.source.StreamSource;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
+import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSourceRequest;
 import org.apache.inlong.manager.common.util.CommonBeanUtils;
 import org.apache.inlong.manager.common.util.JsonTypeDefine;
 
 /**
- * TDSQL-Kafka source info
+ * Kafka source info
  */
 @Data
 @SuperBuilder
-@AllArgsConstructor
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@ApiModel(value = "TDSQL-Kafka source info")
+@ApiModel(value = "Kafka source info")
 @JsonTypeDefine(value = SourceType.SOURCE_TDSQL_KAFKA)
-public class TdsqlKafkaSource extends StreamSource {
-
-    @ApiModelProperty("Kafka topic")
-    private String topic;
-
-    @ApiModelProperty("Kafka consumer group")
-    private String groupId;
-
-    @ApiModelProperty("Kafka servers address")
-    private String bootstrapServers;
-
-    @ApiModelProperty("Kafka sasl username")
-    private String username;
-
-    @ApiModelProperty("Kafka sasl password")
-    private String password;
-
-    @ApiModelProperty("Limit the amount of data read per second")
-    private String recordSpeedLimit;
-
-    @ApiModelProperty("Limit the number of bytes read per second")
-    private String byteSpeedLimit;
-
-    @ApiModelProperty("Topic partition offset")
-    private String topicPartitionOffset;
-
-    @ApiModelProperty(value = "The strategy of auto offset reset")
-    private String autoOffsetReset;
-
-    @ApiModelProperty("database pattern used for filter in canal format")
-    private String databasePattern;
-
-    @ApiModelProperty("table pattern used for filter in canal format")
-    private String tablePattern;
-
-    @ApiModelProperty("ignore parse errors, true: ignore parse error; false: not ignore parse error; default true")
-    private boolean ignoreParseErrors;
-
-    @ApiModelProperty("Timestamp standard for binlog: SQL, ISO_8601")
-    private String timestampFormatStandard;
-
-    @ApiModelProperty("Primary key, needed when serialization type is csv, json, avro")
-    private String primaryKey;
+public class TdsqlKafkaSource extends KafkaSource {
 
     public TdsqlKafkaSource() {
-        this.setSourceType(SourceType.KAFKA.name());
+        this.setSourceType(SourceType.TDSQL_KAFKA.name());
     }
 
     @Override
     public SourceRequest genSourceRequest() {
-        return CommonBeanUtils.copyProperties(this, TdsqlKafkaSourceRequest::new);
+        return CommonBeanUtils.copyProperties(this, KafkaSourceRequest::new);
     }
 
 }

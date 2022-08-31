@@ -32,13 +32,13 @@ import org.apache.inlong.manager.common.enums.SourceType;
 import org.apache.inlong.manager.common.pojo.source.autopush.AutoPushSource;
 import org.apache.inlong.manager.common.pojo.source.file.FileSource;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.source.mongodb.MongoDBSource;
 import org.apache.inlong.manager.common.pojo.source.mysql.MySQLBinlogSource;
 import org.apache.inlong.manager.common.pojo.source.oracle.OracleSource;
 import org.apache.inlong.manager.common.pojo.source.postgres.PostgresSource;
 import org.apache.inlong.manager.common.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.common.pojo.source.sqlserver.SqlServerSource;
-import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.stream.StreamNode;
 
 import java.util.Date;
