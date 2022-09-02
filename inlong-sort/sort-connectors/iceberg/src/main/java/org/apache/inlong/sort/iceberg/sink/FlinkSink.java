@@ -139,7 +139,7 @@ public class FlinkSink {
         private boolean upsert = false;
         private List<String> equalityFieldColumns = null;
         private String uidPrefix = null;
-        private String inLongMetric = null;
+        private String inlongMetric = null;
         private String auditHostAndPorts = null;
 
         private Builder() {
@@ -214,12 +214,12 @@ public class FlinkSink {
 
         /**
          * Add metric output for iceberg writer
-         * @param inLongMetric
+         * @param inlongMetric
          * @param auditHostAndPorts
          * @return
          */
-        public Builder metric(String inLongMetric, String auditHostAndPorts) {
-            this.inLongMetric = inLongMetric;
+        public Builder metric(String inlongMetric, String auditHostAndPorts) {
+            this.inlongMetric = inlongMetric;
             this.auditHostAndPorts = auditHostAndPorts;
             return this;
         }
@@ -504,7 +504,7 @@ public class FlinkSink {
                 serializableTable, flinkRowType, targetFileSize,
                 fileFormat, equalityFieldIds, upsert, appendMode);
 
-        return new IcebergStreamWriter<>(table.name(), taskWriterFactory, inLongMetric, auditHostAndPorts);
+        return new IcebergStreamWriter<>(table.name(), taskWriterFactory, inlongMetric, auditHostAndPorts);
     }
 
     private static FileFormat getFileFormat(Map<String, String> properties) {
