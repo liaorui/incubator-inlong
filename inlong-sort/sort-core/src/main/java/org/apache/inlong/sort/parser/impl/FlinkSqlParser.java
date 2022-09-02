@@ -21,7 +21,10 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.inlong.sort.formats.base.TableFormatUtils;
+import org.apache.inlong.sort.formats.common.ArrayFormatInfo;
 import org.apache.inlong.sort.formats.common.FormatInfo;
+import org.apache.inlong.sort.formats.common.MapFormatInfo;
+import org.apache.inlong.sort.formats.common.RowFormatInfo;
 import org.apache.inlong.sort.function.EncryptFunction;
 import org.apache.inlong.sort.function.RegexpReplaceFirstFunction;
 import org.apache.inlong.sort.function.RegexpReplaceFunction;
@@ -37,6 +40,7 @@ import org.apache.inlong.sort.protocol.enums.FilterStrategy;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.LoadNode;
 import org.apache.inlong.sort.protocol.node.Node;
+import org.apache.inlong.sort.protocol.node.format.Format;
 import org.apache.inlong.sort.protocol.node.load.HbaseLoadNode;
 import org.apache.inlong.sort.protocol.node.transform.DistinctNode;
 import org.apache.inlong.sort.protocol.node.transform.TransformNode;
@@ -547,11 +551,15 @@ public class FlinkSqlParser implements Parser {
             Map<String, FieldRelation> fieldRelationMap, StringBuilder sb) {
         for (FieldInfo field : fields) {
             FieldRelation fieldRelation = fieldRelationMap.get(field.getName());
+            FormatInfo fieldFormatInfo = field.getFormatInfo();
             if (fieldRelation == null) {
-                String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
+                String targetType = TableFormatUtils.deriveLogicalType(fieldFormatInfo).asSummaryString();
                 sb.append("\n    CAST(NULL as ").append(targetType).append(") AS ").append(field.format()).append(",");
                 continue;
             }
+            boolean complexType = fieldFormatInfo instanceof RowFormatInfo
+                    || fieldFormatInfo instanceof ArrayFormatInfo
+                    || fieldFormatInfo instanceof MapFormatInfo;
             FunctionParam inputField = fieldRelation.getInputField();
             if (inputField instanceof FieldInfo) {
                 FieldInfo fieldInfo = (FieldInfo) inputField;
@@ -561,10 +569,10 @@ public class FlinkSqlParser implements Parser {
                         && outputField != null
                         && outputField.getFormatInfo() != null
                         && outputField.getFormatInfo().getTypeInfo().equals(formatInfo.getTypeInfo());
-                if (sameType || field.getFormatInfo() == null) {
+                if (complexType || sameType || fieldFormatInfo == null) {
                     sb.append("\n    ").append(inputField.format()).append(" AS ").append(field.format()).append(",");
                 } else {
-                    String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
+                    String targetType = TableFormatUtils.deriveLogicalType(fieldFormatInfo).asSummaryString();
                     sb.append("\n    CAST(").append(inputField.format()).append(" as ")
                             .append(targetType).append(") AS ").append(field.format()).append(",");
                 }
