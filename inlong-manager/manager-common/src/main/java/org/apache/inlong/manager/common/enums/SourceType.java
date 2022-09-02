@@ -32,24 +32,30 @@ public enum SourceType {
     SQL("SQL", TaskTypeEnum.SQL),
     BINLOG("BINLOG", TaskTypeEnum.BINLOG),
     KAFKA("KAFKA", TaskTypeEnum.KAFKA),
+    CKAFKA("CKAFKA", TaskTypeEnum.CKAFKA),
     PULSAR("PULSAR", TaskTypeEnum.PULSAR),
     POSTGRES("POSTGRES", TaskTypeEnum.POSTGRES),
     ORACLE("ORACLE", TaskTypeEnum.ORACLE),
     SQLSERVER("SQLSERVER", TaskTypeEnum.SQLSERVER),
     MONGODB("MONGODB", TaskTypeEnum.MONGODB),
-
+    TDSQL_KAFKA("TDSQL_KAFKA", TaskTypeEnum.TDSQL_KAFKA),
+    REDIS("REDIS", TaskTypeEnum.REDIS),
+    MYSQL("MYSQL", TaskTypeEnum.MYSQL),
     ;
 
     public static final String SOURCE_AUTO_PUSH = "AUTO_PUSH";
     public static final String SOURCE_FILE = "FILE";
     public static final String SOURCE_SQL = "SQL";
     public static final String SOURCE_BINLOG = "BINLOG";
+    public static final String SOURCE_MYSQL = "MYSQL";
     public static final String SOURCE_KAFKA = "KAFKA";
     public static final String SOURCE_PULSAR = "PULSAR";
     public static final String SOURCE_POSTGRES = "POSTGRES";
     public static final String SOURCE_ORACLE = "ORACLE";
     public static final String SOURCE_SQLSERVER = "SQLSERVER";
     public static final String SOURCE_MONGODB = "MONGODB";
+    public static final String SOURCE_TDSQL_KAFKA = "TDSQL_KAFKA";
+    public static final String SOURCE_REDIS = "REDIS";
 
     @Getter
     private final String type;

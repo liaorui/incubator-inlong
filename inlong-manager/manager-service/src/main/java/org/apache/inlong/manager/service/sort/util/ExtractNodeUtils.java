@@ -27,6 +27,7 @@ import org.apache.inlong.manager.common.enums.SourceType;
 import org.apache.inlong.manager.common.pojo.source.StreamSource;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaOffset;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.source.mongodb.MongoDBSource;
 import org.apache.inlong.manager.common.pojo.source.mysql.MySQLBinlogSource;
 import org.apache.inlong.manager.common.pojo.source.oracle.OracleSource;
@@ -46,6 +47,7 @@ import org.apache.inlong.sort.protocol.node.extract.OracleExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PostgresExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PulsarExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
+import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.format.AvroFormat;
 import org.apache.inlong.sort.protocol.node.format.CanalJsonFormat;
 import org.apache.inlong.sort.protocol.node.format.CsvFormat;
@@ -57,6 +59,7 @@ import org.apache.inlong.sort.protocol.node.format.JsonFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.inlong.sort.protocol.node.format.ProtobufFormat;
 
 /**
  * Parse SourceInfo to ExtractNode which sort needed
@@ -92,6 +95,8 @@ public class ExtractNodeUtils {
                 return createExtractNode((SqlServerSource) sourceInfo);
             case MONGODB:
                 return createExtractNode((MongoDBSource) sourceInfo);
+            case TDSQL_KAFKA:
+                return createExtractNode((TdsqlKafkaSource) sourceInfo);
             default:
                 throw new IllegalArgumentException(
                         String.format("Unsupported sourceType=%s to create extractNode", sourceType));
@@ -194,6 +199,52 @@ public class ExtractNodeUtils {
         String groupId = kafkaSource.getGroupId();
         Map<String, String> properties = parseProperties(kafkaSource.getProperties());
         return new KafkaExtractNode(kafkaSource.getSourceName(),
+                kafkaSource.getSourceName(),
+                fieldInfos,
+                null,
+                properties,
+                topic,
+                bootstrapServers,
+                format,
+                startupMode,
+                primaryKey,
+                groupId);
+    }
+
+    /**
+     * Create TDSQL-Kafka extract node
+     *
+     * @param kafkaSource TDSQL-Kafka source info
+     * @return TDSQL-Kafka extract node info
+     */
+    public static TdsqlKafkaExtractNode createExtractNode(TdsqlKafkaSource kafkaSource) {
+        List<FieldInfo> fieldInfos = parseFieldInfos(kafkaSource.getFieldList(), kafkaSource.getSourceName());
+        String topic = kafkaSource.getTopic();
+        String bootstrapServers = kafkaSource.getBootstrapServers();
+        Format format;
+        DataTypeEnum dataType = DataTypeEnum.forName(kafkaSource.getSerializationType());
+        switch (dataType) {
+            case PROTOBUF:
+                format = new ProtobufFormat();
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        String.format("Unsupported dataType=%s for tdsql kafka source", dataType));
+        }
+        KafkaOffset kafkaOffset = KafkaOffset.forName(kafkaSource.getAutoOffsetReset());
+        KafkaScanStartupMode startupMode;
+        switch (kafkaOffset) {
+            case EARLIEST:
+                startupMode = KafkaScanStartupMode.EARLIEST_OFFSET;
+                break;
+            case LATEST:
+            default:
+                startupMode = KafkaScanStartupMode.LATEST_OFFSET;
+        }
+        final String primaryKey = kafkaSource.getPrimaryKey();
+        String groupId = kafkaSource.getGroupId();
+        Map<String, String> properties = parseProperties(kafkaSource.getProperties());
+        return new TdsqlKafkaExtractNode(kafkaSource.getSourceName(),
                 kafkaSource.getSourceName(),
                 fieldInfos,
                 null,

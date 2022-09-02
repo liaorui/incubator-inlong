@@ -32,6 +32,7 @@ import org.apache.inlong.manager.common.enums.SourceType;
 import org.apache.inlong.manager.common.pojo.source.autopush.AutoPushSource;
 import org.apache.inlong.manager.common.pojo.source.file.FileSource;
 import org.apache.inlong.manager.common.pojo.source.kafka.KafkaSource;
+import org.apache.inlong.manager.common.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.common.pojo.source.mongodb.MongoDBSource;
 import org.apache.inlong.manager.common.pojo.source.mysql.MySQLBinlogSource;
 import org.apache.inlong.manager.common.pojo.source.oracle.OracleSource;
@@ -63,6 +64,7 @@ import java.util.Map;
         @JsonSubTypes.Type(value = PostgresSource.class, name = SourceType.SOURCE_POSTGRES),
         @JsonSubTypes.Type(value = PulsarSource.class, name = SourceType.SOURCE_PULSAR),
         @JsonSubTypes.Type(value = SqlServerSource.class, name = SourceType.SOURCE_SQL),
+        @JsonSubTypes.Type(value = TdsqlKafkaSource.class, name = SourceType.SOURCE_TDSQL_KAFKA)
 })
 @ApiModel("Stream source info")
 public abstract class StreamSource extends StreamNode {
