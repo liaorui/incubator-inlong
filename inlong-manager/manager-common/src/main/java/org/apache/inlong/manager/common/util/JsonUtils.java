@@ -50,9 +50,15 @@ public class JsonUtils {
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
-        OBJECT_MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        initJsonTypeDefine(OBJECT_MAPPER);
+        try {
+            OBJECT_MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            initJsonTypeDefine(OBJECT_MAPPER);
+        } catch (Exception e) {
+            log.error("JsonUtils init static failed", e);
+            e.printStackTrace();
+        }
+
     }
 
     /**
@@ -207,6 +213,7 @@ public class JsonUtils {
                         });
             }
         } catch (Exception e) {
+            log.error("initJsonTypeDefine failed", e);
             e.printStackTrace();
         }
     }
