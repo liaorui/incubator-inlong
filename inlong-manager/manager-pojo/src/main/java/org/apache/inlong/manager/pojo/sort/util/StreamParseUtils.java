@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import org.apache.inlong.manager.common.enums.TransformType;
 import org.apache.inlong.manager.common.util.Preconditions;
 import org.apache.inlong.manager.pojo.sink.StreamSink;
+import org.apache.inlong.manager.pojo.source.SourceRequest;
 import org.apache.inlong.manager.pojo.source.StreamSource;
 import org.apache.inlong.manager.pojo.stream.StreamNode;
 import org.apache.inlong.manager.pojo.stream.StreamPipeline;
@@ -86,6 +87,10 @@ public class StreamParseUtils {
         if (jsonObject.has(SOURCE_TYPE)) {
             String sourceName = jsonObject.get(SOURCE_NAME).getAsString();
             StreamSource source = new StreamSource() {
+                @Override
+                public SourceRequest genSourceRequest() {
+                    return null;
+                }
             };
             source.setSourceName(sourceName);
             return source;
