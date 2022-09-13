@@ -102,9 +102,6 @@ public class KafkaSourceDTO {
     @ApiModelProperty(value = "Data field escape symbol, stored as ASCII code")
     private String dataEscapeChar;
 
-    @ApiModelProperty("Properties for Kafka")
-    private Map<String, Object> properties;
-
     /**
      * Get the dto instance from the request
      */

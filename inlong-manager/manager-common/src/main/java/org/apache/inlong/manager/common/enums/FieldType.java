@@ -51,7 +51,6 @@ public enum FieldType {
     STRUCT,
     FUNCTION;
 
-
     public static FieldType forName(String name) {
         Preconditions.checkNotNull(name, "FieldType should not be null");
         for (FieldType value : values()) {

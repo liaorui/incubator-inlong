@@ -36,6 +36,7 @@ import org.apache.inlong.manager.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.pojo.source.sqlserver.SQLServerSource;
 import org.apache.inlong.manager.pojo.source.tdsqlkafka.TdsqlKafkaSource;
 import org.apache.inlong.manager.pojo.source.tubemq.TubeMQSource;
+import org.apache.inlong.manager.pojo.stream.StreamField;
 import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.constant.OracleConstant.ScanStartUpMode;
 import org.apache.inlong.sort.protocol.enums.KafkaScanStartupMode;
@@ -205,6 +206,7 @@ public class ExtractNodeUtils {
         }
         final String primaryKey = kafkaSource.getPrimaryKey();
         String groupId = kafkaSource.getGroupId();
+        String partitionOffset = kafkaSource.getPartitionOffsets();
         Map<String, String> properties = parseProperties(kafkaSource.getProperties());
         return new KafkaExtractNode(kafkaSource.getSourceName(),
                 kafkaSource.getSourceName(),
@@ -216,7 +218,9 @@ public class ExtractNodeUtils {
                 format,
                 startupMode,
                 primaryKey,
-                groupId);
+                groupId,
+                partitionOffset
+                );
     }
 
     /**
@@ -252,7 +256,6 @@ public class ExtractNodeUtils {
         final String primaryKey = kafkaSource.getPrimaryKey();
         String groupId = kafkaSource.getGroupId();
         Map<String, String> properties = parseProperties(kafkaSource.getProperties());
-        String partitionOffset = kafkaSource.getPartitionOffsets();
         return new TdsqlKafkaExtractNode(kafkaSource.getSourceName(),
                 kafkaSource.getSourceName(),
                 fieldInfos,
@@ -263,8 +266,7 @@ public class ExtractNodeUtils {
                 format,
                 startupMode,
                 primaryKey,
-                groupId,
-                partitionOffset
+                groupId
         );
     }
 
