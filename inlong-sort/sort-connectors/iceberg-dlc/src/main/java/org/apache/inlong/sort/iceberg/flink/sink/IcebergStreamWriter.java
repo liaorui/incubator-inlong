@@ -50,6 +50,7 @@ class IcebergStreamWriter<T> extends AbstractStreamOperator<WriteResult>
     private transient TaskWriter<T> writer;
     private transient int subTaskId;
     private transient int attemptId;
+
     @Nullable
     private transient SinkMetricData metricData;
 

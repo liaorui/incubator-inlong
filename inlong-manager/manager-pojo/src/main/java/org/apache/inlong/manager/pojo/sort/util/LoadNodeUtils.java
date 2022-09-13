@@ -247,7 +247,7 @@ public class LoadNodeUtils {
      * Create load node of PostgreSQL.
      */
     public static PostgresLoadNode createLoadNode(PostgreSQLSink postgreSQLSink, List<FieldInfo> fieldInfos,
-            List<FieldRelation> fieldRelations, Map<String, String> properties) {
+           List<FieldRelation> fieldRelations, Map<String, String> properties) {
         return new PostgresLoadNode(
                 postgreSQLSink.getSinkName(),
                 postgreSQLSink.getSinkName(),

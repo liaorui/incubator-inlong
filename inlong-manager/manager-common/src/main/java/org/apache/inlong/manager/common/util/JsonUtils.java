@@ -50,15 +50,9 @@ public class JsonUtils {
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
-        try {
-            OBJECT_MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            initJsonTypeDefine(OBJECT_MAPPER);
-        } catch (Exception e) {
-            log.error("JsonUtils init static failed", e);
-            e.printStackTrace();
-        }
-
+        OBJECT_MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        initJsonTypeDefine(OBJECT_MAPPER);
     }
 
     /**
@@ -187,34 +181,29 @@ public class JsonUtils {
      * Init all classes that marked with JsonTypeInfo annotation
      */
     public static void initJsonTypeDefine(ObjectMapper objectMapper) {
-        try {
-            Reflections reflections = new Reflections(PROJECT_PACKAGE);
-            Set<Class<?>> typeSet = reflections.getTypesAnnotatedWith(JsonTypeInfo.class);
+        Reflections reflections = new Reflections(PROJECT_PACKAGE);
+        Set<Class<?>> typeSet = reflections.getTypesAnnotatedWith(JsonTypeInfo.class);
 
-            // Get all subtype of class which marked JsonTypeInfo annotation
-            for (Class<?> type : typeSet) {
-                Set<?> clazzSet = reflections.getSubTypesOf(type);
-                if (CollectionUtils.isEmpty(clazzSet)) {
-                    continue;
-                }
-                // Register all subclasses
-                clazzSet.stream()
-                        .map(obj -> (Class<?>) obj)
-                        // Skip the interface and abstract class
-                        .filter(clazz -> !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()))
-                        .forEach(clazz -> {
-                            // Get the JsonTypeDefine annotation
-                            JsonTypeDefine extendClassDefine = clazz.getAnnotation(JsonTypeDefine.class);
-                            if (extendClassDefine == null) {
-                                return;
-                            }
-                            // Register the subtype and use the NamedType to build the relation
-                            objectMapper.registerSubtypes(new NamedType(clazz, extendClassDefine.value()));
-                        });
+        // Get all subtype of class which marked JsonTypeInfo annotation
+        for (Class<?> type : typeSet) {
+            Set<?> clazzSet = reflections.getSubTypesOf(type);
+            if (CollectionUtils.isEmpty(clazzSet)) {
+                continue;
             }
-        } catch (Exception e) {
-            log.error("initJsonTypeDefine failed", e);
-            e.printStackTrace();
+            // Register all subclasses
+            clazzSet.stream()
+                    .map(obj -> (Class<?>) obj)
+                    // Skip the interface and abstract class
+                    .filter(clazz -> !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()))
+                    .forEach(clazz -> {
+                        // Get the JsonTypeDefine annotation
+                        JsonTypeDefine extendClassDefine = clazz.getAnnotation(JsonTypeDefine.class);
+                        if (extendClassDefine == null) {
+                            return;
+                        }
+                        // Register the subtype and use the NamedType to build the relation
+                        objectMapper.registerSubtypes(new NamedType(clazz, extendClassDefine.value()));
+                    });
         }
     }
 

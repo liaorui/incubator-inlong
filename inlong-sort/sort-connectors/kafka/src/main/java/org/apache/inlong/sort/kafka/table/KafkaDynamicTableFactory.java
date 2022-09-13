@@ -142,7 +142,7 @@ public class KafkaDynamicTableFactory
     private static DecodingFormat<DeserializationSchema<RowData>> getValueDecodingFormat(
             TableFactoryHelper helper) {
         return helper.discoverOptionalDecodingFormat(
-                        DeserializationFormatFactory.class, FactoryUtil.FORMAT)
+                DeserializationFormatFactory.class, FactoryUtil.FORMAT)
                 .orElseGet(
                         () ->
                                 helper.discoverDecodingFormat(
@@ -152,7 +152,7 @@ public class KafkaDynamicTableFactory
     private static EncodingFormat<SerializationSchema<RowData>> getValueEncodingFormat(
             TableFactoryHelper helper) {
         return helper.discoverOptionalEncodingFormat(
-                        SerializationFormatFactory.class, FactoryUtil.FORMAT)
+                SerializationFormatFactory.class, FactoryUtil.FORMAT)
                 .orElseGet(
                         () ->
                                 helper.discoverEncodingFormat(

@@ -20,14 +20,14 @@ package org.apache.inlong.sort.elasticsearch.table;
 
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.inlong.audit.AuditImp;
-import org.apache.inlong.sort.base.Constants;
-import org.apache.inlong.sort.elasticsearch.ElasticsearchSinkFunction;
 import org.apache.flink.streaming.connectors.elasticsearch.RequestIndexer;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Preconditions;
+import org.apache.inlong.audit.AuditImp;
+import org.apache.inlong.sort.base.Constants;
 import org.apache.inlong.sort.base.metric.SinkMetricData;
+import org.apache.inlong.sort.elasticsearch.ElasticsearchSinkFunction;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -36,7 +36,6 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import javax.annotation.Nullable;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
@@ -44,7 +43,9 @@ import java.util.function.Function;
 
 import static org.apache.inlong.sort.base.Constants.DELIMITER;
 
-/** Sink function for converting upserts into Elasticsearch {@link ActionRequest}s. */
+/**
+ * Sink function for converting upserts into Elasticsearch {@link ActionRequest}s.
+ */
 public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<RowData> {
 
     private static final long serialVersionUID = 1L;
@@ -60,7 +61,7 @@ public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<R
 
     private final Function<RowData, String> createRouting;
 
-    private transient  RuntimeContext runtimeContext;
+    private transient RuntimeContext runtimeContext;
 
     private SinkMetricData sinkMetricData;
     private Long dataSize = 0L;
@@ -79,6 +80,7 @@ public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<R
             @Nullable Function<RowData, String> createRouting,
             String inlongMetric,
             String auditHostAndPorts) {
+
         this.indexGenerator = Preconditions.checkNotNull(indexGenerator);
         this.docType = docType;
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema);

@@ -17,8 +17,6 @@
 
 package org.apache.inlong.sort.function;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
@@ -36,6 +34,9 @@ import org.apache.inlong.sort.protocol.transformation.StringConstantParam;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Test for {@link EncryptFunction}
  * and {@link org.apache.inlong.sort.protocol.transformation.function.EncryptFunction}
@@ -43,9 +44,14 @@ import org.junit.Test;
 public class EncryptFunctionTest extends AbstractTestBase {
 
     /**
+     * <<<<<<< HEAD
      * Test for Encrypt function
      *
      * @throws Exception The exception may throw when test Encrypt function
+     *         =======
+     *         Test for RegexpReplaceFirst
+     * @throws Exception The exception may throw when test RegexpReplaceFirst
+     *         >>>>>>> 0cf7364c21b10912b4aa817f86e18a90520a2a92
      */
     @Test
     public void testEncryptFunction() throws Exception {
@@ -82,7 +88,7 @@ public class EncryptFunctionTest extends AbstractTestBase {
         DataStream<Row> resultSet = tableEnv.toAppendStream(outputTable, Row.class);
         List<String> result = new ArrayList<>();
         for (CloseableIterator<String> it = resultSet.map(s -> s.getField(0).toString()).executeAndCollect();
-             it.hasNext(); ) {
+                it.hasNext(); ) {
             String next = it.next();
             result.add(next);
         }

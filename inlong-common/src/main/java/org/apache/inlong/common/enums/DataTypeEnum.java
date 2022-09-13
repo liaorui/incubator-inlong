@@ -17,8 +17,9 @@
 
 package org.apache.inlong.common.enums;
 
-import java.util.Locale;
 import lombok.Getter;
+
+import java.util.Locale;
 
 public enum DataTypeEnum {
     CSV("csv"),
@@ -26,8 +27,8 @@ public enum DataTypeEnum {
     JSON("json"),
     CANAL("canal"),
     DEBEZIUM_JSON("debezium_json"),
-    RAW("raw");
-
+    RAW("raw"),
+    PROTOBUF("protobuf");
     @Getter
     private final String name;
 

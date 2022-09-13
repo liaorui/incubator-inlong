@@ -156,7 +156,6 @@
         <elasticsearch6.version>6.8.17</elasticsearch6.version>
         <elasticsearch7.version>7.9.2</elasticsearch7.version>
         <shiro.version>1.9.1</shiro.version>
-
         <snappy.version>1.1.8.4</snappy.version>
         <protobuf.version>3.19.4</protobuf.version>
         <bytebuddy.version>1.12.9</bytebuddy.version>
@@ -553,14 +552,14 @@
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
                 <version>${oracle.jdbc.version}</version>
-                <scope>provided</scope>
+            <!--    <scope>provided</scope>-->
             </dependency>
             <!-- mysql-connector-java is LGPL license, we use it test only -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.jdbc.version}</version>
-                <scope>provided</scope>
+              <!--  <scope>provided</scope>-->
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -1047,12 +1046,12 @@
                 <artifactId>flink-connector-mysql-cdc</artifactId>
                 <version>${flink.connector.mysql.cdc.version}</version>
                 <!-- mysql-connector-java is LGPL license and needs to be excluded -->
-                <exclusions>
+       <!--         <exclusions>
                     <exclusion>
                         <groupId>mysql</groupId>
                         <artifactId>mysql-connector-java</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
             </dependency>
 
             <dependency>
@@ -1066,12 +1065,12 @@
                 <artifactId>flink-connector-oracle-cdc</artifactId>
                 <version>${flink.connector.oracle.cdc.version}</version>
                 <!-- ojdbc8 is FUTC license and needs to be excluded -->
-                <exclusions>
+            <!--    <exclusions>
                     <exclusion>
                         <groupId>com.oracle.ojdbc</groupId>
                         <artifactId>ojdbc8</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
             </dependency>
 
             <dependency>

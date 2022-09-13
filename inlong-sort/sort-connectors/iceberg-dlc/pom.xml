@@ -36,6 +36,18 @@
     </description>
 
     <dependencies>
+
+        <dependency>
+            <groupId>com.qcloud.cos</groupId>
+            <artifactId>lakefs-cloud-plugin</artifactId>
+            <version>1.0</version> <!--cos provider插件-->
+        </dependency>
+        <dependency>
+            <groupId>com.tencent.cloud.dlc</groupId>
+            <artifactId>dlc-jdbc</artifactId>
+            <version>2.2.2-bi-test2</version><!--jdbc-->
+        </dependency>
+
         <dependency>
             <groupId>org.apache.inlong</groupId>
             <artifactId>sort-connector-base</artifactId>
@@ -103,8 +115,9 @@
             <artifactId>ini4j</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-flink-runtime-1.13</artifactId>
+            <groupId>org.apache.inlong</groupId>
+            <artifactId>sort-connector-iceberg</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

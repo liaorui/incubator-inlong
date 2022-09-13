@@ -107,6 +107,15 @@ public class KafkaDynamicSink implements DynamicTableSink, SupportsWritingMetada
      * Properties for the Kafka producer.
      */
     protected final Properties properties;
+
+    /**
+     * CatalogTable for KAFKA_IGNORE_ALL_CHANGELOG
+     */
+    private final CatalogTable catalogTable;
+
+    // --------------------------------------------------------------------------------------------
+    // Kafka-specific attributes
+    // --------------------------------------------------------------------------------------------
     /**
      * Partitioner to select Kafka partition for each item.
      */

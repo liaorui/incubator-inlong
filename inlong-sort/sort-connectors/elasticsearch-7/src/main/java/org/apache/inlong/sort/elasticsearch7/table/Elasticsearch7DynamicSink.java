@@ -21,6 +21,7 @@ package org.apache.inlong.sort.elasticsearch7.table;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.streaming.connectors.elasticsearch7.ElasticsearchSink;
 import org.apache.flink.streaming.connectors.elasticsearch7.RestClientFactory;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
@@ -69,6 +70,7 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
     private final String auditHostAndPorts;
     private final ElasticSearchBuilderProvider builderProvider;
 
+
     // --------------------------------------------------------------
     // Hack to make configuration testing possible.
     //
@@ -78,7 +80,6 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
     // possible to assert flushing on checkpoint, as it is configured
     // on the sink itself.
     // --------------------------------------------------------------
-
     public Elasticsearch7DynamicSink(
             EncodingFormat<SerializationSchema<RowData>> format,
             Elasticsearch7Configuration config,
@@ -102,6 +103,7 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
         this.inlongMetric = inlongMetric;
         this.auditHostAndPorts = auditHostAndPorts;
     }
+
 
     @Override
     public ChangelogMode getChangelogMode(ChangelogMode requestedMode) {
@@ -311,7 +313,6 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
      * sink.
      */
     private static class Elasticsearch7RequestFactory implements RequestFactory {
-
         @Override
         public UpdateRequest createUpdateRequest(
                 String index,

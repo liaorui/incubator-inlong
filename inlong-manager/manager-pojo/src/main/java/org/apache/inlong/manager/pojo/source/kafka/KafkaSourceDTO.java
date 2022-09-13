@@ -63,6 +63,9 @@ public class KafkaSourceDTO {
                     + "indicates offset 42 for partition 0 and offset 300 for partition 1.")
     private String partitionOffsets;
 
+    @ApiModelProperty("Properties for Kafka")
+    private Map<String, Object> properties;
+
     /**
      * The strategy of auto offset reset.
      *

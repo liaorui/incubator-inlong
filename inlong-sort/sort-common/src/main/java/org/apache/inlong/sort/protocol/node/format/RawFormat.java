@@ -72,6 +72,7 @@ public class RawFormat implements Format {
      *
      * @return options
      */
+    @Override
     public Map<String, String> generateOptions() {
         Map<String, String> options = new HashMap<>(16);
         options.put("format", getFormat());
