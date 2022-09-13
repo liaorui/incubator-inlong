@@ -15,27 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.manager.service;
+package org.apache.inlong.sort.protocol.node.format;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.inlong.manager.common.util.JsonUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+import org.apache.inlong.sort.SerializeBaseTest;
 
 /**
- * Init global params by Custom Command Line Runner
+ * Test for {@link RawFormat}
  */
-@Component
-public class ApplicationInitRunner implements CommandLineRunner {
+public class RawFormatTest extends SerializeBaseTest<RawFormat> {
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
+    /**
+     * Get test object
+     *
+     * @return The test object
+     */
     @Override
-    public void run(String[] args) {
-        JsonUtils.initJsonTypeDefine(this.objectMapper);
+    public RawFormat getTestObject() {
+        return new RawFormat();
     }
-
 }
-
