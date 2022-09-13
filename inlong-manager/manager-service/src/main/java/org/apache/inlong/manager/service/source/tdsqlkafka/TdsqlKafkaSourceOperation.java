@@ -66,7 +66,6 @@ public class TdsqlKafkaSourceOperation extends AbstractSourceOperator {
         }
     }
 
-
     @Override
     public StreamSource getFromEntity(StreamSourceEntity entity) {
         TdsqlKafkaSource source = new TdsqlKafkaSource();
