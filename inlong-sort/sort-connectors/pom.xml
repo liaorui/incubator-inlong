@@ -56,7 +56,6 @@
         <module>tubemq</module>
         <module>filesystem</module>
         <module>doris</module>
-        <module>tdsql-kafka</module>
     </modules>
 
     <dependencies>
