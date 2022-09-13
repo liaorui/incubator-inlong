@@ -39,7 +39,6 @@ import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.DorisExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
-import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
 import org.apache.inlong.sort.protocol.transformation.WatermarkField;
 
 import javax.annotation.Nullable;
