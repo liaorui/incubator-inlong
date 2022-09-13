@@ -142,10 +142,6 @@ public class KafkaDynamicSink implements DynamicTableSink, SupportsWritingMetada
      */
     protected final @Nullable Integer parallelism;
     /**
-     * CatalogTable for KAFKA_IGNORE_ALL_CHANGELOG
-     */
-    private final CatalogTable catalogTable;
-    /**
      * Metric for inLong
      */
     private final String inlongMetric;
