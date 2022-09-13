@@ -54,9 +54,10 @@ public class TdsqlKafkaExtractNode extends KafkaExtractNode implements Metadata,
             @Nonnull @JsonProperty("format") Format format,
             @JsonProperty("scanStartupMode") KafkaScanStartupMode kafkaScanStartupMode,
             @JsonProperty("primaryKey") String primaryKey,
-            @JsonProperty("groupId") String groupId) {
+            @JsonProperty("groupId") String groupId,
+            @JsonProperty("scanSpecificOffsets") String scanSpecificOffsets) {
         super(id, name, fields, watermarkField, properties, topic, bootstrapServers, format, kafkaScanStartupMode,
-                primaryKey, groupId);
+                primaryKey, groupId, scanSpecificOffsets);
     }
 
     /**
