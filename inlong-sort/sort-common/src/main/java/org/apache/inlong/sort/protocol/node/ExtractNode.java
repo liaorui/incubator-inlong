@@ -64,7 +64,7 @@ import java.util.Map;
         @JsonSubTypes.Type(value = TubeMQExtractNode.class, name = "tubeMQExtract"),
         @JsonSubTypes.Type(value = PulsarExtractNode.class, name = "pulsarExtract"),
         @JsonSubTypes.Type(value = RedisExtractNode.class, name = "redisExtract"),
-        @JsonSubTypes.Type(value = DorisExtractNode.class, name = "dorisExtract")
+        @JsonSubTypes.Type(value = DorisExtractNode.class, name = "dorisExtract"),
         @JsonSubTypes.Type(value = TdsqlKafkaExtractNode.class, name = "tdsqlKafkaExtract")
 })
 @Data
