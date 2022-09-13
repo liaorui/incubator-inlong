@@ -37,8 +37,6 @@ public class KafkaConstant {
 
     public static final String SCAN_STARTUP_SPECIFIC_OFFSETS = "scan.startup.specific-offsets";
 
-    public static final String SCAN_STARTUP_SPECIFIC_OFFSETS = "scan.startup.specific-offsets";
-
     /**
      * upsert-kafka
      * 
