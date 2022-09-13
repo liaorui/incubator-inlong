@@ -15,27 +15,6 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.manager.service;
+import type { ClsConfigItemType } from './common/types';
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.inlong.manager.common.util.JsonUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
-/**
- * Init global params by Custom Command Line Runner
- */
-@Component
-public class ApplicationInitRunner implements CommandLineRunner {
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Override
-    public void run(String[] args) {
-        JsonUtils.initJsonTypeDefine(this.objectMapper);
-    }
-
-}
-
+export const Agent: ClsConfigItemType[] = [];
