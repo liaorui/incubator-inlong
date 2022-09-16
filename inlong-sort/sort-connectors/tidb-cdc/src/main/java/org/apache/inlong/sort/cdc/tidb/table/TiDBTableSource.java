@@ -20,7 +20,7 @@ package org.apache.inlong.sort.cdc.tidb.table;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-import com.ververica.cdc.connectors.tidb.TiDBSource;
+import org.apache.inlong.sort.cdc.tidb.TiDBSource;
 import com.ververica.cdc.connectors.tidb.table.StartupOptions;
 import com.ververica.cdc.connectors.tidb.table.TiKVMetadataConverter;
 import com.ververica.cdc.connectors.tidb.table.TiKVReadableMetadata;
