@@ -21,8 +21,6 @@ package org.apache.inlong.sort.cdc.tidb.table;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 import com.ververica.cdc.connectors.tidb.TiDBSource;
-import com.ververica.cdc.connectors.tidb.table.RowDataTiKVChangeEventDeserializationSchema;
-import com.ververica.cdc.connectors.tidb.table.RowDataTiKVSnapshotEventDeserializationSchema;
 import com.ververica.cdc.connectors.tidb.table.StartupOptions;
 import com.ververica.cdc.connectors.tidb.table.TiKVMetadataConverter;
 import com.ververica.cdc.connectors.tidb.table.TiKVReadableMetadata;
@@ -119,7 +117,8 @@ public class TiDBTableSource implements ScanTableSource, SupportsReadingMetadata
                         tableName,
                         typeInfo,
                         metadataConverters,
-                        physicalDataType);
+                        physicalDataType,
+                        appendSource);
 
         RowDataTiKVChangeEventDeserializationSchema changeEventDeserializationSchema =
                 new RowDataTiKVChangeEventDeserializationSchema(
@@ -128,7 +127,8 @@ public class TiDBTableSource implements ScanTableSource, SupportsReadingMetadata
                         tableName,
                         typeInfo,
                         metadataConverters,
-                        physicalDataType);
+                        physicalDataType,
+                        appendSource);
 
         TiDBSource.Builder<RowData> builder =
                 TiDBSource.<RowData>builder()
