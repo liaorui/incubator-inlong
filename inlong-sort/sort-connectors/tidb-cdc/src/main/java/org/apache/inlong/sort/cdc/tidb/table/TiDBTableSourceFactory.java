@@ -94,6 +94,7 @@ public class TiDBTableSourceFactory implements DynamicTableSourceFactory {
     public Set<ConfigOption<?>> optionalOptions() {
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(SCAN_STARTUP_MODE);
+        options.add(APPEND_MODE);
         options.add(TIKV_GRPC_TIMEOUT);
         options.add(TIKV_GRPC_SCAN_TIMEOUT);
         options.add(TIKV_BATCH_GET_CONCURRENCY);
