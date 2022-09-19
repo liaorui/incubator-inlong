@@ -33,7 +33,8 @@ public enum TaskTypeEnum {
     REDIS(11),
     CKAFKA(12),
     MYSQL(13),
-    TDSQL_KAFKA(14);
+    TDSQL_KAFKA(14),
+    TIDB(15);
 
     private final int type;
 

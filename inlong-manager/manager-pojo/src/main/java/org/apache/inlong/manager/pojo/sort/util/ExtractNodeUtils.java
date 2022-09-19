@@ -34,6 +34,7 @@ import org.apache.inlong.manager.pojo.source.postgresql.PostgreSQLSource;
 import org.apache.inlong.manager.pojo.source.pulsar.PulsarSource;
 import org.apache.inlong.manager.pojo.source.sqlserver.SQLServerSource;
 import org.apache.inlong.manager.pojo.source.tdsqlkafka.TdsqlKafkaSource;
+import org.apache.inlong.manager.pojo.source.tidb.TidbSource;
 import org.apache.inlong.manager.pojo.source.tubemq.TubeMQSource;
 import org.apache.inlong.manager.pojo.stream.StreamField;
 import org.apache.inlong.sort.protocol.FieldInfo;
@@ -49,6 +50,7 @@ import org.apache.inlong.sort.protocol.node.extract.PostgresExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PulsarExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
+import org.apache.inlong.sort.protocol.node.extract.TidbExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
 import org.apache.inlong.sort.protocol.node.format.AvroFormat;
 import org.apache.inlong.sort.protocol.node.format.CanalJsonFormat;
@@ -102,6 +104,8 @@ public class ExtractNodeUtils {
                 return createExtractNode((TubeMQSource) sourceInfo);
             case SourceType.TDSQL_KAFKA:
                 return createExtractNode((TdsqlKafkaSource) sourceInfo);
+            case SourceType.TIDB:
+                return createExtractNode((TidbSource) sourceInfo);
             default:
                 throw new IllegalArgumentException(
                         String.format("Unsupported sourceType=%s to create extractNode", sourceType));
@@ -446,6 +450,33 @@ public class ExtractNodeUtils {
                 source.getSessionKey(),
                 source.getTid()
         );
+    }
+
+    /**
+     * Create tidb extract node
+     *
+     * @param tidbSource Tidb source info
+     * @return Tidb extract node info
+     */
+    public static TidbExtractNode createExtractNode(TidbSource tidbSource) {
+        final String database = tidbSource.getDatabase();
+        final String pdAddresses = tidbSource.getPdAddresses();
+        final String tableName = tidbSource.getTableName();
+        final String primaryKey = tidbSource.getPrimaryKey();
+        final String sourceName = tidbSource.getSourceName();
+
+        Map<String, String> properties = parseProperties(tidbSource.getProperties());
+        List<FieldInfo> fieldInfos = parseFieldInfos(tidbSource.getFieldList(), sourceName);
+
+        return new TidbExtractNode(sourceName,
+                sourceName,
+                fieldInfos,
+                null,
+                properties,
+                primaryKey,
+                tableName,
+                pdAddresses,
+                database);
     }
 
     /**

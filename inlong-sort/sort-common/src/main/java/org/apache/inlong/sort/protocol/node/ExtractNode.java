@@ -38,6 +38,7 @@ import org.apache.inlong.sort.protocol.node.extract.PulsarExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.RedisExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
+import org.apache.inlong.sort.protocol.node.extract.TidbExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
 import org.apache.inlong.sort.protocol.transformation.WatermarkField;
 
@@ -64,7 +65,8 @@ import java.util.Map;
         @JsonSubTypes.Type(value = PulsarExtractNode.class, name = "pulsarExtract"),
         @JsonSubTypes.Type(value = RedisExtractNode.class, name = "redisExtract"),
         @JsonSubTypes.Type(value = DorisExtractNode.class, name = "dorisExtract"),
-        @JsonSubTypes.Type(value = TdsqlKafkaExtractNode.class, name = "tdsqlKafkaExtract")
+        @JsonSubTypes.Type(value = TdsqlKafkaExtractNode.class, name = "tdsqlKafkaExtract"),
+        @JsonSubTypes.Type(value = TidbExtractNode.class, name = "tidbExtract")
 })
 @Data
 @NoArgsConstructor
