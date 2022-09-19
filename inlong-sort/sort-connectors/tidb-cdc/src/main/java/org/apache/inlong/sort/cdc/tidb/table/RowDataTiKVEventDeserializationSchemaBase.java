@@ -107,12 +107,12 @@ public class RowDataTiKVEventDeserializationSchemaBase implements Serializable {
             TiKVMetadataConverter.TiKVRowValue inRecord,
             RowData physicalRow,
             Collector<RowData> collector) {
+        if (appendSource) {
+            physicalRow.setRowKind(RowKind.INSERT);
+        }
         if (!hasMetadata) {
             collector.collect(physicalRow);
             return;
-        }
-        if (appendSource) {
-            physicalRow.setRowKind(RowKind.INSERT);
         }
         appendMetadataCollector.row = inRecord;
         appendMetadataCollector.outputCollector = collector;

@@ -204,6 +204,7 @@
         <flink.version>1.13.5</flink.version>
         <flink.minor.version>1.13</flink.minor.version>
         <flink.connector.mysql.cdc.version>2.2.1</flink.connector.mysql.cdc.version>
+        <flink.connector.tidb.cdc.version>2.2.1</flink.connector.tidb.cdc.version>
         <flink.scala.binary.version>2.11</flink.scala.binary.version>
         <flink.jackson.version>2.12.1-13.0</flink.jackson.version>
         <flink.connector.postgres.cdc.version>2.2.1</flink.connector.postgres.cdc.version>
@@ -1052,6 +1053,12 @@
                         <artifactId>mysql-connector-java</artifactId>
                     </exclusion>
                 </exclusions>-->
+            </dependency>
+
+            <dependency>
+                <groupId>com.ververica</groupId>
+                <artifactId>flink-connector-tidb-cdc</artifactId>
+                <version>${flink.connector.tidb.cdc.version}</version>
             </dependency>
 
             <dependency>

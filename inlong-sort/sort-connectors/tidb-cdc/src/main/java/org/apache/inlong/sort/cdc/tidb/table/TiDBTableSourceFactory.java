@@ -105,12 +105,12 @@ public class TiDBTableSourceFactory implements DynamicTableSourceFactory {
     private static final String SCAN_STARTUP_MODE_VALUE_INITIAL = "initial";
     private static final String SCAN_STARTUP_MODE_VALUE_LATEST = "latest-offset";
 
-    private static com.ververica.cdc.connectors.tidb.table.StartupOptions getStartupOptions(ReadableConfig config) {
+    private static StartupOptions getStartupOptions(ReadableConfig config) {
         String modeString = config.get(SCAN_STARTUP_MODE);
 
         switch (modeString.toLowerCase()) {
             case SCAN_STARTUP_MODE_VALUE_INITIAL:
-                return com.ververica.cdc.connectors.tidb.table.StartupOptions.initial();
+                return StartupOptions.initial();
 
             case SCAN_STARTUP_MODE_VALUE_LATEST:
                 return StartupOptions.latest();
