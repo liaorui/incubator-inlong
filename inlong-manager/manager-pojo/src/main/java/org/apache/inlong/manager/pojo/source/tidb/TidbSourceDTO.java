@@ -20,7 +20,6 @@ package org.apache.inlong.manager.pojo.source.tidb;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiModelProperty;
-import java.util.List;
 import java.util.Map;
 import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -53,7 +52,7 @@ public class TidbSourceDTO {
     @ApiModelProperty("Primary key")
     private String primaryKey;
 
-    @ApiModelProperty("Properties for PostgreSQL")
+    @ApiModelProperty("Properties for Tidb")
     private Map<String, Object> properties;
 
     /**
