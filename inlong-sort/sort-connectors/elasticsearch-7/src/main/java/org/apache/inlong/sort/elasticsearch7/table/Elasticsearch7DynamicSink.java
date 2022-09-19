@@ -69,7 +69,6 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
     private final String auditHostAndPorts;
     private final ElasticSearchBuilderProvider builderProvider;
 
-
     // --------------------------------------------------------------
     // Hack to make configuration testing possible.
     //
@@ -102,7 +101,6 @@ final class Elasticsearch7DynamicSink implements DynamicTableSink {
         this.inlongMetric = inlongMetric;
         this.auditHostAndPorts = auditHostAndPorts;
     }
-
 
     @Override
     public ChangelogMode getChangelogMode(ChangelogMode requestedMode) {
