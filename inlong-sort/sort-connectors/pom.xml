@@ -56,7 +56,7 @@
         <module>tubemq</module>
         <module>filesystem</module>
         <module>doris</module>
-        <module>tidb-cdc</module>
+        <module>tidb</module>
     </modules>
 
     <dependencies>
