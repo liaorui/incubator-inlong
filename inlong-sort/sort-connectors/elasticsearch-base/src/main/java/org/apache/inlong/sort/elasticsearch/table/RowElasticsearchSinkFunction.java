@@ -20,14 +20,22 @@ package org.apache.inlong.sort.elasticsearch.table;
 
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.inlong.sort.base.metric.MetricOption;
+import org.apache.inlong.sort.base.metric.MetricOption.RegisteredMetric;
+import org.apache.inlong.sort.base.metric.MetricState;
+import org.apache.inlong.sort.base.util.MetricStateUtils;
+import org.apache.inlong.sort.elasticsearch.ElasticsearchSinkFunction;
 import org.apache.flink.streaming.connectors.elasticsearch.RequestIndexer;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Preconditions;
-import org.apache.inlong.audit.AuditImp;
-import org.apache.inlong.sort.base.Constants;
 import org.apache.inlong.sort.base.metric.SinkMetricData;
-import org.apache.inlong.sort.elasticsearch.ElasticsearchSinkFunction;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -36,16 +44,15 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.HashSet;
+
 import java.util.Objects;
 import java.util.function.Function;
 
-import static org.apache.inlong.sort.base.Constants.DELIMITER;
+import static org.apache.inlong.sort.base.Constants.INLONG_METRIC_STATE_NAME;
+import static org.apache.inlong.sort.base.Constants.NUM_BYTES_OUT;
+import static org.apache.inlong.sort.base.Constants.NUM_RECORDS_OUT;
 
-/**
- * Sink function for converting upserts into Elasticsearch {@link ActionRequest}s.
- */
+/** Sink function for converting upserts into Elasticsearch {@link ActionRequest}s. */
 public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<RowData> {
 
     private static final long serialVersionUID = 1L;
@@ -56,19 +63,16 @@ public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<R
     private final XContentType contentType;
     private final RequestFactory requestFactory;
     private final Function<RowData, String> createKey;
+    private transient ListState<MetricState> metricStateListState;
+    private transient MetricState metricState;
     private final String inlongMetric;
     private final String auditHostAndPorts;
 
     private final Function<RowData, String> createRouting;
 
-    private transient RuntimeContext runtimeContext;
+    private transient  RuntimeContext runtimeContext;
 
     private SinkMetricData sinkMetricData;
-    private Long dataSize = 0L;
-    private Long rowSize = 0L;
-    private String groupId;
-    private String streamId;
-    private transient AuditImp auditImp;
 
     public RowElasticsearchSinkFunction(
             IndexGenerator indexGenerator,
@@ -80,7 +84,6 @@ public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<R
             @Nullable Function<RowData, String> createRouting,
             String inlongMetric,
             String auditHostAndPorts) {
-
         this.indexGenerator = Preconditions.checkNotNull(indexGenerator);
         this.docType = docType;
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema);
@@ -96,43 +99,49 @@ public class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<R
     public void open(RuntimeContext ctx) {
         indexGenerator.open();
         this.runtimeContext = ctx;
-        if (inlongMetric != null && !inlongMetric.isEmpty()) {
-            String[] inlongMetricArray = inlongMetric.split(DELIMITER);
-            groupId = inlongMetricArray[0];
-            streamId = inlongMetricArray[1];
-            String nodeId = inlongMetricArray[2];
-            sinkMetricData = new SinkMetricData(groupId, streamId, nodeId, runtimeContext.getMetricGroup());
-            sinkMetricData.registerMetricsForDirtyBytes();
-            sinkMetricData.registerMetricsForDirtyRecords();
-            sinkMetricData.registerMetricsForNumBytesOut();
-            sinkMetricData.registerMetricsForNumRecordsOut();
-            sinkMetricData.registerMetricsForNumBytesOutPerSecond();
-            sinkMetricData.registerMetricsForNumRecordsOutPerSecond();
-        }
-
-        if (auditHostAndPorts != null) {
-            AuditImp.getInstance().setAuditProxy(new HashSet<>(Arrays.asList(auditHostAndPorts.split(DELIMITER))));
-            auditImp = AuditImp.getInstance();
-        }
-    }
-
-    private void outputMetricForAudit(long size) {
-        if (auditImp != null) {
-            auditImp.add(
-                    Constants.AUDIT_SORT_OUTPUT,
-                    groupId,
-                    streamId,
-                    System.currentTimeMillis(),
-                    1,
-                    size);
+        MetricOption metricOption = MetricOption.builder()
+                .withInlongLabels(inlongMetric)
+                .withInlongAudit(auditHostAndPorts)
+                .withInitRecords(metricState != null ? metricState.getMetricValue(NUM_RECORDS_OUT) : 0L)
+                .withInitBytes(metricState != null ? metricState.getMetricValue(NUM_BYTES_OUT) : 0L)
+                .withRegisterMetric(RegisteredMetric.NORMAL)
+                .build();
+        if (metricOption != null) {
+            sinkMetricData = new SinkMetricData(metricOption, runtimeContext.getMetricGroup());
         }
     }
 
     private void sendMetrics(byte[] document) {
-        if (sinkMetricData.getNumBytesOut() != null) {
-            sinkMetricData.getNumBytesOut().inc(document.length);
+        if (sinkMetricData != null) {
+            sinkMetricData.invoke(1, document.length);
         }
-        outputMetricForAudit(document.length);
+    }
+
+    @Override
+    public void setRuntimeContext(RuntimeContext ctx) {
+        this.runtimeContext = ctx;
+    }
+
+    @Override
+    public void initializeState(FunctionInitializationContext context) throws Exception {
+        if (this.inlongMetric != null) {
+            this.metricStateListState = context.getOperatorStateStore().getUnionListState(
+                    new ListStateDescriptor<>(
+                            INLONG_METRIC_STATE_NAME, TypeInformation.of(new TypeHint<MetricState>() {
+                    })));
+        }
+        if (context.isRestored()) {
+            metricState = MetricStateUtils.restoreMetricState(metricStateListState,
+                    runtimeContext.getIndexOfThisSubtask(), runtimeContext.getNumberOfParallelSubtasks());
+        }
+    }
+
+    @Override
+    public void snapshotState(FunctionSnapshotContext context) throws Exception {
+        if (sinkMetricData != null && metricStateListState != null) {
+            MetricStateUtils.snapshotMetricStateForSinkMetricData(metricStateListState, sinkMetricData,
+                    runtimeContext.getIndexOfThisSubtask());
+        }
     }
 
     @Override
