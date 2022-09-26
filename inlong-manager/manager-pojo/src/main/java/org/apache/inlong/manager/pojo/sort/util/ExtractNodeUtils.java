@@ -459,12 +459,8 @@ public class ExtractNodeUtils {
      * @return Tidb extract node info
      */
     public static TidbExtractNode createExtractNode(TidbSource tidbSource) {
-        final String database = tidbSource.getDatabase();
-        final String pdAddresses = tidbSource.getPdAddresses();
-        final String tableName = tidbSource.getTableName();
-        final String primaryKey = tidbSource.getPrimaryKey();
-        final String sourceName = tidbSource.getSourceName();
 
+        final String sourceName = tidbSource.getSourceName();
         Map<String, String> properties = parseProperties(tidbSource.getProperties());
         List<FieldInfo> fieldInfos = parseFieldInfos(tidbSource.getFieldList(), sourceName);
 
@@ -473,10 +469,17 @@ public class ExtractNodeUtils {
                 fieldInfos,
                 null,
                 properties,
-                primaryKey,
-                tableName,
-                pdAddresses,
-                database);
+                tidbSource.getPrimaryKey(),
+                tidbSource.getUrl(),
+                tidbSource.getTableName(),
+                tidbSource.getDatabase(),
+                tidbSource.getUsername(),
+                tidbSource.getPassword(),
+                tidbSource.getBootstrapServers(),
+                tidbSource.getTopic(),
+                tidbSource.getDataEncoding(),
+                tidbSource.getGroupId(),
+                tidbSource.getAutoOffsetReset());
     }
 
     /**

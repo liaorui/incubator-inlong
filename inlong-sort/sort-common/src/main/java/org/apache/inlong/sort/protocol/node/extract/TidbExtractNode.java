@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -53,15 +54,29 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
     @JsonInclude(Include.NON_NULL)
     @JsonProperty("primaryKey")
     private String primaryKey;
-    @JsonProperty("pdAddresses")
-    private String pdAddresses;
+    @JsonProperty("url")
+    private String url;
     @JsonProperty("database")
     private String database;
     @JsonProperty("tableName")
     private String tableName;
+    @JsonProperty("username")
+    private String username;
+    @JsonProperty("password")
+    private String password;
+    @JsonProperty("bootstrapServers")
+    private String bootstrapServers;
+    @JsonProperty("topic")
+    private String topic;
+    @JsonProperty("groupId")
+    private String groupId;
+    @JsonProperty("codec")
+    private String codec;
+    @JsonProperty("autoOffsetReset")
+    private String autoOffsetReset;
 
     /**
-     * Constructor only used for {@link ExtractMode#CDC}
+     * Constructor
      *
      * @param id The id of node
      * @param name The name of node
@@ -70,25 +85,45 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
      * @param properties The properties connect to tidb
      * @param primaryKey The primark key connect to tidb
      * @param tableName The table name connect to tidb
-     * @param pdAddresses The pdAddresses connect to tidb only used for {@link ExtractMode#CDC}
-     * @param database The database connect to tidb only used for {@link ExtractMode#CDC}
-     *         only used for {@link ExtractMode#CDC}
+     * @param url The url connect to tidb
+     * @param database The database connect to tidb
+     * @param username The username  connect to tidb
+     * @param password The password  connect to tidb
+     * @param bootstrapServers The bootstrapServers connect to kafka
+     * @param topic The topic connect to kafka
+     * @param codec The codec is topic data of format
+     * @param groupId The kafka topic groupId
      */
     @JsonCreator
     public TidbExtractNode(@Nonnull @JsonProperty("id") String id,
             @Nonnull @JsonProperty("name") String name,
             @Nonnull @JsonProperty("fields") List<FieldInfo> fields,
             @Nullable @JsonProperty("watermarkField") WatermarkField watermarkField,
-            @Nullable @JsonProperty("properties") Map<String, String> properties,
-            @Nullable @JsonProperty("primaryKey") String primaryKey,
+            @JsonProperty("properties") Map<String, String> properties,
+            @JsonProperty("primaryKey") String primaryKey,
+            @Nullable @JsonProperty("url") String url,
             @Nonnull @JsonProperty("tableName") String tableName,
-            @Nonnull @JsonProperty("pdAddresses") String pdAddresses,
-            @Nonnull @JsonProperty("database") String database) {
+            @Nonnull @JsonProperty("database") String database,
+            @Nonnull @JsonProperty("username") String username,
+            @Nonnull @JsonProperty("password") String password,
+            @Nonnull @JsonProperty("bootstrapServers") String bootstrapServers,
+            @Nonnull @JsonProperty("topic") String topic,
+            @Nonnull @JsonProperty("codec") String codec,
+            @JsonProperty("groupId") String groupId,
+            @JsonProperty("autoOffsetReset") String autoOffsetReset
+    ) {
         super(id, name, fields, watermarkField, properties);
+        this.url = Preconditions.checkNotNull(url, "url is null");
         this.tableName = Preconditions.checkNotNull(tableName, "tableName is null");
-        this.pdAddresses = Preconditions.checkNotNull(pdAddresses, "pdAddresses is null");
         this.database = Preconditions.checkNotNull(database, "database is null");
+        this.username = Preconditions.checkNotNull(username, "username is null");
+        this.password = Preconditions.checkNotNull(password, "password is null");
+        this.bootstrapServers = Preconditions.checkNotNull(bootstrapServers, "bootstrapServers is null");
+        this.topic = Preconditions.checkNotNull(topic, "topic is null");
+        this.codec = Preconditions.checkNotNull(codec, "codec is null");
+        this.groupId = groupId;
         this.primaryKey = primaryKey;
+        this.autoOffsetReset = autoOffsetReset;
     }
 
     @Override
@@ -105,10 +140,22 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
 
-        options.put("connector", "tidb-cdc-inlong");
-        options.put("pd-addresses", pdAddresses);
-        options.put("database-name", database);
-        options.put("table-name", tableName);
+        options.put("connector", "tidb");
+        options.put("tidb.database.url", url);
+        options.put("tidb.username", username);
+        options.put("tidb.password", password);
+        options.put("tidb.database.name", database);
+        options.put("tidb.table.name", tableName);
+        // current only support kafka streaming source
+        options.put("tidb.streaming.source", "kafka");
+        options.put("tidb.streaming.codec", codec);
+        options.put("tidb.streaming.kafka.bootstrap.servers", bootstrapServers);
+        options.put("tidb.streaming.kafka.topic", topic);
+        if (StringUtils.isNotEmpty(groupId)) {
+            options.put("tidb.streaming.kafka.group.id", groupId);
+        }
+        options.put("allow.auto.create.topics", "false");
+        options.put("tidb.streaming.kafka.auto.offset.reset", autoOffsetReset);
         return options;
     }
 
@@ -142,12 +189,6 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
                 break;
             case PK_NAMES:
                 metadataKey = "meta.pk_names";
-                break;
-            case BATCH_ID:
-                metadataKey = "meta.batch_id";
-                break;
-            case UPDATE_BEFORE:
-                metadataKey = "meta.update_before";
                 break;
             default:
                 throw new UnsupportedOperationException(String.format("Unsupport meta field for %s: %s",

@@ -42,14 +42,36 @@ import org.apache.inlong.manager.pojo.source.StreamSource;
 @JsonTypeDefine(value = SourceType.TIDB)
 public class TidbSource extends StreamSource {
 
-    @ApiModelProperty("TiKV cluster's PD address")
-    private String pdAddresses;
+    @ApiModelProperty("Url of the Tidb server")
+    private String url;
+
+    @ApiModelProperty("Username of the Tidb server")
+    private String username;
+
+    @ApiModelProperty("Password of the Tidb server")
+    private String password;
 
     @ApiModelProperty("Database name")
     private String database;
 
     @ApiModelProperty("Table name")
     private String tableName;
+
+    @ApiModelProperty("Kafka topic")
+    private String topic;
+
+    @ApiModelProperty("Kafka consumer group")
+    private String groupId;
+
+    @ApiModelProperty("Kafka servers address")
+    private String bootstrapServers;
+
+    @ApiModelProperty(value = "The strategy of auto offset reset",
+            notes = "including earliest(the default), latest, none")
+    private String autoOffsetReset;
+
+    @ApiModelProperty(value = "Data encoding format: json, craft")
+    private String dataEncoding;
 
     @ApiModelProperty("Primary key")
     private String primaryKey;

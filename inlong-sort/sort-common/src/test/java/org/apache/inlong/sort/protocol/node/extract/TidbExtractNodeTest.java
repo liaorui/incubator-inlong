@@ -40,8 +40,12 @@ public class TidbExtractNodeTest extends SerializeBaseTest<TidbExtractNode> {
         List<FieldInfo> fields = Arrays.asList(
                 new FieldInfo("name", new StringFormatInfo()),
                 new FieldInfo("age", new IntFormatInfo()));
-        return new TidbExtractNode("1", "postgres_input", fields, null, null, null
-                , "mytable", "localhost:2379", "database");
+        //if you hope hive load mode of append,please add this config.
+        Map<String, String> map = new HashMap<>();
+        map.put("append-mode", "true");
+        return new TidbExtractNode("1", "postgres_input", fields, null, map, null
+                , "jdbc:mysql://localhost:2379", "mytable", "database", "username", "pwd"
+                , "localhost:9002", "topic", "json", "consumer_group", "earliest");
     }
 
     @Test

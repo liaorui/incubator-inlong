@@ -63,8 +63,9 @@ public class TidbExtractFlinkSqlParseTest extends AbstractTestBase {
                 new MetaFieldInfo("table_name", MetaField.TABLE_NAME),
                 new MetaFieldInfo("op_ts", MetaField.OP_TS)
         );
-        return new TidbExtractNode("1", "postgres_input", fields, null, null, null, "user",
-                "localhost:2379", "database");
+        return new TidbExtractNode("1", "postgres_input", fields, null, null, null
+                , "jdbc:mysql://localhost:2379", "mytable", "database", "username", "pwd"
+                , "localhost:9002", "topic", "json", "consumer_group", "earliest");
     }
 
     /**
