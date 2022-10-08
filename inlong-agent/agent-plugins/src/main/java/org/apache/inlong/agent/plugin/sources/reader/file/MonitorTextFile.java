@@ -104,6 +104,7 @@ public final class MonitorTextFile {
         public void run() {
             try {
                 TimeUnit.SECONDS.sleep(WAIT_TIME);
+                LOGGER.info("start {} monitor", this.fileReaderOperator.file.getAbsolutePath());
                 while (!this.fileReaderOperator.finished) {
                     long expireTime = Long.parseLong(fileReaderOperator.jobConf
                             .get(JOB_FILE_MONITOR_EXPIRE, JOB_FILE_MONITOR_DEFAULT_EXPIRE));
@@ -133,8 +134,9 @@ public final class MonitorTextFile {
                     this.fileReaderOperator.position = 0;
                 }
                 this.textFileReader.getData();
-                this.fileReaderOperator.iterator = fileReaderOperator.stream.iterator();
+                this.textFileReader.mergeData(this.fileReaderOperator);
                 this.attributesBefore = attributesAfter;
+                this.fileReaderOperator.iterator = fileReaderOperator.stream.iterator();
             }
         }
     }

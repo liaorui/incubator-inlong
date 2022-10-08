@@ -15,17 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.audit.service;
+package org.apache.inlong.agent.plugin.sources;
 
-import org.apache.inlong.audit.protocol.AuditData;
+import org.apache.inlong.agent.conf.JobProfile;
+import org.apache.inlong.agent.plugin.Reader;
+import org.apache.inlong.agent.plugin.sources.reader.MongoDBReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
- * Insert Data interface
+ * MongoDBSource : mongo source, split mongo source job into multi readers
  */
-public interface InsertData {
+public class MongoDBSource extends AbstractSource {
 
-    /**
-     * insert audit data to storage.
-     */
-    void insert(AuditData msgBody);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDBSource.class);
+
+    @Override
+    public List<Reader> split(JobProfile conf) {
+        super.init(conf);
+        List<Reader> readerList = Collections.singletonList(new MongoDBReader());
+        sourceMetric.sourceSuccessCount.incrementAndGet();
+        return readerList;
+    }
 }

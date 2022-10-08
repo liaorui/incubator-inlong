@@ -15,26 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.dataproxy.source;
+package org.apache.inlong.agent.plugin.utils;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.util.Map;
 
-public interface ServiceDecoder {
+/**
+ * metadata of k8s utils test
+ */
+public class MetaDataUtilsTest {
 
-    int HEAD_LENGTH = 4;
-
-    /**
-     * extract data from buffer and convert it into map.
-     * 
-     * @param cb           the message Byte buffer
-     * @param strRemoteIP  the remote ip message sent
-     * @param msgRcvTime   the received message time
-     * @param channel      the channel
-     * @return Map         the message map
-     * @throws Exception
-     */
-    Map<String, Object> extractData(ByteBuf cb, String strRemoteIP,
-                                    long msgRcvTime, Channel channel) throws Exception;
+    @Test
+    public void getLogInfo() {
+        String fileName = "testcase-0_xb-test240_testcase2"
+                + "-8050825882878a0aef05cd597abb09917a1e090d09f4d1ed288488311ca0309c.log";
+        Map<String, String> metaMap = MetaDataUtils.getLogInfo(fileName);
+        Assert.assertEquals(4, metaMap.size());
+    }
 }
