@@ -32,8 +32,7 @@ public enum TaskTypeEnum {
     TUBEMQ(10),
     REDIS(11),
     CKAFKA(12),
-    MYSQL(13),
-    TDSQL_KAFKA(14);
+    TDSQL_KAFKA(101);
 
     private final int type;
 
@@ -69,9 +68,7 @@ public enum TaskTypeEnum {
                 return REDIS;
             case 12:
                 return CKAFKA;
-            case 13:
-                return MYSQL;
-            case 14:
+            case 101:
                 return TDSQL_KAFKA;
             default:
                 throw new RuntimeException(String.format("Unsupported taskType=%s", taskType));
