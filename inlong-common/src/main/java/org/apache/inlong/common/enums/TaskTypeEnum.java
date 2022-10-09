@@ -32,9 +32,8 @@ public enum TaskTypeEnum {
     TUBEMQ(10),
     REDIS(11),
     CKAFKA(12),
-    MYSQL(13),
-    TDSQL_KAFKA(14),
-    TIDB(15);
+    TDSQL_KAFKA(101),
+    TIDB(102);
 
     private final int type;
 

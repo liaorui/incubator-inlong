@@ -29,8 +29,8 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTyp
  * The protobuf format.
  *
  */
-@JsonTypeName("protobufFormat")
 @Data
+@JsonTypeName("protobufFormat")
 public class ProtobufFormat implements Format {
 
     private static final long serialVersionUID = 1L;
@@ -48,7 +48,7 @@ public class ProtobufFormat implements Format {
     }
 
     /**
-     * Return avro
+     * Return protobuf
      *
      * @return format
      */

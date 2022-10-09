@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Kafka extract node for extract data from kafka
+ * TDSQL Kafka extract node info
  */
 @EqualsAndHashCode(callSuper = true)
 @JsonTypeName("tdsqlKafkaExtract")
@@ -75,21 +75,20 @@ public class TdsqlKafkaExtractNode extends KafkaExtractNode implements InlongMet
         }
         options.put(TdsqlKafkaConstant.TOPIC, getTopic());
         options.put(TdsqlKafkaConstant.PROPERTIES_BOOTSTRAP_SERVERS, getBootstrapServers());
-        if (getFormat() instanceof ProtobufFormat) {
-            options.put(TdsqlKafkaConstant.CONNECTOR, TdsqlKafkaConstant.TDSQL_SUBSCRIBE);
-            options.put(TdsqlKafkaConstant.SCAN_STARTUP_MODE, getKafkaScanStartupMode().getValue());
-            if (StringUtils.isNotEmpty(getScanSpecificOffsets())) {
-                options.put(TdsqlKafkaConstant.SCAN_STARTUP_SPECIFIC_OFFSETS, getScanSpecificOffsets());
-            }
-            options.putAll(getFormat().generateOptions(false));
-        } else {
-            throw new IllegalArgumentException("kafka extract node format is IllegalArgument");
+
+        if (!(getFormat() instanceof ProtobufFormat)) {
+            throw new IllegalArgumentException("tdsql kafka extract node format is IllegalArgument");
         }
+
+        options.put(TdsqlKafkaConstant.CONNECTOR, TdsqlKafkaConstant.TDSQL_SUBSCRIBE);
+        options.put(TdsqlKafkaConstant.SCAN_STARTUP_MODE, getKafkaScanStartupMode().getValue());
+        if (StringUtils.isNotEmpty(getScanSpecificOffsets())) {
+            options.put(TdsqlKafkaConstant.SCAN_STARTUP_SPECIFIC_OFFSETS, getScanSpecificOffsets());
+        }
+        options.putAll(getFormat().generateOptions(false));
+
         if (StringUtils.isNotEmpty(getGroupId())) {
             options.put(TdsqlKafkaConstant.PROPERTIES_GROUP_ID, getGroupId());
-        }
-        for (String key : getProperties().keySet()) {
-            options.put(key, getProperties().get(key));
         }
         return options;
     }
