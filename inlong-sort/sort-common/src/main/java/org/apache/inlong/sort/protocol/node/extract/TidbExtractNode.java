@@ -151,10 +151,9 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
         options.put("tidb.streaming.codec", codec);
         options.put("tidb.streaming.kafka.bootstrap.servers", bootstrapServers);
         options.put("tidb.streaming.kafka.topic", topic);
-        if (StringUtils.isNotEmpty(groupId)) {
+        if (StringUtils.isNotBlank(groupId)) {
             options.put("tidb.streaming.kafka.group.id", groupId);
         }
-        options.put("allow.auto.create.topics", "false");
         options.put("tidb.streaming.kafka.auto.offset.reset", autoOffsetReset);
         return options;
     }
