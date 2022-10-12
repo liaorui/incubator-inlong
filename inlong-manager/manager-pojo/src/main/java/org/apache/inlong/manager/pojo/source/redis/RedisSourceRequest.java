@@ -19,23 +19,21 @@ package org.apache.inlong.manager.pojo.source.redis;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import java.nio.charset.StandardCharsets;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.apache.inlong.manager.common.consts.SourceType;
-import org.apache.inlong.manager.common.enums.DataSeparator;
 import org.apache.inlong.manager.common.util.JsonTypeDefine;
 import org.apache.inlong.manager.pojo.source.SourceRequest;
 
 /**
- * Kafka source request
+ * Redis source request
  */
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@ApiModel(value = "Kafka source request")
-@JsonTypeDefine(value = SourceType.KAFKA)
+@ApiModel(value = "Redis source request")
+@JsonTypeDefine(value = SourceType.REDIS)
 public class RedisSourceRequest extends SourceRequest {
 
     @ApiModelProperty("Redis primaryKey")
