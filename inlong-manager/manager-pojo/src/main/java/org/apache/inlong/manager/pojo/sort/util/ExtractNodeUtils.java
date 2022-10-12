@@ -36,6 +36,7 @@ import org.apache.inlong.manager.pojo.source.redis.RedisLookupOptions;
 import org.apache.inlong.manager.pojo.source.redis.RedisSource;
 import org.apache.inlong.manager.pojo.source.sqlserver.SQLServerSource;
 import org.apache.inlong.manager.pojo.source.tdsqlkafka.TdsqlKafkaSource;
+import org.apache.inlong.manager.pojo.source.mysql.MySQLSource;
 import org.apache.inlong.manager.pojo.source.tidb.TidbSource;
 import org.apache.inlong.manager.pojo.source.tubemq.TubeMQSource;
 import org.apache.inlong.manager.pojo.stream.StreamField;
@@ -68,6 +69,7 @@ import org.apache.inlong.sort.protocol.node.format.JsonFormat;
 import org.apache.inlong.sort.protocol.node.format.ProtobufFormat;
 import org.apache.inlong.sort.protocol.node.format.RawFormat;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -94,6 +96,8 @@ public class ExtractNodeUtils {
         switch (sourceType) {
             case SourceType.MYSQL_BINLOG:
                 return createExtractNode((MySQLBinlogSource) sourceInfo);
+            case SourceType.MYSQL:
+                return createExtractNode((MySQLSource) sourceInfo);
             case SourceType.KAFKA:
             case SourceType.CKAFKA:
                 return createExtractNode((KafkaSource) sourceInfo);
@@ -249,6 +253,29 @@ public class ExtractNodeUtils {
                 serverId,
                 incrementalSnapshotEnabled,
                 serverTimeZone);
+    }
+
+    /**
+     * Create MySql extract node
+     *
+     * @param mySQLSource MySql source info
+     * @return MySql extract node info
+     */
+    public static MySqlExtractNode createExtractNode(MySQLSource mySQLSource) {
+        final String primaryKey = mySQLSource.getPrimaryKey();
+        final String username = mySQLSource.getUsername();
+        final String password = mySQLSource.getPassword();
+        List<FieldInfo> fieldInfos = parseFieldInfos(mySQLSource.getFieldList(), mySQLSource.getSourceName());
+        Map<String, String> properties = parseProperties(mySQLSource.getProperties());
+        return new MySqlExtractNode(mySQLSource.getSourceName(),
+                mySQLSource.getSourceName(),
+                fieldInfos,
+                properties,
+                primaryKey,
+                Collections.singletonList(mySQLSource.getTableName()),
+                username,
+                password,
+                mySQLSource.getJdbcUrl());
     }
 
     /**
