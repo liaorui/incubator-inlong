@@ -46,7 +46,7 @@ public class MySQLSourceOperation extends AbstractSourceOperator {
 
     @Override
     public Boolean accept(String sourceType) {
-        return SourceType.REDIS.equals(sourceType);
+        return SourceType.MYSQL.equals(sourceType);
     }
 
     @Override
