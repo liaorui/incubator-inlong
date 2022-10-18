@@ -154,7 +154,9 @@ public class TidbExtractNode extends ExtractNode implements Metadata, InlongMetr
         if (StringUtils.isNotBlank(groupId)) {
             options.put("tidb.streaming.kafka.group.id", groupId);
         }
-        options.put("tidb.streaming.kafka.auto.offset.reset", autoOffsetReset);
+        if (StringUtils.isNotBlank(autoOffsetReset)) {
+            options.put("tidb.streaming.kafka.auto.offset.reset", autoOffsetReset);
+        }
         return options;
     }
 
