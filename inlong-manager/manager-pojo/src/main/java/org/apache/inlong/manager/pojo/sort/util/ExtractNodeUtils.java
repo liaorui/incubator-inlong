@@ -32,15 +32,21 @@ import org.apache.inlong.manager.pojo.source.mysql.MySQLBinlogSource;
 import org.apache.inlong.manager.pojo.source.oracle.OracleSource;
 import org.apache.inlong.manager.pojo.source.postgresql.PostgreSQLSource;
 import org.apache.inlong.manager.pojo.source.pulsar.PulsarSource;
+import org.apache.inlong.manager.pojo.source.redis.RedisLookupOptions;
+import org.apache.inlong.manager.pojo.source.redis.RedisSource;
 import org.apache.inlong.manager.pojo.source.sqlserver.SQLServerSource;
 import org.apache.inlong.manager.pojo.source.tdsqlkafka.TdsqlKafkaSource;
+import org.apache.inlong.manager.pojo.source.mysql.MySQLSource;
 import org.apache.inlong.manager.pojo.source.tidb.TidbSource;
 import org.apache.inlong.manager.pojo.source.tubemq.TubeMQSource;
 import org.apache.inlong.manager.pojo.stream.StreamField;
 import org.apache.inlong.sort.protocol.FieldInfo;
+import org.apache.inlong.sort.protocol.LookupOptions;
 import org.apache.inlong.sort.protocol.constant.OracleConstant.ScanStartUpMode;
 import org.apache.inlong.sort.protocol.enums.KafkaScanStartupMode;
 import org.apache.inlong.sort.protocol.enums.PulsarScanStartupMode;
+import org.apache.inlong.sort.protocol.enums.RedisCommand;
+import org.apache.inlong.sort.protocol.enums.RedisMode;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.KafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.MongoExtractNode;
@@ -49,6 +55,7 @@ import org.apache.inlong.sort.protocol.node.extract.OracleExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PostgresExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PulsarExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
+import org.apache.inlong.sort.protocol.node.extract.RedisExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TidbExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
@@ -62,6 +69,7 @@ import org.apache.inlong.sort.protocol.node.format.JsonFormat;
 import org.apache.inlong.sort.protocol.node.format.ProtobufFormat;
 import org.apache.inlong.sort.protocol.node.format.RawFormat;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -88,7 +96,10 @@ public class ExtractNodeUtils {
         switch (sourceType) {
             case SourceType.MYSQL_BINLOG:
                 return createExtractNode((MySQLBinlogSource) sourceInfo);
+            case SourceType.MYSQL:
+                return createExtractNode((MySQLSource) sourceInfo);
             case SourceType.KAFKA:
+            case SourceType.CKAFKA:
                 return createExtractNode((KafkaSource) sourceInfo);
             case SourceType.PULSAR:
                 return createExtractNode((PulsarSource) sourceInfo);
@@ -104,12 +115,93 @@ public class ExtractNodeUtils {
                 return createExtractNode((TubeMQSource) sourceInfo);
             case SourceType.TDSQL_KAFKA:
                 return createExtractNode((TdsqlKafkaSource) sourceInfo);
+            case SourceType.REDIS:
+                return createExtractNode((RedisSource) sourceInfo);
             case SourceType.TIDB:
                 return createExtractNode((TidbSource) sourceInfo);
             default:
                 throw new IllegalArgumentException(
                         String.format("Unsupported sourceType=%s to create extractNode", sourceType));
         }
+    }
+
+    /**
+     * Create Redis extract node
+     *
+     * @param source Redis source info
+     * @return Redis extract node info
+     */
+    public static RedisExtractNode createExtractNode(RedisSource source) {
+        List<FieldInfo> fieldInfos = parseFieldInfos(source.getFieldList(), source.getSourceName());
+        Map<String, String> properties = parseProperties(source.getProperties());
+        RedisMode redisMode = RedisMode.forName(source.getRedisMode());
+        switch (redisMode) {
+            case STANDALONE:
+                return new RedisExtractNode(
+                        source.getSourceName(),
+                        source.getSourceName(),
+                        fieldInfos,
+                        null,
+                        properties,
+                        source.getPrimaryKey(),
+                        RedisCommand.forName(source.getCommand()),
+                        source.getHost(),
+                        source.getPort(),
+                        source.getPassword(),
+                        source.getAdditionalKey(),
+                        source.getDatabase(),
+                        source.getTimeout(),
+                        source.getSoTimeout(),
+                        source.getMaxTotal(),
+                        source.getMaxIdle(),
+                        source.getMinIdle(),
+                        parseLookupOptions(source.getLookupOptions())
+                );
+            case SENTINEL:
+                return new RedisExtractNode(
+                        source.getSourceName(),
+                        source.getSourceName(),
+                        fieldInfos,
+                        null,
+                        properties,
+                        source.getPrimaryKey(),
+                        RedisCommand.forName(source.getCommand()),
+                        source.getMasterName(),
+                        source.getSentinelsInfo(),
+                        source.getPassword(),
+                        source.getAdditionalKey(),
+                        source.getDatabase(),
+                        source.getTimeout(),
+                        source.getSoTimeout(),
+                        source.getMaxTotal(),
+                        source.getMaxIdle(),
+                        source.getMinIdle(),
+                        parseLookupOptions(source.getLookupOptions())
+                );
+            case CLUSTER:
+                return new RedisExtractNode(
+                        source.getSourceName(),
+                        source.getSourceName(),
+                        fieldInfos,
+                        null,
+                        properties,
+                        source.getPrimaryKey(),
+                        RedisCommand.forName(source.getCommand()),
+                        source.getClusterNodes(),
+                        source.getPassword(),
+                        source.getAdditionalKey(),
+                        source.getDatabase(),
+                        source.getTimeout(),
+                        source.getSoTimeout(),
+                        source.getMaxTotal(),
+                        source.getMaxIdle(),
+                        source.getMinIdle(),
+                        parseLookupOptions(source.getLookupOptions())
+                );
+            default:
+                throw new IllegalArgumentException(String.format("Unsupported redis-mode=%s for Inlong", redisMode));
+        }
+
     }
 
     /**
@@ -161,6 +253,29 @@ public class ExtractNodeUtils {
                 serverId,
                 incrementalSnapshotEnabled,
                 serverTimeZone);
+    }
+
+    /**
+     * Create MySql extract node
+     *
+     * @param mySQLSource MySql source info
+     * @return MySql extract node info
+     */
+    public static MySqlExtractNode createExtractNode(MySQLSource mySQLSource) {
+        final String primaryKey = mySQLSource.getPrimaryKey();
+        final String username = mySQLSource.getUsername();
+        final String password = mySQLSource.getPassword();
+        List<FieldInfo> fieldInfos = parseFieldInfos(mySQLSource.getFieldList(), mySQLSource.getSourceName());
+        Map<String, String> properties = parseProperties(mySQLSource.getProperties());
+        return new MySqlExtractNode(mySQLSource.getSourceName(),
+                mySQLSource.getSourceName(),
+                fieldInfos,
+                properties,
+                primaryKey,
+                Collections.singletonList(mySQLSource.getTableName()),
+                username,
+                password,
+                mySQLSource.getJdbcUrl());
     }
 
     /**
@@ -505,6 +620,20 @@ public class ExtractNodeUtils {
     private static Map<String, String> parseProperties(Map<String, Object> properties) {
         return properties.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
+    }
+
+    /**
+     * Parse LookupOptions
+     *
+     * @param options
+     * @return LookupOptions
+     */
+    private static LookupOptions parseLookupOptions(RedisLookupOptions options) {
+        if (options == null) {
+            return null;
+        }
+        return new LookupOptions(options.getLookupCacheMaxRows(), options.getLookupCacheTtl(),
+                options.getLookupMaxRetries(), options.getLookupAsync());
     }
 
 }
