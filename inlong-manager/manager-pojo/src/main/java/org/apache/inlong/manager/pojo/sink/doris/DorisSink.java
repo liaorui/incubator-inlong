@@ -29,6 +29,7 @@ import org.apache.inlong.manager.common.util.CommonBeanUtils;
 import org.apache.inlong.manager.common.util.JsonTypeDefine;
 import org.apache.inlong.manager.pojo.sink.SinkRequest;
 import org.apache.inlong.manager.pojo.sink.StreamSink;
+import org.apache.inlong.sort.protocol.node.format.Format;
 
 /**
  * Doris sink info
@@ -65,7 +66,7 @@ public class DorisSink extends StreamSink {
     private Boolean sinkMultipleEnable = false;
 
     @ApiModelProperty("The multiple format of sink")
-    private String sinkMultipleFormat;
+    private Format sinkMultipleFormat;
 
     @ApiModelProperty("The multiple database-pattern of sink")
     private String databasePattern;
