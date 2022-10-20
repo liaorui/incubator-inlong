@@ -313,7 +313,11 @@ public class LoadNodeUtils {
                 dorisSink.getUsername(),
                 dorisSink.getPassword(),
                 dorisSink.getTableIdentifier(),
-                null
+                null,
+                dorisSink.getSinkMultipleEnable(),
+                dorisSink.getSinkMultipleFormat(),
+                dorisSink.getDatabasePattern(),
+                dorisSink.getTablePattern()
         );
     }
 
