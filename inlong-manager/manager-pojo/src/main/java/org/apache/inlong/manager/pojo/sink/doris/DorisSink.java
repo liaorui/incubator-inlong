@@ -66,7 +66,7 @@ public class DorisSink extends StreamSink {
     private Boolean sinkMultipleEnable = false;
 
     @ApiModelProperty("The multiple format of sink")
-    private Format sinkMultipleFormat;
+    private String sinkMultipleFormat;
 
     @ApiModelProperty("The multiple database-pattern of sink")
     private String databasePattern;
