@@ -50,4 +50,19 @@ public class DorisSinkRequest extends SinkRequest {
     @ApiModelProperty("Label prefix for stream loading. Used for guaranteeing Flink EOS semantics, as global unique is "
             + "needed in 2pc.")
     private String labelPrefix;
+
+    @ApiModelProperty("The primary key of sink table")
+    private String primaryKey;
+
+    @ApiModelProperty("The multiple enable of sink")
+    private Boolean sinkMultipleEnable = false;
+
+    @ApiModelProperty("The multiple format of sink")
+    private String sinkMultipleFormat;
+
+    @ApiModelProperty("The multiple database-pattern of sink")
+    private String databasePattern;
+
+    @ApiModelProperty("The multiple table-pattern of sink")
+    private String tablePattern;
 }
