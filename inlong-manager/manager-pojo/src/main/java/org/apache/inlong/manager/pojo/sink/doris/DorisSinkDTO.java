@@ -56,6 +56,21 @@ public class DorisSinkDTO {
             + "needed in 2pc.")
     private String labelPrefix;
 
+    @ApiModelProperty("The primary key of sink table")
+    private String primaryKey;
+
+    @ApiModelProperty("The multiple enable of sink")
+    private Boolean sinkMultipleEnable = false;
+
+    @ApiModelProperty("The multiple format of sink")
+    private String sinkMultipleFormat;
+
+    @ApiModelProperty("The multiple database-pattern of sink")
+    private String databasePattern;
+
+    @ApiModelProperty("The multiple table-pattern of sink")
+    private String tablePattern;
+
     @ApiModelProperty("Password encrypt version")
     private Integer encryptVersion;
 
@@ -77,6 +92,10 @@ public class DorisSinkDTO {
                 .username(request.getUsername())
                 .password(passwd)
                 .tableIdentifier(request.getTableIdentifier())
+                .sinkMultipleEnable(request.getSinkMultipleEnable())
+                .sinkMultipleFormat(request.getSinkMultipleFormat())
+                .databasePattern(request.getDatabasePattern())
+                .tablePattern(request.getTablePattern())
                 .labelPrefix(request.getLabelPrefix())
                 .encryptVersion(encryptVersion)
                 .properties(request.getProperties())

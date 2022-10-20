@@ -29,6 +29,7 @@ import org.apache.inlong.manager.common.util.CommonBeanUtils;
 import org.apache.inlong.manager.common.util.JsonTypeDefine;
 import org.apache.inlong.manager.pojo.sink.SinkRequest;
 import org.apache.inlong.manager.pojo.sink.StreamSink;
+import org.apache.inlong.sort.protocol.node.format.Format;
 
 /**
  * Doris sink info
@@ -57,6 +58,21 @@ public class DorisSink extends StreamSink {
     @ApiModelProperty("Label prefix for stream loading. Used for guaranteeing Flink EOS semantics, as global unique is "
             + "needed in 2pc.")
     private String labelPrefix;
+
+    @ApiModelProperty("The primary key of sink table")
+    private String primaryKey;
+
+    @ApiModelProperty("The multiple enable of sink")
+    private Boolean sinkMultipleEnable = false;
+
+    @ApiModelProperty("The multiple format of sink")
+    private String sinkMultipleFormat;
+
+    @ApiModelProperty("The multiple database-pattern of sink")
+    private String databasePattern;
+
+    @ApiModelProperty("The multiple table-pattern of sink")
+    private String tablePattern;
 
     public DorisSink() {
         this.setSinkType(SinkType.DORIS);
