@@ -126,7 +126,7 @@ public class CanalJson {
     public boolean isDdl() {
         return isDdl;
     }
-    
+
     public Map<String, String> getOracleType() {
         return oracleType;
     }
