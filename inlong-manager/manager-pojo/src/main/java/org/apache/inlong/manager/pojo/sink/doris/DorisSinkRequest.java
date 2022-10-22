@@ -65,4 +65,5 @@ public class DorisSinkRequest extends SinkRequest {
 
     @ApiModelProperty("The multiple table-pattern of sink")
     private String tablePattern;
+
 }
