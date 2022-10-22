@@ -17,13 +17,7 @@
 
 package org.apache.inlong.sort.protocol.node.load;
 
-import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_DATABASE_PATTERN;
-import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_ENABLE;
-import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_TABLE_PATTERN;
-import static org.apache.inlong.sort.protocol.constant.KafkaConstant.SINK_MULTIPLE_FORMAT;
-
 import com.google.common.base.Preconditions;
-import java.util.Objects;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -45,6 +39,11 @@ import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_DATABASE_PATTERN;
+import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_ENABLE;
+import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_FORMAT;
+import static org.apache.inlong.sort.protocol.constant.DorisConstant.SINK_MULTIPLE_TABLE_PATTERN;
 
 /**
  * doris load node using doris flink-doris-connector-1.13.5_2.11
@@ -133,7 +132,6 @@ public class DorisLoadNode extends LoadNode implements Serializable {
         this.feNodes = Preconditions.checkNotNull(feNodes, "feNodes is null");
         this.userName = Preconditions.checkNotNull(userName, "username is null");
         this.password = Preconditions.checkNotNull(password, "password is null");
-        this.tableIdentifier = Preconditions.checkNotNull(tableIdentifier, "tableIdentifier is null");
         this.primaryKey = primaryKey;
         this.sinkMultipleEnable = sinkMultipleEnable;
         if (sinkMultipleEnable == null || !sinkMultipleEnable) {
