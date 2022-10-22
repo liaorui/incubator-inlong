@@ -70,7 +70,7 @@ public class DorisSinkDTO {
 
     @ApiModelProperty("The multiple table-pattern of sink")
     private String tablePattern;
-    
+
     @ApiModelProperty("Password encrypt version")
     private Integer encryptVersion;
 
