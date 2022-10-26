@@ -175,9 +175,6 @@ public class LoadNodeUtils {
             case RAW:
                 format = new RawFormat();
                 break;
-            case RAW:
-                format = new RawFormat();
-                break;
             default:
                 throw new IllegalArgumentException(String.format("Unsupported dataType=%s for Kafka", dataType));
         }
@@ -303,7 +300,6 @@ public class LoadNodeUtils {
      */
     public static DorisLoadNode createLoadNode(DorisSink dorisSink, List<FieldInfo> fieldInfos,
             List<FieldRelation> fieldRelations, Map<String, String> properties) {
-<<<<<<< HEAD
         DataTypeEnum dataType = DataTypeEnum.forName(dorisSink.getSinkMultipleFormat());
         Format format;
         switch (dataType) {
