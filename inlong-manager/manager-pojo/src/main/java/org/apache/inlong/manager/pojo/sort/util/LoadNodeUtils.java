@@ -175,6 +175,9 @@ public class LoadNodeUtils {
             case RAW:
                 format = new RawFormat();
                 break;
+            case RAW:
+                format = new RawFormat();
+                break;
             default:
                 throw new IllegalArgumentException(String.format("Unsupported dataType=%s for Kafka", dataType));
         }
