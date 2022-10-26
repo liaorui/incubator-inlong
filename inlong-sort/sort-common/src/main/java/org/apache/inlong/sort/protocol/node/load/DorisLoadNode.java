@@ -93,7 +93,6 @@ public class DorisLoadNode extends LoadNode implements Serializable {
     @JsonProperty("tablePattern")
     private String tablePattern;
 
-
     public DorisLoadNode(@JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("fields") List<FieldInfo> fields,
@@ -154,7 +153,6 @@ public class DorisLoadNode extends LoadNode implements Serializable {
         options.put(DorisConstant.FE_NODES, feNodes);
         options.put(DorisConstant.USERNAME, userName);
         options.put(DorisConstant.PASSWORD, password);
-
         if (sinkMultipleEnable != null && sinkMultipleEnable) {
             options.put(SINK_MULTIPLE_ENABLE, sinkMultipleEnable.toString());
             options.put(SINK_MULTIPLE_FORMAT, Objects.requireNonNull(sinkMultipleFormat).identifier());
