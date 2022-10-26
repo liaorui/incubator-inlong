@@ -57,6 +57,9 @@ public class DorisSinkDTO {
     private String labelPrefix;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e7dbf1a5b (doris data node load support muti databases migrate)
     @ApiModelProperty("The primary key of sink table")
     private String primaryKey;
 
@@ -71,9 +74,7 @@ public class DorisSinkDTO {
 
     @ApiModelProperty("The multiple table-pattern of sink")
     private String tablePattern;
-
-=======
->>>>>>> 6bbcd75f1 (support doris node management)
+    
     @ApiModelProperty("Password encrypt version")
     private Integer encryptVersion;
 
