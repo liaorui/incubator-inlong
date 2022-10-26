@@ -300,6 +300,7 @@ public class LoadNodeUtils {
      */
     public static DorisLoadNode createLoadNode(DorisSink dorisSink, List<FieldInfo> fieldInfos,
             List<FieldRelation> fieldRelations, Map<String, String> properties) {
+<<<<<<< HEAD
         DataTypeEnum dataType = DataTypeEnum.forName(dorisSink.getSinkMultipleFormat());
         Format format;
         switch (dataType) {

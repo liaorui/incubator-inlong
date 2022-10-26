@@ -56,6 +56,7 @@ public class DorisSinkDTO {
             + "needed in 2pc.")
     private String labelPrefix;
 
+<<<<<<< HEAD
     @ApiModelProperty("The primary key of sink table")
     private String primaryKey;
 
@@ -71,6 +72,8 @@ public class DorisSinkDTO {
     @ApiModelProperty("The multiple table-pattern of sink")
     private String tablePattern;
 
+=======
+>>>>>>> 6bbcd75f1 (support doris node management)
     @ApiModelProperty("Password encrypt version")
     private Integer encryptVersion;
 
