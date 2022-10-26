@@ -171,6 +171,9 @@ public class LoadNodeUtils {
                 break;
             case DEBEZIUM_JSON:
                 format = new DebeziumJsonFormat();
+                break; 
+            case RAW:
+                format = new RawFormat();
                 break;
             case RAW:
                 format = new RawFormat();
