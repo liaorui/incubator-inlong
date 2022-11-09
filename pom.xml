@@ -249,7 +249,7 @@
         <tencentcloud.api.version>3.1.545</tencentcloud.api.version>
         <cos.hadoop.version>2.7.5-5.9.3</cos.hadoop.version>
         <cos.bundle.version>5.6.35</cos.bundle.version>
-        <dlc.client.version>1.1.1</dlc.client.version>
+        <dlc.client.version>2.1.0-SNAPSHOT</dlc.client.version>
         <dlc.jdbc.version>2.2.6</dlc.jdbc.version>
         <cos.lakefs.plugin.version>1.0</cos.lakefs.plugin.version>
         <esri-geometry-api.version>2.0.0</esri-geometry-api.version>
@@ -565,14 +565,14 @@
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
                 <version>${oracle.jdbc.version}</version>
-                <scope>provided</scope>
+            <!--    <scope>provided</scope>-->
             </dependency>
             <!-- mysql-connector-java is LGPL license, we use it test only -->
             <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.jdbc.version}</version>
-                <scope>provided</scope>
+              <!--  <scope>provided</scope>-->
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -1077,12 +1077,18 @@
                 <artifactId>flink-connector-mysql-cdc</artifactId>
                 <version>${flink.connector.mysql.cdc.version}</version>
                 <!-- mysql-connector-java is LGPL license and needs to be excluded -->
-                <exclusions>
+       <!--         <exclusions>
                     <exclusion>
                         <groupId>mysql</groupId>
                         <artifactId>mysql-connector-java</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
+            </dependency>
+
+            <dependency>
+                <groupId>com.ververica</groupId>
+                <artifactId>flink-connector-tidb-cdc</artifactId>
+                <version>${flink.connector.tidb.cdc.version}</version>
             </dependency>
 
             <dependency>
@@ -1096,12 +1102,12 @@
                 <artifactId>flink-connector-oracle-cdc</artifactId>
                 <version>${flink.connector.oracle.cdc.version}</version>
                 <!-- ojdbc8 is FUTC license and needs to be excluded -->
-                <exclusions>
+            <!--    <exclusions>
                     <exclusion>
                         <groupId>com.oracle.ojdbc</groupId>
                         <artifactId>ojdbc8</artifactId>
                     </exclusion>
-                </exclusions>
+                </exclusions>-->
             </dependency>
 
             <dependency>

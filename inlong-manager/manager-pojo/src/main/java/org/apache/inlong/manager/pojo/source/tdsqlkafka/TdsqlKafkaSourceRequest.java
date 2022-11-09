@@ -15,27 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.sort.protocol.deserialization;
+package org.apache.inlong.manager.pojo.source.tdsqlkafka;
 
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import io.swagger.annotations.ApiModel;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.apache.inlong.manager.common.consts.SourceType;
+import org.apache.inlong.manager.common.util.JsonTypeDefine;
+import org.apache.inlong.manager.pojo.source.kafka.KafkaSourceRequest;
 
 /**
- * InLongMsgDeserializationInfo.
+ * Request of kafka source info
  */
-public abstract class InLongMsgDeserializationInfo implements DeserializationInfo {
+@Data
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+@ApiModel(value = "Request of the kafka source info")
+@JsonTypeDefine(value = SourceType.TDSQL_KAFKA)
+public class TdsqlKafkaSourceRequest extends KafkaSourceRequest {
 
-    private static final long serialVersionUID = 3707412713264864315L;
-
-    private final String tid;
-
-    public InLongMsgDeserializationInfo(@JsonProperty("tid") String tid) {
-        this.tid = checkNotNull(tid);
-    }
-
-    @JsonProperty("tid")
-    public String getTid() {
-        return tid;
+    public TdsqlKafkaSourceRequest() {
+        this.setSourceType(SourceType.TDSQL_KAFKA);
     }
 }

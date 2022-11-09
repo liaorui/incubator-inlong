@@ -31,6 +31,9 @@ public class SourceType {
     public static final String TUBEMQ = "TUBEMQ";
     public static final String PULSAR = "PULSAR";
     public static final String KAFKA = "KAFKA";
+    public static final String CKAFKA = "CKAFKA";
+    public static final String REDIS = "REDIS";
+    public static final String MYSQL = "MYSQL";
 
     public static final String FILE = "FILE";
     public static final String MYSQL_SQL = "MYSQL_SQL";
@@ -39,7 +42,8 @@ public class SourceType {
     public static final String ORACLE = "ORACLE";
     public static final String SQLSERVER = "SQLSERVER";
     public static final String MONGODB = "MONGODB";
-    public static final String REDIS = "REDIS";
+    public static final String TDSQL_KAFKA = "TDSQL_KAFKA";
+    public static final String TIDB = "TIDB";
 
     public static final Map<String, TaskTypeEnum> SOURCE_TASK_MAP = new HashMap<String, TaskTypeEnum>() {
         {
@@ -47,6 +51,9 @@ public class SourceType {
             put(TUBEMQ, TaskTypeEnum.TUBEMQ);
             put(PULSAR, TaskTypeEnum.PULSAR);
             put(KAFKA, TaskTypeEnum.KAFKA);
+            put(CKAFKA, TaskTypeEnum.CKAFKA);
+            put(REDIS, TaskTypeEnum.REDIS);
+            put(MYSQL, TaskTypeEnum.MYSQL);
 
             put(FILE, TaskTypeEnum.FILE);
             put(MYSQL_SQL, TaskTypeEnum.SQL);
@@ -55,8 +62,7 @@ public class SourceType {
             put(ORACLE, TaskTypeEnum.ORACLE);
             put(SQLSERVER, TaskTypeEnum.SQLSERVER);
             put(MONGODB, TaskTypeEnum.MONGODB);
-            put(REDIS,TaskTypeEnum.REDIS);
-
+            put(TIDB, TaskTypeEnum.TIDB);
         }
     };
 

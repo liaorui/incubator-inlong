@@ -15,27 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.sort.protocol.deserialization;
-
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+package org.apache.inlong.sort.protocol.constant;
 
 /**
- * InLongMsgDeserializationInfo.
+ * TDSQL Kafka option constant
+ *
+ * @see <a href="https://cloud.tencent.com/document/product/849/71448"></a>
  */
-public abstract class InLongMsgDeserializationInfo implements DeserializationInfo {
+public class TdsqlKafkaConstant {
 
-    private static final long serialVersionUID = 3707412713264864315L;
+    public static final String CONNECTOR = "connector";
 
-    private final String tid;
+    public static final String TDSQL_SUBSCRIBE = "tdsql-subscribe";
 
-    public InLongMsgDeserializationInfo(@JsonProperty("tid") String tid) {
-        this.tid = checkNotNull(tid);
-    }
+    public static final String TOPIC = "topic";
 
-    @JsonProperty("tid")
-    public String getTid() {
-        return tid;
-    }
+    public static final String SCAN_STARTUP_MODE = "scan.startup.mode";
+
+    public static final String PROPERTIES_BOOTSTRAP_SERVERS = "properties.bootstrap.servers";
+
+    public static final String PROPERTIES_GROUP_ID = "properties.group.id";
+
+    public static final String SCAN_STARTUP_SPECIFIC_OFFSETS = "scan.startup.specific-offsets";
 }

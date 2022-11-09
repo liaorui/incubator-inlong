@@ -56,9 +56,7 @@ public class RedisSourceServiceTest extends ServiceBaseTest {
         sourceInfo.setInlongStreamId(GLOBAL_STREAM_ID);
         sourceInfo.setSourceName(sourceName);
         sourceInfo.setSourceType(SourceType.REDIS);
-        sourceInfo.setHostname(hostname);
         sourceInfo.setPort(port);
-        sourceInfo.setRedisCommand(redisCommand);
         sourceInfo.setRedisMode(redisMode);
         return sourceService.save(sourceInfo, GLOBAL_OPERATOR);
     }

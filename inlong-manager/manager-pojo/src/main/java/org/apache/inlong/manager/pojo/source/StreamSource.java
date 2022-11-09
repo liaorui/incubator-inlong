@@ -18,6 +18,7 @@
 package org.apache.inlong.manager.pojo.source;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -27,6 +28,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.apache.inlong.manager.pojo.source.autopush.AutoPushSource;
 import org.apache.inlong.manager.pojo.stream.StreamNode;
 
 import java.util.Date;
@@ -44,6 +46,9 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, visible = true, property = "sourceType")
 @ApiModel("Stream source info")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = AutoPushSource.class, name = "AUTO_PUSH")
+})
 public abstract class StreamSource extends StreamNode {
 
     @ApiModelProperty("Source id")
@@ -110,8 +115,5 @@ public abstract class StreamSource extends StreamNode {
     @ApiModelProperty("Sub source information of existing agents")
     private List<SubSourceDTO> subSourceList;
 
-    public SourceRequest genSourceRequest() {
-        return null;
-    }
-
+    public abstract SourceRequest genSourceRequest();
 }

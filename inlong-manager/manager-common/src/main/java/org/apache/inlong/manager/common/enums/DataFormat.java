@@ -32,6 +32,7 @@ public enum DataFormat {
     JSON("json"),
     DEBEZIUM_JSON("debezium_json"),
     RAW("raw"),
+    PROTOBUF("protobuf"),
     NONE("none");
 
     @Getter
