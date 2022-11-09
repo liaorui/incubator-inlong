@@ -198,7 +198,6 @@ public class HiveTableOperations extends BaseMetastoreTableOperations {
             if (currentMetadataLocation() != null) {
                 throw new NoSuchTableException("No such table: %s.%s", database, tableName);
             }
-
         } catch (TException e) {
             String errMsg = String.format("Failed to get table info from metastore %s.%s", database, tableName);
             throw new RuntimeException(errMsg, e);

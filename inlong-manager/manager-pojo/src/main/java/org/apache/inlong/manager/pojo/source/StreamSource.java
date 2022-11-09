@@ -90,7 +90,7 @@ public abstract class StreamSource extends StreamNode {
     @ApiModelProperty("Status")
     private Integer status;
 
-    @ApiModelProperty("Previous SimpleSourceStatus")
+    @ApiModelProperty("Previous status")
     private Integer previousStatus;
 
     @ApiModelProperty("Creator")
@@ -105,8 +105,8 @@ public abstract class StreamSource extends StreamNode {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date modifyTime;
 
-    @ApiModelProperty("Properties for source")
     @Builder.Default
+    @ApiModelProperty("Properties for source")
     private Map<String, Object> properties = new LinkedHashMap<>();
 
     @ApiModelProperty("Null if not a sub source")

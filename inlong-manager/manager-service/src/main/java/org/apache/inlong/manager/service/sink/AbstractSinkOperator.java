@@ -35,6 +35,7 @@ import org.apache.inlong.manager.pojo.common.PageResult;
 import org.apache.inlong.manager.pojo.sink.SinkField;
 import org.apache.inlong.manager.pojo.sink.SinkRequest;
 import org.apache.inlong.manager.pojo.sink.StreamSink;
+import org.apache.inlong.manager.service.node.DataNodeOperateHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,8 @@ public abstract class AbstractSinkOperator implements StreamSinkOperator {
     protected StreamSinkEntityMapper sinkMapper;
     @Autowired
     protected StreamSinkFieldEntityMapper sinkFieldMapper;
+    @Autowired
+    protected DataNodeOperateHelper dataNodeHelper;
 
     /**
      * Setting the parameters of the latest entity.
@@ -110,7 +113,7 @@ public abstract class AbstractSinkOperator implements StreamSinkOperator {
     }
 
     @Override
-    public void updateOpt(SinkRequest request, String operator) {
+    public void updateOpt(SinkRequest request, SinkStatus nextStatus, String operator) {
         StreamSinkEntity entity = sinkMapper.selectByPrimaryKey(request.getId());
         Preconditions.checkNotNull(entity, ErrorCodeEnum.SINK_INFO_NOT_FOUND.getMessage());
 
@@ -123,9 +126,11 @@ public abstract class AbstractSinkOperator implements StreamSinkOperator {
         CommonBeanUtils.copyProperties(request, entity, true);
         setTargetEntity(request, entity);
         entity.setPreviousStatus(entity.getStatus());
-        entity.setStatus(SinkStatus.CONFIG_ING.getCode());
+        if (nextStatus != null) {
+            entity.setStatus(nextStatus.getCode());
+        }
         entity.setModifier(operator);
-        int rowCount = sinkMapper.updateByPrimaryKeySelective(entity);
+        int rowCount = sinkMapper.updateByIdSelective(entity);
         if (rowCount != InlongConstants.AFFECTED_ONE_ROW) {
             LOGGER.error(errMsg);
             throw new BusinessException(ErrorCodeEnum.CONFIG_EXPIRED);
@@ -199,7 +204,7 @@ public abstract class AbstractSinkOperator implements StreamSinkOperator {
         entity.setStatus(InlongConstants.DELETED_STATUS);
         entity.setIsDeleted(entity.getId());
         entity.setModifier(operator);
-        int rowCount = sinkMapper.updateByPrimaryKeySelective(entity);
+        int rowCount = sinkMapper.updateByIdSelective(entity);
         if (rowCount != InlongConstants.AFFECTED_ONE_ROW) {
             LOGGER.error("sink has already updated with groupId={}, streamId={}, name={}, curVersion={}",
                     entity.getInlongGroupId(), entity.getInlongStreamId(), entity.getSinkName(), entity.getVersion());

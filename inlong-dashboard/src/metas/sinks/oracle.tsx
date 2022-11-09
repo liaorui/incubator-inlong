@@ -15,141 +15,125 @@
  * limitations under the License.
  */
 
-import React from 'react';
-import {
-  getColsFromFields,
-  GetStorageColumnsType,
-  GetStorageFormFieldsType,
-} from '@/utils/metaData';
-import { ColumnsType } from 'antd/es/table';
-import EditableTable, { ColumnsItemProps } from '@/components/EditableTable';
 import i18n from '@/i18n';
-import { excludeObject } from '@/utils';
+import type { FieldItemType } from '@/metas/common';
+import EditableTable from '@/components/EditableTable';
 import { sourceFields } from './common/sourceFields';
 
-//  oracleFieldTypes
-const oracleFieldTypes = [
-  'BINARY_FLOAT',
-  'BINARY_DOUBLE',
-  'SMALLINT',
-  'FLOAT',
-  'FLOAT4',
-  'FLOAT8',
-  'DOUBLE',
-  'REAL',
-  'NUMBER',
-  'NUMERIC',
-  'DATE',
-  'DECIMAL',
-  'BOOLEAN',
-  'TIMESTAMP',
-  'CHAR',
-  'VARCHAR',
-  'CLOB',
-  'RAW',
-  'BLOB',
-].map(item => ({
-  label: item,
-  value: item,
-}));
-
-const getForm: GetStorageFormFieldsType = (
-  type,
-  { currentValues, inlongGroupId, isEdit, dataType, form } = {} as any,
-) => {
-  const fileds = [
-    {
-      type: 'input',
-      label: 'JDBC URL',
-      name: 'jdbcUrl',
-      rules: [{ required: true }],
-      props: {
-        placeholder: 'jdbc:oracle:thin://127.0.0.1:1521/db_name',
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-        style: { width: 500 },
-      },
-    },
-    {
-      type: 'input',
-      label: i18n.t('meta.Sinks.Oracle.TableName'),
-      name: 'tableName',
-      rules: [{ required: true }],
-      props: {
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-      },
-      _inTable: true,
-    },
-    {
-      type: 'input',
-      label: i18n.t('meta.Sinks.Oracle.PrimaryKey'),
-      name: 'primaryKey',
-      rules: [{ required: true }],
-      props: {
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-      },
-      _inTable: true,
-    },
-    {
-      type: 'radio',
-      label: i18n.t('meta.Sinks.EnableCreateResource'),
-      name: 'enableCreateResource',
-      rules: [{ required: true }],
-      initialValue: 1,
-      tooltip: i18n.t('meta.Sinks.EnableCreateResourceHelp'),
-      props: {
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-        options: [
-          {
-            label: i18n.t('basic.Yes'),
-            value: 1,
-          },
-          {
-            label: i18n.t('basic.No'),
-            value: 0,
-          },
-        ],
-      },
-    },
-    {
-      type: 'input',
-      label: i18n.t('meta.Sinks.Username'),
-      name: 'username',
-      rules: [{ required: true }],
-      props: {
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-      },
-      _inTable: true,
-    },
-    {
-      type: 'password',
-      label: i18n.t('meta.Sinks.Password'),
-      name: 'password',
-      rules: [{ required: true }],
-      props: {
-        disabled: isEdit && [110, 130].includes(currentValues?.status),
-        style: {
-          maxWidth: 500,
-        },
-      },
-    },
-    {
-      type: (
-        <EditableTable
-          size="small"
-          columns={getFieldListColumns(dataType, currentValues)}
-          canDelete={(record, idx, isNew) => !isEdit || isNew}
-        />
-      ),
-      name: 'sinkFieldList',
-    },
-  ];
-
-  return type === 'col'
-    ? getColsFromFields(fileds)
-    : fileds.map(item => excludeObject(['_inTable'], item));
+const fieldTypesConf = {
+  BINARY_FLOAT: (m, d) => (1 <= m && m <= 6 ? '' : '1 <= M <= 6'),
+  BINARY_DOUBLE: (m, d) => (1 <= m && m <= 10 ? '' : '1 <= M <= 10'),
+  SMALLINT: (m, d) => (1 <= m && m <= 6 ? '' : '1 <= M <= 6'),
+  FLOAT: (m, d) => (1 <= m && m <= 126 ? '' : '1 <= M <= 126'),
+  FLOAT4: () => '',
+  FLOAT8: () => '',
+  DOUBLE: (m, d) => (1 <= m && m <= 38 && 0 <= d && d < m ? '' : '1 <= M <= 38, 0 <= D < M'),
+  REAL: () => '',
+  NUMBER: (m, d) => (1 <= m && m <= 38 && 0 <= d && d < m ? '' : '1 <= M <= 38, 0 <= D < M'),
+  NUMERIC: (m, d) => (1 <= m && m <= 38 && 0 <= d && d < m ? '' : '1 <= M <= 38, 0 <= D < M'),
+  DATE: () => '',
+  DECIMAL: (m, d) => (1 <= m && m <= 38 && 0 <= d && d < m ? '' : '1 <= M <= 38, 0 <= D < M'),
+  BOOLEAN: () => '',
+  TIMESTAMP: () => '',
+  CHAR: (m, d) => (1 <= m && m <= 4000 ? '' : '1 <= M <= 4000'),
+  VARCHAR: (m, d) => (1 <= m && m <= 4000 ? '' : '1 <= M <= 4000'),
+  CLOB: () => '',
+  RAW: (m, d) => (1 <= m && m <= 2000 ? '' : ' 1 <= M <= 2000'),
+  BLOB: () => '',
 };
 
-const getFieldListColumns: GetStorageColumnsType = (dataType, currentValues) => {
+const oracleFieldTypes = Object.keys(fieldTypesConf).reduce(
+  (acc, key) =>
+    acc.concat({
+      label: key,
+      value: key,
+    }),
+  [],
+);
+
+export const oracle: FieldItemType[] = [
+  {
+    type: 'input',
+    label: 'JDBC URL',
+    name: 'jdbcUrl',
+    rules: [{ required: true }],
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+      placeholder: 'jdbc:oracle:thin://127.0.0.1:1521/db_name',
+    }),
+  },
+  {
+    type: 'input',
+    label: i18n.t('meta.Sinks.Oracle.TableName'),
+    name: 'tableName',
+    rules: [{ required: true }],
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+    }),
+    _renderTable: true,
+  },
+  {
+    type: 'input',
+    label: i18n.t('meta.Sinks.Oracle.PrimaryKey'),
+    name: 'primaryKey',
+    rules: [{ required: true }],
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+    }),
+    _renderTable: true,
+  },
+  {
+    type: 'radio',
+    label: i18n.t('meta.Sinks.EnableCreateResource'),
+    name: 'enableCreateResource',
+    rules: [{ required: true }],
+    initialValue: 1,
+    tooltip: i18n.t('meta.Sinks.EnableCreateResourceHelp'),
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+      options: [
+        {
+          label: i18n.t('basic.Yes'),
+          value: 1,
+        },
+        {
+          label: i18n.t('basic.No'),
+          value: 0,
+        },
+      ],
+    }),
+  },
+  {
+    type: 'input',
+    label: i18n.t('meta.Sinks.Username'),
+    name: 'username',
+    rules: [{ required: true }],
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+    }),
+    _renderTable: true,
+  },
+  {
+    type: 'password',
+    label: i18n.t('meta.Sinks.Password'),
+    name: 'password',
+    rules: [{ required: true }],
+    props: values => ({
+      disabled: [110, 130].includes(values?.status),
+    }),
+  },
+  {
+    name: 'sinkFieldList',
+    type: EditableTable,
+    props: values => ({
+      size: 'small',
+      editing: ![110, 130].includes(values?.status),
+      columns: getFieldListColumns(values),
+    }),
+  },
+];
+
+const getFieldListColumns = sinkValues => {
   return [
     ...sourceFields,
     {
@@ -164,19 +148,36 @@ const getFieldListColumns: GetStorageColumnsType = (dataType, currentValues) => 
         },
       ],
       props: (text, record, idx, isNew) => ({
-        disabled: [110, 130].includes(currentValues?.status as number) && !isNew,
+        disabled: [110, 130].includes(sinkValues?.status as number) && !isNew,
       }),
     },
     {
       title: `ORACLE${i18n.t('meta.Sinks.Oracle.FieldType')}`,
       dataIndex: 'fieldType',
       initialValue: oracleFieldTypes[0].value,
-      type: 'select',
+      type: 'autocomplete',
       props: (text, record, idx, isNew) => ({
         options: oracleFieldTypes,
-        disabled: [110, 130].includes(currentValues?.status as number) && !isNew,
+        disabled: [110, 130].includes(sinkValues?.status as number) && !isNew,
       }),
-      rules: [{ required: true }],
+      rules: [
+        { required: true },
+        () => ({
+          validator(_, val) {
+            if (val) {
+              const [, type = val, typeLength = ''] = val.match(/^(.+)\((.+)\)$/) || [];
+              if (fieldTypesConf.hasOwnProperty(type)) {
+                const [m = -1, d = -1] = typeLength.split(',');
+                const errMsg = fieldTypesConf[type]?.(m, d);
+                if (typeLength && errMsg) return Promise.reject(new Error(errMsg));
+              } else {
+                return Promise.reject(new Error('FieldType error'));
+              }
+            }
+            return Promise.resolve();
+          },
+        }),
+      ],
     },
     {
       title: i18n.t('meta.Sinks.Oracle.IsMetaField'),
@@ -215,13 +216,5 @@ const getFieldListColumns: GetStorageColumnsType = (dataType, currentValues) => 
       dataIndex: 'fieldComment',
       initialValue: '',
     },
-  ] as ColumnsItemProps[];
-};
-
-const tableColumns = getForm('col') as ColumnsType;
-
-export const oracle = {
-  getForm,
-  getFieldListColumns,
-  tableColumns,
+  ];
 };

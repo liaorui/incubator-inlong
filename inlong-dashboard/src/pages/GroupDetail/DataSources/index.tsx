@@ -17,56 +17,28 @@
  * under the License.
  */
 
-import React, { useState, forwardRef, useMemo } from 'react';
+import React, { useState, forwardRef, useMemo, useCallback } from 'react';
 import { Button, Modal, message } from 'antd';
 import HighTable from '@/components/HighTable';
 import { defaultSize } from '@/configs/pagination';
 import { useRequest } from '@/hooks';
+import { useDefaultMeta, useLoadMeta } from '@/metas';
 import DetailModal from './DetailModal';
-import { sources } from '@/metas/sources';
 import i18n from '@/i18n';
 import request from '@/utils/request';
+import { pickObjectArray } from '@/utils';
 import { CommonInterface } from '../common';
-import { statusList, genStatusTag } from './status';
 
 type Props = CommonInterface;
 
-const getFilterFormContent = defaultValues => [
-  {
-    type: 'inputsearch',
-    name: 'keyword',
-  },
-  {
-    type: 'radiobutton',
-    name: 'sourceType',
-    label: i18n.t('pages.GroupDetail.Sources.Type'),
-    initialValue: defaultValues.sourceType,
-    props: {
-      buttonStyle: 'solid',
-      options: sources.map(item => ({
-        label: item.label,
-        value: item.value,
-      })),
-    },
-  },
-  {
-    type: 'select',
-    name: 'status',
-    label: i18n.t('basic.Status'),
-    props: {
-      allowClear: true,
-      dropdownMatchSelectWidth: false,
-      options: statusList,
-    },
-  },
-];
-
 const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
+  const { defaultValue } = useDefaultMeta('source');
+
   const [options, setOptions] = useState({
     // keyword: '',
     pageSize: defaultSize,
     pageNum: 1,
-    sourceType: sources[0].value,
+    sourceType: defaultValue,
   });
 
   const [createModal, setCreateModal] = useState<Record<string, unknown>>({
@@ -90,42 +62,45 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
     },
   );
 
-  const onEdit = ({ id }) => {
+  const onEdit = useCallback(({ id }) => {
     setCreateModal({ visible: true, id });
-  };
+  }, []);
 
-  const onDelete = ({ id }) => {
-    Modal.confirm({
-      title: i18n.t('pages.GroupDetail.Sources.DeleteConfirm'),
-      onOk: async () => {
-        await request({
-          url: `/source/delete/${id}`,
-          method: 'DELETE',
-          params: {
-            sourceType: options.sourceType,
-          },
-        });
-        await getList();
-        message.success(i18n.t('pages.GroupDetail.Sources.DeleteSuccessfully'));
-      },
-    });
-  };
+  const onDelete = useCallback(
+    ({ id }) => {
+      Modal.confirm({
+        title: i18n.t('pages.GroupDetail.Sources.DeleteConfirm'),
+        onOk: async () => {
+          await request({
+            url: `/source/delete/${id}`,
+            method: 'DELETE',
+            params: {
+              sourceType: options.sourceType,
+            },
+          });
+          await getList();
+          message.success(i18n.t('pages.GroupDetail.Sources.DeleteSuccessfully'));
+        },
+      });
+    },
+    [getList, options.sourceType],
+  );
 
-  const onChange = ({ current: pageNum, pageSize }) => {
+  const onChange = useCallback(({ current: pageNum, pageSize }) => {
     setOptions(prev => ({
       ...prev,
       pageNum,
       pageSize,
     }));
-  };
+  }, []);
 
-  const onFilter = allValues => {
+  const onFilter = useCallback(allValues => {
     setOptions(prev => ({
       ...prev,
       ...allValues,
       pageNum: 1,
     }));
-  };
+  }, []);
 
   const pagination = {
     pageSize: options.pageSize,
@@ -133,35 +108,33 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
     total: data?.total,
   };
 
-  const columnsMap = useMemo(
-    () =>
-      sources.reduce(
-        (acc, cur) => ({
-          ...acc,
-          [cur.value]: cur.tableColumns,
-        }),
-        {},
+  const { Entity } = useLoadMeta('source', options.sourceType);
+
+  const getFilterFormContent = useCallback(
+    defaultValues =>
+      [
+        {
+          type: 'inputsearch',
+          name: 'keyword',
+          initialValue: defaultValues.keyword,
+          props: {
+            allowClear: true,
+          },
+        },
+      ].concat(
+        pickObjectArray(['sourceType', 'status'], Entity?.FieldList).map(item => ({
+          ...item,
+          visible: true,
+          initialValue: defaultValues[item.name],
+        })),
       ),
-    [],
+    [Entity?.FieldList],
   );
 
-  const columns = [
-    {
-      title: i18n.t('pages.GroupDetail.Sources.DataStreams'),
-      dataIndex: 'inlongStreamId',
-    },
-    {
-      title: i18n.t('meta.Sources.Name'),
-      dataIndex: 'sourceName',
-    },
-  ]
-    .concat(columnsMap[options.sourceType])
-    .concat([
-      {
-        title: i18n.t('basic.Status'),
-        dataIndex: 'status',
-        render: text => genStatusTag(text),
-      },
+  const columns = useMemo(() => {
+    if (!Entity) return [];
+
+    return Entity.ColumnList?.concat([
       {
         title: i18n.t('basic.Operating'),
         dataIndex: 'action',
@@ -178,8 +151,9 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
               </Button>
             </>
           ),
-      } as any,
+      },
     ]);
+  }, [Entity, onDelete, onEdit, readonly]);
 
   return (
     <>

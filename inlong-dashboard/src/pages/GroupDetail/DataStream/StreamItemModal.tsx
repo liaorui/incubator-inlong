@@ -17,16 +17,14 @@
  * under the License.
  */
 
-import React from 'react';
-import { Divider, Modal, message } from 'antd';
+import React, { useCallback } from 'react';
+import { Modal, message } from 'antd';
 import { ModalProps } from 'antd/es/modal';
 import FormGenerator, { useForm } from '@/components/FormGenerator';
 import { useUpdateEffect, useRequest } from '@/hooks';
 import i18n from '@/i18n';
-import { groupForm } from '@/metas/group';
-import getStreamFields from '@/metas/stream';
+import { useLoadMeta, useDefaultMeta } from '@/metas';
 import request from '@/utils/request';
-import { pickObjectArray } from '@/utils';
 import { dataToValues, valuesToData } from './helper';
 
 export interface Props extends ModalProps {
@@ -36,52 +34,77 @@ export interface Props extends ModalProps {
   mqType: string;
 }
 
-export const genFormContent = (isCreate, mqType) => {
-  return [
-    ...getStreamFields([
-      {
-        type: (
-          <Divider orientation="left">{i18n.t('pages.GroupDetail.Stream.config.Basic')}</Divider>
-        ),
-      },
-      'inlongStreamId',
-      'name',
-      'description',
-      {
-        type: (
-          <Divider orientation="left">{i18n.t('pages.GroupDetail.Stream.config.DataInfo')}</Divider>
-        ),
-      },
-      'dataType',
-      'dataEncoding',
-      'dataSeparator',
-      'rowTypeFields',
-      {
-        type: (
-          <Divider orientation="left">{i18n.t('pages.GroupDetail.Stream.config.Scale')}</Divider>
-        ),
-        visible: mqType === 'PULSAR',
-      },
-    ]),
-    ...pickObjectArray(['dailyRecords', 'dailyStorage', 'peakRecords', 'maxLength'], groupForm).map(
-      item => ({
-        ...item,
-        visible: mqType === 'PULSAR',
-      }),
-    ),
-  ].map(item => {
-    const obj = { ...item };
-
-    if (!isCreate && (obj.name === 'inlongStreamId' || obj.name === 'dataType')) {
-      obj.type = 'text';
-    }
-
-    return obj;
-  });
-};
-
 const Comp: React.FC<Props> = ({ inlongGroupId, inlongStreamId, mqType, ...modalProps }) => {
   const [form] = useForm();
+
+  const { defaultValue } = useDefaultMeta('stream');
+
+  const { Entity } = useLoadMeta('stream', defaultValue);
+
+  const genFormContent = useCallback(
+    (isCreate, mqType) => {
+      return [
+        ...(Entity?.FieldList || []),
+        {
+          type: 'inputnumber',
+          label: i18n.t('meta.Group.NumberOfAccess'),
+          name: 'dailyRecords',
+          rules: [{ required: true }],
+          suffix: i18n.t('meta.Group.TenThousand/Day'),
+          props: {
+            min: 1,
+            precision: 0,
+          },
+          visible: mqType === 'PULSAR',
+        },
+        {
+          type: 'inputnumber',
+          label: i18n.t('meta.Group.AccessSize'),
+          name: 'dailyStorage',
+          rules: [{ required: true }],
+          suffix: i18n.t('meta.Group.GB/Day'),
+          props: {
+            min: 1,
+            precision: 0,
+          },
+          visible: mqType === 'PULSAR',
+        },
+        {
+          type: 'inputnumber',
+          label: i18n.t('meta.Group.AccessPeakPerSecond'),
+          name: 'peakRecords',
+          rules: [{ required: true }],
+          suffix: i18n.t('meta.Group.Stripe/Second'),
+          props: {
+            min: 1,
+            precision: 0,
+          },
+          visible: mqType === 'PULSAR',
+        },
+        {
+          type: 'inputnumber',
+          label: i18n.t('meta.Group.SingleStripMaximumLength'),
+          name: 'maxLength',
+          rules: [{ required: true }],
+          suffix: 'Byte',
+          props: {
+            min: 1,
+            precision: 0,
+          },
+          visible: mqType === 'PULSAR',
+        },
+      ].map(item => {
+        const obj = { ...item };
+
+        if (!isCreate && (obj.name === 'inlongStreamId' || obj.name === 'dataType')) {
+          obj.type = 'text';
+        }
+
+        return obj;
+      });
+    },
+    [Entity?.FieldList],
+  );
 
   const { data: savedData, run: getStreamData } = useRequest(
     {
@@ -93,21 +116,23 @@ const Comp: React.FC<Props> = ({ inlongGroupId, inlongStreamId, mqType, ...modal
     },
     {
       manual: true,
-      onSuccess: result => form.setFieldsValue(dataToValues([result])?.[0]),
+      onSuccess: result => form.setFieldsValue(dataToValues(result)),
     },
   );
 
   const onOk = async () => {
-    const values = {
-      ...savedData,
-      ...(await form.validateFields()),
-    };
+    const isUpdate = !!inlongStreamId;
+    const values = await form.validateFields();
+    const submitData = valuesToData(values, inlongGroupId);
+    if (isUpdate) {
+      submitData.id = savedData?.id;
+      submitData.version = savedData?.version;
+    }
 
-    const submitData = valuesToData(values ? [values] : [], inlongGroupId);
     await request({
-      url: inlongStreamId ? '/stream/update' : '/stream/save',
+      url: isUpdate ? '/stream/update' : '/stream/save',
       method: 'POST',
-      data: submitData?.[0],
+      data: submitData,
     });
     await modalProps?.onOk(values);
     message.success(i18n.t('basic.OperatingSuccess'));
@@ -126,7 +151,7 @@ const Comp: React.FC<Props> = ({ inlongGroupId, inlongStreamId, mqType, ...modal
   return (
     <Modal
       {...modalProps}
-      title={i18n.t('pages.GroupDetail.Stream.StreamItemModal.DataFlowConfiguration')}
+      title={i18n.t('pages.GroupDetail.Stream.StreamConfigTitle')}
       width={1000}
       onOk={onOk}
     >

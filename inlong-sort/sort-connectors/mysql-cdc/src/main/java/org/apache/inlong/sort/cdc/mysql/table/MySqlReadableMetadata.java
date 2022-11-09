@@ -23,6 +23,8 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges;
+import io.debezium.relational.history.TableChanges.TableChange;
+import java.util.LinkedHashMap;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.GenericArrayData;
@@ -34,6 +36,8 @@ import org.apache.flink.table.data.TimestampData;
 import org.apache.flink.table.types.DataType;
 import org.apache.inlong.sort.cdc.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.formats.json.canal.CanalJson;
+import org.apache.inlong.sort.formats.json.debezium.DebeziumJson;
+import org.apache.inlong.sort.formats.json.debezium.DebeziumJson.Source;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -96,56 +100,82 @@ public enum MySqlReadableMetadata {
                 }
             }),
 
+    DATA_DEFAULT(
+        "meta.data",
+        DataTypes.STRING(),
+        new MetadataConverter() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Object read(SourceRecord record) {
+                return null;
+            }
+
+            @Override
+            public Object read(SourceRecord record,
+                @Nullable TableChanges.TableChange tableSchema, RowData rowData) {
+                // construct canal json
+                return getCanalData(record, (GenericRowData) rowData, tableSchema);
+            }
+        }),
+
     DATA(
-            "meta.data",
+            "meta.data_canal",
             DataTypes.STRING(),
             new MetadataConverter() {
                 private static final long serialVersionUID = 1L;
 
                 @Override
                 public Object read(SourceRecord record) {
-                    record.value().toString();
-                    Struct messageStruct = (Struct) record.value();
-                    Struct sourceStruct = messageStruct.getStruct(FieldName.TIMESTAMP);
-                    sourceStruct.get(AbstractSourceInfo.TIMESTAMP_KEY);
-                    return TimestampData.fromEpochMillis(
-                            (Long) sourceStruct.get(AbstractSourceInfo.TIMESTAMP_KEY));
+                    return null;
                 }
 
                 @Override
                 public Object read(SourceRecord record,
                                    @Nullable TableChanges.TableChange tableSchema, RowData rowData) {
                     // construct canal json
-                    Struct messageStruct = (Struct) record.value();
-                    Struct sourceStruct = messageStruct.getStruct(FieldName.SOURCE);
-                    // tableName
-                    String tableName = getMetaData(record, AbstractSourceInfo.TABLE_NAME_KEY);
-                    // databaseName
-                    String databaseName = getMetaData(record, AbstractSourceInfo.DATABASE_NAME_KEY);
-                    // opTs
-                    long opTs = (Long) sourceStruct.get(AbstractSourceInfo.TIMESTAMP_KEY);
-                    // ts
-                    long ts = (Long) messageStruct.get(FieldName.TIMESTAMP);
-                    // actual data
-                    GenericRowData data = (GenericRowData) rowData;
-                    Map<String, Object> field = (Map<String, Object>) data.getField(0);
-                    List<Map<String, Object>> dataList = new ArrayList<>();
-                    dataList.add(field);
-
-                    CanalJson canalJson = CanalJson.builder()
-                            .data(dataList).database(databaseName)
-                            .sql("").es(opTs).isDdl(false).pkNames(getPkNames(tableSchema))
-                            .mysqlType(getMysqlType(tableSchema)).table(tableName).ts(ts)
-                            .type(getOpType(record)).build();
-
-                    try {
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        return StringData.fromString(objectMapper.writeValueAsString(canalJson));
-                    } catch (Exception e) {
-                        throw new IllegalStateException("exception occurs when get meta data", e);
-                    }
+                    return getCanalData(record, (GenericRowData) rowData, tableSchema);
                 }
             }),
+
+    DATA_DEBEZIUM(
+        "meta.data_debezium",
+        DataTypes.STRING(),
+        new MetadataConverter() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Object read(SourceRecord record) {
+                return null;
+            }
+
+            @Override
+            public Object read(SourceRecord record,
+                @Nullable TableChanges.TableChange tableSchema, RowData rowData) {
+                // construct debezium json
+                Struct messageStruct = (Struct) record.value();
+                Struct sourceStruct = messageStruct.getStruct(FieldName.SOURCE);
+                GenericRowData data = (GenericRowData) rowData;
+                Map<String, Object> field = (Map<String, Object>) data.getField(0);
+
+                Source source = Source.builder().db(getMetaData(record, AbstractSourceInfo.DATABASE_NAME_KEY))
+                    .table(getMetaData(record, AbstractSourceInfo.TABLE_NAME_KEY))
+                    .name(sourceStruct.getString(AbstractSourceInfo.SERVER_NAME_KEY))
+                    .sqlType(getSqlType(tableSchema))
+                    .pkNames(getPkNames(tableSchema))
+                    .mysqlType(getMysqlType(tableSchema))
+                    .build();
+                DebeziumJson debeziumJson = DebeziumJson.builder().after(field).source(source)
+                        .tsMs(sourceStruct.getInt64(AbstractSourceInfo.TIMESTAMP_KEY)).op(getDebeziumOpType(record))
+                    .tableChange(tableSchema).build();
+
+                try {
+                    return StringData.fromString(OBJECT_MAPPER.writeValueAsString(debeziumJson));
+                } catch (Exception e) {
+                    throw new IllegalStateException("exception occurs when get meta data", e);
+                }
+            }
+        }),
 
     /**
      * Name of the table that contain the row. .
@@ -207,7 +237,7 @@ public enum MySqlReadableMetadata {
 
                 @Override
                 public Object read(SourceRecord record) {
-                    return StringData.fromString(getOpType(record));
+                    return StringData.fromString(getCanalOpType(record));
                 }
             }),
 
@@ -383,9 +413,41 @@ public enum MySqlReadableMetadata {
                 }
             });
 
+    private static StringData getCanalData(SourceRecord record, GenericRowData rowData,
+        TableChange tableSchema) {
+        Struct messageStruct = (Struct) record.value();
+        Struct sourceStruct = messageStruct.getStruct(FieldName.SOURCE);
+        // tableName
+        String tableName = getMetaData(record, AbstractSourceInfo.TABLE_NAME_KEY);
+        // databaseName
+        String databaseName = getMetaData(record, AbstractSourceInfo.DATABASE_NAME_KEY);
+        // opTs
+        long opTs = (Long) sourceStruct.get(AbstractSourceInfo.TIMESTAMP_KEY);
+        // ts
+        long ts = (Long) messageStruct.get(FieldName.TIMESTAMP);
+        // actual data
+        GenericRowData data = rowData;
+        Map<String, Object> field = (Map<String, Object>) data.getField(0);
+        List<Map<String, Object>> dataList = new ArrayList<>();
+        dataList.add(field);
+
+        CanalJson canalJson = CanalJson.builder()
+            .data(dataList).database(databaseName)
+            .sql("").es(opTs).isDdl(false).pkNames(getPkNames(tableSchema))
+            .mysqlType(getMysqlType(tableSchema)).table(tableName).ts(ts)
+            .type(getCanalOpType(record)).sqlType(getSqlType(tableSchema)).build();
+
+        try {
+            return StringData.fromString(OBJECT_MAPPER.writeValueAsString(canalJson));
+        } catch (Exception e) {
+            throw new IllegalStateException("exception occurs when get meta data", e);
+        }
+    }
+
     private final String key;
     private final DataType dataType;
     private final MetadataConverter converter;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     MySqlReadableMetadata(String key, DataType dataType, MetadataConverter converter) {
         this.key = key;
@@ -393,7 +455,7 @@ public enum MySqlReadableMetadata {
         this.converter = converter;
     }
 
-    private static String getOpType(SourceRecord record) {
+    private static String getCanalOpType(SourceRecord record) {
         String opType;
         final Envelope.Operation op = Envelope.operationFor(record);
         if (op == Envelope.Operation.CREATE || op == Envelope.Operation.READ) {
@@ -402,6 +464,19 @@ public enum MySqlReadableMetadata {
             opType = "DELETE";
         } else {
             opType = "UPDATE";
+        }
+        return opType;
+    }
+
+    private static String getDebeziumOpType(SourceRecord record) {
+        String opType;
+        final Envelope.Operation op = Envelope.operationFor(record);
+        if (op == Envelope.Operation.CREATE || op == Envelope.Operation.READ) {
+            opType = "c";
+        } else if (op == Envelope.Operation.DELETE) {
+            opType = "d";
+        } else {
+            opType = "u";
         }
         return opType;
     }
@@ -417,7 +492,7 @@ public enum MySqlReadableMetadata {
         if (tableSchema == null) {
             return null;
         }
-        Map<String, String> mysqlType = new HashMap<>();
+        Map<String, String> mysqlType = new LinkedHashMap<>();
         final Table table = tableSchema.getTable();
         table.columns()
                 .forEach(
@@ -432,7 +507,24 @@ public enum MySqlReadableMetadata {
         return mysqlType;
     }
 
-    private static String getMetaData(SourceRecord record, String tableNameKey) {
+    /**
+     * get sql type from table schema, represents the jdbc data type
+     *
+     * @param tableSchema table schema
+     */
+    public static Map<String, Integer> getSqlType(@Nullable TableChanges.TableChange tableSchema) {
+        if (tableSchema == null) {
+            return null;
+        }
+        Map<String, Integer> sqlType = new LinkedHashMap<>();
+        final Table table = tableSchema.getTable();
+        table.columns().forEach(
+                column -> sqlType.put(column.name(), column.jdbcType())
+        );
+        return sqlType;
+    }
+
+    public static String getMetaData(SourceRecord record, String tableNameKey) {
         Struct messageStruct = (Struct) record.value();
         Struct sourceStruct = messageStruct.getStruct(FieldName.SOURCE);
         return sourceStruct.getString(tableNameKey);

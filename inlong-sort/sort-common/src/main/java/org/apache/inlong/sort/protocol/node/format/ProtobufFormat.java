@@ -35,6 +35,8 @@ public class ProtobufFormat implements Format {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String IDENTIFIER = "protobuf";
+
     @JsonProperty(value = "codec")
     private String codec;
 
@@ -55,7 +57,17 @@ public class ProtobufFormat implements Format {
     @JsonIgnore
     @Override
     public String getFormat() {
-        return "protobuf";
+        return IDENTIFIER;
+    }
+
+    /**
+     * Return the identifier of this format
+     *
+     * @return The identifier of this format such as [json/avro/debezium-json/canal-json]
+     */
+    @Override
+    public String identifier() {
+        return IDENTIFIER;
     }
 
     /**

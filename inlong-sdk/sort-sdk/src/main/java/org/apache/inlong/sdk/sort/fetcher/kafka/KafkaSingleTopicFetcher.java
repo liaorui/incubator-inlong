@@ -79,7 +79,7 @@ public class KafkaSingleTopicFetcher extends SingleTopicFetcher {
                 this.seeker = SeekerFactory.createKafkaSeeker(consumer, topic);
                 consumer.subscribe(Collections.singletonList(topic.getTopic()),
                         new AckOffsetOnRebalance(this.topic.getInLongCluster().getClusterId(), seeker,
-                                commitOffsetMap));
+                                commitOffsetMap, consumer));
             } else {
                 LOGGER.info("consumer is null");
                 return false;
@@ -276,8 +276,8 @@ public class KafkaSingleTopicFetcher extends SingleTopicFetcher {
             context.getStateCounterByTopic(topic).addFetchTimeCost(System.currentTimeMillis() - startFetchTime);
             if (null != records && !records.isEmpty()) {
 
-                List<MessageRecord> msgs = new ArrayList<>();
                 for (ConsumerRecord<byte[], byte[]> msg : records) {
+                    List<MessageRecord> msgs = new ArrayList<>();
                     String offsetKey = getOffset(msg.partition(), msg.offset());
                     List<InLongMessage> inLongMessages = deserializer
                             .deserialize(context, topic, getMsgHeaders(msg.headers()), msg.value());
@@ -291,9 +291,9 @@ public class KafkaSingleTopicFetcher extends SingleTopicFetcher {
                             inLongMessages,
                             offsetKey, System.currentTimeMillis()));
                     context.getStateCounterByTopic(topic).addConsumeSize(msg.value().length);
+                    context.getStateCounterByTopic(topic).addMsgCount(msgs.size());
+                    handleAndCallbackMsg(msgs);
                 }
-                context.getStateCounterByTopic(topic).addMsgCount(msgs.size());
-                handleAndCallbackMsg(msgs);
                 sleepTime = 0L;
             } else {
                 context.getStateCounterByTopic(topic).addEmptyFetchTimes(1);

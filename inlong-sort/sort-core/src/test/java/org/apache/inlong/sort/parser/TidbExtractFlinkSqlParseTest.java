@@ -18,10 +18,6 @@
 
 package org.apache.inlong.sort.parser;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -45,6 +41,11 @@ import org.apache.inlong.sort.protocol.transformation.relation.NodeRelation;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Test for {@link TidbExtractNode}
  */
@@ -63,9 +64,9 @@ public class TidbExtractFlinkSqlParseTest extends AbstractTestBase {
                 new MetaFieldInfo("table_name", MetaField.TABLE_NAME),
                 new MetaFieldInfo("op_ts", MetaField.OP_TS)
         );
-        return new TidbExtractNode("1", "postgres_input", fields, null, null, null
-                , "jdbc:mysql://localhost:2379", "mytable", "database", "username", "pwd"
-                , "localhost:9002", "topic", "json", "consumer_group", "earliest");
+        return new TidbExtractNode("1", "postgres_input", fields, null, null, null, "jdbc:mysql://localhost:2379",
+                "mytable", "database", "username", "pwd", "localhost:9002", "topic", "json", "consumer_group",
+                "earliest");
     }
 
     /**

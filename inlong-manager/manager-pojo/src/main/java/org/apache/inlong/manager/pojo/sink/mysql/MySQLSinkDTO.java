@@ -17,8 +17,6 @@
 
 package org.apache.inlong.manager.pojo.sink.mysql;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import io.swagger.annotations.ApiModelProperty;
@@ -29,6 +27,7 @@ import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.inlong.manager.common.enums.ErrorCodeEnum;
 import org.apache.inlong.manager.common.exceptions.BusinessException;
+import org.apache.inlong.manager.common.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,14 +44,11 @@ import java.util.Map;
 @AllArgsConstructor
 public class MySQLSinkDTO {
 
-    @VisibleForTesting
-    protected static final char SYMBOL = '&';
     /**
      * The sensitive param may lead the attack.
      */
-    @VisibleForTesting
-    protected static final String SENSITIVE_PARAM = "autoDeserialize=true";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String SENSITIVE_PARAM_TRUE = "autoDeserialize=true";
+    private static final String SENSITIVE_PARAM_FALSE = "autoDeserialize=false";
     private static final Logger LOGGER = LoggerFactory.getLogger(MySQLSinkDTO.class);
 
     @ApiModelProperty("MySQL JDBC URL, such as jdbc:mysql://host:port/database")
@@ -100,8 +96,7 @@ public class MySQLSinkDTO {
      */
     public static MySQLSinkDTO getFromJson(@NotNull String extParams) {
         try {
-            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            return OBJECT_MAPPER.readValue(extParams, MySQLSinkDTO.class);
+            return JsonUtils.parseObject(extParams, MySQLSinkDTO.class);
         } catch (Exception e) {
             LOGGER.error("fetch mysql sink info failed from json params: " + extParams, e);
             throw new BusinessException(ErrorCodeEnum.SINK_INFO_INCORRECT.getMessage() + ": " + e.getMessage());
@@ -181,23 +176,17 @@ public class MySQLSinkDTO {
      */
     @VisibleForTesting
     protected static String filterSensitive(String url) {
-        if (StringUtils.isBlank(url) || !url.contains(SENSITIVE_PARAM)) {
-            LOGGER.info("string was empty or not contains sensitive for [{}]", url);
+        if (StringUtils.isBlank(url)) {
             return url;
         }
 
-        String originUrl = url;
-        int index = url.indexOf(SENSITIVE_PARAM);
-        String tmp = SENSITIVE_PARAM;
-        if (index == 0) {
-            tmp = tmp + SYMBOL;
-        } else if (url.charAt(index - 1) == SYMBOL) {
-            tmp = SYMBOL + tmp;
+        String resultUrl = url;
+        if (StringUtils.containsIgnoreCase(url, SENSITIVE_PARAM_TRUE)) {
+            resultUrl = StringUtils.replaceIgnoreCase(url, SENSITIVE_PARAM_TRUE, SENSITIVE_PARAM_FALSE);
         }
 
-        url = url.replace(tmp, "");
-        LOGGER.debug("the origin url [{}] was filter to: [{}]", originUrl, url);
-        return url;
+        LOGGER.debug("the origin url [{}] was replaced to: [{}]", url, resultUrl);
+        return resultUrl;
     }
 
 }

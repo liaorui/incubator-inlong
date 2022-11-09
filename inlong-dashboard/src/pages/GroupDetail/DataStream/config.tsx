@@ -18,7 +18,7 @@
  */
 
 import i18n from '@/i18n';
-import { statusList } from './status';
+import { statusList } from '@/metas/streams/common/status';
 
 export const getFilterFormContent = (defaultValues = {} as any) => [
   {
@@ -30,9 +30,11 @@ export const getFilterFormContent = (defaultValues = {} as any) => [
     type: 'select',
     name: 'status',
     label: i18n.t('basic.Status'),
+    initialValue: defaultValues.status,
     props: {
       allowClear: true,
       options: statusList,
+      dropdownMatchSelectWidth: false,
     },
   },
 ];

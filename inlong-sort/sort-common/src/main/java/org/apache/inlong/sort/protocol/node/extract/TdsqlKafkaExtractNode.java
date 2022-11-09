@@ -19,6 +19,7 @@ package org.apache.inlong.sort.protocol.node.extract;
 
 import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTypeName;
 import org.apache.inlong.sort.protocol.FieldInfo;
@@ -46,6 +47,7 @@ public class TdsqlKafkaExtractNode extends KafkaExtractNode implements InlongMet
 
     private static final long serialVersionUID = 1L;
 
+    @JsonCreator
     public TdsqlKafkaExtractNode(@JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("fields") List<FieldInfo> fields,
@@ -57,9 +59,10 @@ public class TdsqlKafkaExtractNode extends KafkaExtractNode implements InlongMet
             @JsonProperty("scanStartupMode") KafkaScanStartupMode kafkaScanStartupMode,
             @JsonProperty("primaryKey") String primaryKey,
             @JsonProperty("groupId") String groupId,
-            @JsonProperty("scanSpecificOffsets") String scanSpecificOffsets) {
+            @JsonProperty("scanSpecificOffsets") String scanSpecificOffsets,
+            @JsonProperty("scanTimestampMillis") String scanTimestampMillis) {
         super(id, name, fields, watermarkField, properties, topic, bootstrapServers, format, kafkaScanStartupMode,
-                primaryKey, groupId, scanSpecificOffsets);
+                primaryKey, groupId, scanSpecificOffsets, scanTimestampMillis);
     }
 
     /**

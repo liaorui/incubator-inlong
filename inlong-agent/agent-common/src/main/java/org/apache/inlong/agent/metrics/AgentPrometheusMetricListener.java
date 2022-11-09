@@ -17,30 +17,10 @@
 
 package org.apache.inlong.agent.metrics;
 
-import io.prometheus.client.Collector;
-import io.prometheus.client.CounterMetricFamily;
-import io.prometheus.client.exporter.HTTPServer;
-import org.apache.inlong.agent.conf.AgentConfiguration;
-import org.apache.inlong.common.metric.MetricItemValue;
-import org.apache.inlong.common.metric.MetricListener;
-import org.apache.inlong.common.metric.MetricValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_PROMETHEUS_EXPORTER_PORT;
 import static org.apache.inlong.agent.constant.AgentConstants.PROMETHEUS_EXPORTER_PORT;
+import static org.apache.inlong.agent.metrics.AgentMetricItem.KEY_COMPONENT_NAME;
+import static org.apache.inlong.agent.metrics.AgentMetricItem.KEY_PLUGIN_ID;
 import static org.apache.inlong.agent.metrics.AgentMetricItem.M_JOB_FATAL_COUNT;
 import static org.apache.inlong.agent.metrics.AgentMetricItem.M_JOB_RUNNING_COUNT;
 import static org.apache.inlong.agent.metrics.AgentMetricItem.M_PLUGIN_READ_COUNT;
@@ -59,13 +39,36 @@ import static org.apache.inlong.agent.metrics.AgentMetricItem.M_TASK_RUNNING_COU
 import static org.apache.inlong.common.metric.MetricItemMBean.DOMAIN_SEPARATOR;
 import static org.apache.inlong.common.metric.MetricRegister.JMX_DOMAIN;
 
+import io.prometheus.client.Collector;
+import io.prometheus.client.CounterMetricFamily;
+import io.prometheus.client.exporter.HTTPServer;
+import io.prometheus.client.hotspot.DefaultExports;
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import org.apache.inlong.agent.conf.AgentConfiguration;
+import org.apache.inlong.common.metric.MetricItemValue;
+import org.apache.inlong.common.metric.MetricListener;
+import org.apache.inlong.common.metric.MetricValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * prometheus metric listener
  */
 public class AgentPrometheusMetricListener extends Collector implements MetricListener {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AgentPrometheusMetricListener.class);
     public static final String DEFAULT_DIMENSION_LABEL = "dimension";
+    public static final String HYPHEN_SYMBOL = "-";
+    private static final Logger LOGGER = LoggerFactory.getLogger(AgentPrometheusMetricListener.class);
     protected HTTPServer httpServer;
     private AgentMetricItem metricItem;
     private Map<String, AtomicLong> metricValueMap = new ConcurrentHashMap<>();
@@ -114,16 +117,14 @@ public class AgentPrometheusMetricListener extends Collector implements MetricLi
         } catch (IOException e) {
             LOGGER.error("exception while register agent prometheus http server,error:{}", e.getMessage());
         }
-        this.dimensionKeys.add(DEFAULT_DIMENSION_LABEL);
-
     }
 
     @Override
     public List<MetricFamilySamples> collect() {
+        DefaultExports.initialize();
         // total
-        CounterMetricFamily totalCounter = new CounterMetricFamily("group=total",
-                "The metrics of agent node.",
-                Arrays.asList("dimension"));
+        CounterMetricFamily totalCounter = new CounterMetricFamily("total", "metrics_of_agent_node_total",
+                Arrays.asList(DEFAULT_DIMENSION_LABEL));
         totalCounter.addMetric(Arrays.asList(M_JOB_RUNNING_COUNT), metricItem.jobRunningCount.get());
         totalCounter.addMetric(Arrays.asList(M_JOB_FATAL_COUNT), metricItem.jobFatalCount.get());
         totalCounter.addMetric(Arrays.asList(M_TASK_RUNNING_COUNT), metricItem.taskRunningCount.get());
@@ -143,10 +144,17 @@ public class AgentPrometheusMetricListener extends Collector implements MetricLi
         mfs.add(totalCounter);
 
         // id dimension
-        CounterMetricFamily idCounter = new CounterMetricFamily("group=id",
-                "The metrics of agent dimensions.", this.dimensionKeys);
         for (Entry<String, MetricItemValue> entry : this.dimensionMetricValueMap.entrySet()) {
             MetricItemValue itemValue = entry.getValue();
+            Map<String, String> dimensionMap = itemValue.getDimensions();
+            String pluginId = dimensionMap.getOrDefault(KEY_PLUGIN_ID, HYPHEN_SYMBOL);
+            String componentName = dimensionMap.getOrDefault(KEY_COMPONENT_NAME, HYPHEN_SYMBOL);
+            String counterName = pluginId.equals(HYPHEN_SYMBOL) ? componentName : pluginId;
+            List<String> dimensionIdKeys = new ArrayList<>();
+            dimensionIdKeys.add(DEFAULT_DIMENSION_LABEL);
+            dimensionIdKeys.addAll(dimensionMap.keySet());
+            CounterMetricFamily idCounter = new CounterMetricFamily(counterName,
+                    "metrics_of_agent_dimensions_" + counterName, dimensionIdKeys);
 
             addCounterMetricFamily(M_JOB_RUNNING_COUNT, itemValue, idCounter);
             addCounterMetricFamily(M_JOB_FATAL_COUNT, itemValue, idCounter);
@@ -167,8 +175,8 @@ public class AgentPrometheusMetricListener extends Collector implements MetricLi
             addCounterMetricFamily(M_PLUGIN_SEND_FAIL_COUNT, itemValue, idCounter);
             addCounterMetricFamily(M_PLUGIN_READ_SUCCESS_COUNT, itemValue, idCounter);
             addCounterMetricFamily(M_PLUGIN_SEND_SUCCESS_COUNT, itemValue, idCounter);
+            mfs.add(idCounter);
         }
-        mfs.add(idCounter);
         return mfs;
     }
 
@@ -217,11 +225,11 @@ public class AgentPrometheusMetricListener extends Collector implements MetricLi
 
     private void addCounterMetricFamily(String defaultDimension, MetricItemValue itemValue,
             CounterMetricFamily idCounter) {
-        List<String> labelValues = new ArrayList<>(this.dimensionKeys.size());
+        Map<String, String> dimensionMap = itemValue.getDimensions();
+        List<String> labelValues = new ArrayList<>(dimensionMap.size() + 1);
         labelValues.add(defaultDimension);
-        Map<String, String> dimensions = itemValue.getDimensions();
-        for (String key : this.dimensionKeys) {
-            String labelValue = dimensions.getOrDefault(key, "-");
+        for (String key : dimensionMap.keySet()) {
+            String labelValue = dimensionMap.getOrDefault(key, HYPHEN_SYMBOL);
             labelValues.add(labelValue);
         }
         long value = 0L;

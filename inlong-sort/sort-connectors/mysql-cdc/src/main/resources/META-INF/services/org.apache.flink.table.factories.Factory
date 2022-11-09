@@ -30,4 +30,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-org.apache.inlong.sort.MySqlTableInlongSourceFactory
+org.apache.inlong.sort.cdc.mysql.table.MySqlTableInlongSourceFactory

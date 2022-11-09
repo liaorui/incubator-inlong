@@ -17,8 +17,6 @@
 
 package org.apache.inlong.manager.pojo.source.kafka;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +24,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.inlong.manager.common.enums.ErrorCodeEnum;
 import org.apache.inlong.manager.common.exceptions.BusinessException;
+import org.apache.inlong.manager.common.util.JsonUtils;
 
 import javax.validation.constraints.NotNull;
 import java.util.Map;
@@ -38,8 +37,6 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class KafkaSourceDTO {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @ApiModelProperty("Kafka topic")
     private String topic;
@@ -63,8 +60,8 @@ public class KafkaSourceDTO {
                     + "indicates offset 42 for partition 0 and offset 300 for partition 1.")
     private String partitionOffsets;
 
-    @ApiModelProperty("Properties for Kafka")
-    private Map<String, Object> properties;
+    @ApiModelProperty(value = "timestamp is millis")
+    private String timestampMillis;
 
     /**
      * The strategy of auto offset reset.
@@ -102,6 +99,9 @@ public class KafkaSourceDTO {
     @ApiModelProperty(value = "Data field escape symbol")
     private String dataEscapeChar;
 
+    @ApiModelProperty("Properties for Kafka")
+    private Map<String, Object> properties;
+
     /**
      * Get the dto instance from the request
      */
@@ -113,6 +113,7 @@ public class KafkaSourceDTO {
                 .recordSpeedLimit(request.getRecordSpeedLimit())
                 .byteSpeedLimit(request.getByteSpeedLimit())
                 .partitionOffsets(request.getPartitionOffsets())
+                .timestampMillis(request.getTimestampMillis())
                 .autoOffsetReset(request.getAutoOffsetReset())
                 .serializationType(request.getSerializationType())
                 .databasePattern(request.getDatabasePattern())
@@ -126,8 +127,7 @@ public class KafkaSourceDTO {
 
     public static KafkaSourceDTO getFromJson(@NotNull String extParams) {
         try {
-            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            return OBJECT_MAPPER.readValue(extParams, KafkaSourceDTO.class);
+            return JsonUtils.parseObject(extParams, KafkaSourceDTO.class);
         } catch (Exception e) {
             throw new BusinessException(ErrorCodeEnum.SOURCE_INFO_INCORRECT.getMessage() + ": " + e.getMessage());
         }

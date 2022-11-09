@@ -29,6 +29,7 @@ import org.apache.inlong.manager.pojo.cluster.ClusterTagPageRequest;
 import org.apache.inlong.manager.pojo.cluster.ClusterTagRequest;
 import org.apache.inlong.manager.pojo.cluster.ClusterTagResponse;
 import org.apache.inlong.manager.pojo.common.PageResult;
+import org.apache.inlong.manager.pojo.common.UpdateResult;
 
 import java.util.List;
 
@@ -119,6 +120,15 @@ public interface InlongClusterService {
     PageResult<ClusterInfo> list(ClusterPageRequest request);
 
     /**
+     * List clusters by tag and type
+     *
+     * @param clusterTag cluster tag
+     * @param clusterType cluster type
+     * @return cluster info list
+     */
+    List<ClusterInfo> listByTagAndType(String clusterTag, String clusterType);
+
+    /**
      * Update cluster information
      *
      * @param request cluster info to be modified
@@ -126,6 +136,15 @@ public interface InlongClusterService {
      * @return whether succeed
      */
     Boolean update(ClusterRequest request, String operator);
+
+    /**
+     * Update cluster information by unique key
+     *
+     * @param request cluster info to be modified
+     * @param operator current operator
+     * @return update result
+     */
+    UpdateResult updateByKey(ClusterRequest request, String operator);
 
     /**
      * Bind or unbind cluster tag for clusters.
@@ -144,6 +163,16 @@ public interface InlongClusterService {
      * @return whether succeed
      */
     Boolean delete(Integer id, String operator);
+
+    /**
+     * Delete cluster by cluster name and type
+     *
+     * @param name cluster name
+     * @param type cluster type
+     * @param operator current operator
+     * @return whether succeed
+     */
+    Boolean deleteByKey(String name, String type, String operator);
 
     /**
      * Save cluster node info.
@@ -173,6 +202,16 @@ public interface InlongClusterService {
     PageResult<ClusterNodeResponse> listNode(ClusterPageRequest request, String currentUser);
 
     /**
+     * List cluster nodes
+     *
+     * @param inlongGroupId inlong group id
+     * @param clusterType cluster type
+     * @param protocolType protocol type, such as: TCP, HTTP
+     * @return cluster node list
+     */
+    List<ClusterNodeResponse> listNodeByGroupId(String inlongGroupId, String clusterType, String protocolType);
+
+    /**
      * Query node IP list by cluster type
      *
      * @param type cluster type
@@ -199,12 +238,13 @@ public interface InlongClusterService {
     Boolean deleteNode(Integer id, String operator);
 
     /**
-     * Query data proxy nodes by the given inlong group id.
+     * Query data proxy nodes by the given inlong group id and protocol type
      *
      * @param inlongGroupId inlong group id
+     * @param protocolType protocol type
      * @return data proxy node response
      */
-    DataProxyNodeResponse getDataProxyNodes(String inlongGroupId);
+    DataProxyNodeResponse getDataProxyNodes(String inlongGroupId, String protocolType);
 
     /**
      * Get the configuration of DataProxy through the cluster name to which DataProxy belongs.

@@ -31,10 +31,13 @@ public enum TaskTypeEnum {
     MONGODB(9),
     TUBEMQ(10),
     REDIS(11),
-    CKAFKA(12),
-    MYSQL(13),
+    MQTT(12),
+    CKAFKA(212),
+    MYSQL(213),
     TDSQL_KAFKA(101),
-    TIDB(102);
+    TIDB(102),
+
+    ;
 
     private final int type;
 
@@ -66,11 +69,13 @@ public enum TaskTypeEnum {
                 return MONGODB;
             case 10:
                 return TUBEMQ;
+            case 12:
+                return MQTT;
             case 11:
                 return REDIS;
-            case 12:
+            case 212:
                 return CKAFKA;
-            case 13:
+            case 213:
                 return MYSQL;
             case 101:
                 return TDSQL_KAFKA;

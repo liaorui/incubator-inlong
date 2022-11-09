@@ -113,10 +113,10 @@ public class ExtractNodeUtils {
                 return createExtractNode((MongoDBSource) sourceInfo);
             case SourceType.TUBEMQ:
                 return createExtractNode((TubeMQSource) sourceInfo);
-            case SourceType.TDSQL_KAFKA:
-                return createExtractNode((TdsqlKafkaSource) sourceInfo);
             case SourceType.REDIS:
                 return createExtractNode((RedisSource) sourceInfo);
+            case SourceType.TDSQL_KAFKA:
+                return createExtractNode((TdsqlKafkaSource) sourceInfo);
             case SourceType.TIDB:
                 return createExtractNode((TidbSource) sourceInfo);
             default:
@@ -306,6 +306,9 @@ public class ExtractNodeUtils {
             case DEBEZIUM_JSON:
                 format = new DebeziumJsonFormat();
                 break;
+            case RAW:
+                format = new RawFormat();
+                break;
             default:
                 throw new IllegalArgumentException(String.format("Unsupported dataType=%s for kafka source", dataType));
         }
@@ -318,6 +321,9 @@ public class ExtractNodeUtils {
             case SPECIFIC:
                 startupMode = KafkaScanStartupMode.SPECIFIC_OFFSETS;
                 break;
+            case TIMESTAMP_MILLIS:
+                startupMode = KafkaScanStartupMode.TIMESTAMP_MILLIS;
+                break;
             case LATEST:
             default:
                 startupMode = KafkaScanStartupMode.LATEST_OFFSET;
@@ -326,6 +332,7 @@ public class ExtractNodeUtils {
         String groupId = kafkaSource.getGroupId();
         Map<String, String> properties = parseProperties(kafkaSource.getProperties());
         String partitionOffset = kafkaSource.getPartitionOffsets();
+        String scanTimestampMillis = kafkaSource.getTimestampMillis();
         return new KafkaExtractNode(kafkaSource.getSourceName(),
                 kafkaSource.getSourceName(),
                 fieldInfos,
@@ -337,7 +344,9 @@ public class ExtractNodeUtils {
                 startupMode,
                 primaryKey,
                 groupId,
-                partitionOffset);
+                partitionOffset,
+                scanTimestampMillis
+        );
     }
 
     /**
@@ -374,6 +383,7 @@ public class ExtractNodeUtils {
         String groupId = kafkaSource.getGroupId();
         Map<String, String> properties = parseProperties(kafkaSource.getProperties());
         String partitionOffset = kafkaSource.getPartitionOffsets();
+        String scanTimestampMillis = kafkaSource.getTimestampMillis();
         return new TdsqlKafkaExtractNode(kafkaSource.getSourceName(),
                 kafkaSource.getSourceName(),
                 fieldInfos,
@@ -385,8 +395,8 @@ public class ExtractNodeUtils {
                 startupMode,
                 primaryKey,
                 groupId,
-                partitionOffset
-        );
+                partitionOffset,
+                scanTimestampMillis);
     }
 
     /**

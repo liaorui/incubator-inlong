@@ -111,7 +111,6 @@ public class BinlogReader extends AbstractReader {
     @Override
     public Message read() {
         if (!binlogMessagesQueue.isEmpty()) {
-            readerMetric.pluginReadCount.incrementAndGet();
             return getBinlogMessage();
         } else {
             return null;
@@ -167,11 +166,14 @@ public class BinlogReader extends AbstractReader {
                             committer.markProcessed(record);
                         }
                         committer.markBatchFinished();
+                        long dataSize = records.stream().mapToLong(r -> r.value().length()).sum();
                         AuditUtils.add(AuditUtils.AUDIT_ID_AGENT_READ_SUCCESS, inlongGroupId, inlongStreamId,
-                                System.currentTimeMillis(), records.size());
+                                System.currentTimeMillis(), records.size(), dataSize);
+                        readerMetric.pluginReadSuccessCount.addAndGet(records.size());
                         readerMetric.pluginReadCount.addAndGet(records.size());
                     } catch (Exception e) {
                         readerMetric.pluginReadFailCount.addAndGet(records.size());
+                        readerMetric.pluginReadCount.addAndGet(records.size());
                         LOGGER.error("parse binlog message error", e);
                     }
                 })

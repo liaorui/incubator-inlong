@@ -20,10 +20,12 @@
 import React from 'react';
 import { Divider } from 'antd';
 import i18n from '@/i18n';
-import { consumptionForm } from '@/metas/consumption';
+import { useLoadMeta } from '@/metas';
 
-const getContent = () => {
-  return consumptionForm.map(item => {
+export const useConsumeFormContent = (mqType = '') => {
+  const { Entity } = useLoadMeta('consume', mqType);
+
+  return Entity?.FieldList?.map(item => {
     const obj = { ...item };
     if (typeof obj.suffix !== 'string') {
       delete obj.suffix;
@@ -45,6 +47,7 @@ export const getFormContent = (
   noExtraForm: boolean,
   formData: Record<string, any> = {},
   suffixContent,
+  consumeFormContent = [],
 ) => {
   const array = [
     {
@@ -54,7 +57,7 @@ export const getFormContent = (
         </Divider>
       ),
     },
-    ...(getContent() || []),
+    ...consumeFormContent,
   ];
 
   const extraForm =
@@ -64,7 +67,7 @@ export const getFormContent = (
             type: 'input',
             label: i18n.t('pages.ApprovalDetail.ConsumeConfig.ConsumerGroup'),
             name: ['form', 'consumerGroup'],
-            initialValue: formData.consumptionInfo?.consumerGroup,
+            initialValue: formData.consumeInfo?.consumerGroup,
             rules: [{ required: true }],
             props: {
               disabled: isFinished,

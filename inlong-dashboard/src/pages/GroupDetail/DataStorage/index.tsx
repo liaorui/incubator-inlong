@@ -17,55 +17,28 @@
  * under the License.
  */
 
-import React, { useState, useMemo, forwardRef } from 'react';
+import React, { useState, useMemo, forwardRef, useCallback } from 'react';
 import { Button, Modal, message } from 'antd';
 import HighTable from '@/components/HighTable';
 import { defaultSize } from '@/configs/pagination';
 import { useRequest } from '@/hooks';
 import i18n from '@/i18n';
 import DetailModal from './DetailModal';
-import { Sinks } from '@/metas/sinks';
+import { useDefaultMeta, useLoadMeta } from '@/metas';
 import request from '@/utils/request';
+import { pickObjectArray } from '@/utils';
 import { CommonInterface } from '../common';
-import { statusList, genStatusTag } from './status';
 
 type Props = CommonInterface;
 
-const getFilterFormContent = defaultValues => [
-  {
-    type: 'inputsearch',
-    name: 'keyword',
-  },
-  {
-    type: 'select',
-    name: 'sinkType',
-    label: i18n.t('pages.GroupDetail.Sink.Type'),
-    initialValue: defaultValues.sinkType,
-    props: {
-      dropdownMatchSelectWidth: false,
-      options: Sinks.map(item => ({
-        label: item.label,
-        value: item.value,
-      })),
-    },
-  },
-  {
-    type: 'select',
-    name: 'status',
-    label: i18n.t('basic.Status'),
-    props: {
-      allowClear: true,
-      options: statusList,
-    },
-  },
-];
-
 const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
+  const { defaultValue } = useDefaultMeta('sink');
+
   const [options, setOptions] = useState({
     keyword: '',
     pageSize: defaultSize,
     pageNum: 1,
-    sinkType: Sinks[0].value,
+    sinkType: defaultValue,
   });
 
   const [createModal, setCreateModal] = useState<Record<string, unknown>>({
@@ -89,26 +62,29 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
     },
   );
 
-  const onEdit = ({ id }) => {
+  const onEdit = useCallback(({ id }) => {
     setCreateModal({ visible: true, id });
-  };
+  }, []);
 
-  const onDelete = ({ id }) => {
-    Modal.confirm({
-      title: i18n.t('basic.DeleteConfirm'),
-      onOk: async () => {
-        await request({
-          url: `/sink/delete/${id}`,
-          method: 'DELETE',
-          params: {
-            sinkType: options.sinkType,
-          },
-        });
-        await getList();
-        message.success(i18n.t('basic.DeleteSuccess'));
-      },
-    });
-  };
+  const onDelete = useCallback(
+    ({ id }) => {
+      Modal.confirm({
+        title: i18n.t('basic.DeleteConfirm'),
+        onOk: async () => {
+          await request({
+            url: `/sink/delete/${id}`,
+            method: 'DELETE',
+            params: {
+              sinkType: options.sinkType,
+            },
+          });
+          await getList();
+          message.success(i18n.t('basic.DeleteSuccess'));
+        },
+      });
+    },
+    [getList, options.sinkType],
+  );
 
   const onChange = ({ current: pageNum, pageSize }) => {
     setOptions(prev => ({
@@ -132,31 +108,27 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
     total: data?.total,
   };
 
-  const columnsMap = useMemo(
-    () =>
-      Sinks.reduce(
-        (acc, cur) => ({
-          ...acc,
-          [cur.value]: cur.tableColumns,
-        }),
-        {},
-      ),
-    [],
+  const { Entity } = useLoadMeta('sink', options.sinkType);
+
+  const getFilterFormContent = useCallback(
+    defaultValues => [
+      {
+        type: 'inputsearch',
+        name: 'keyword',
+      },
+      ...pickObjectArray(['sinkType', 'status'], Entity?.FieldList).map(item => ({
+        ...item,
+        visible: true,
+        initialValue: defaultValues[item.name],
+      })),
+    ],
+    [Entity?.FieldList],
   );
 
-  const columns = [
-    {
-      title: i18n.t('pages.GroupDetail.Sink.DataStreams'),
-      dataIndex: 'inlongStreamId',
-    },
-  ]
-    .concat(columnsMap[options.sinkType])
-    .concat([
-      {
-        title: i18n.t('basic.Status'),
-        dataIndex: 'status',
-        render: text => genStatusTag(text),
-      },
+  const columns = useMemo(() => {
+    if (!Entity) return [];
+
+    return Entity.ColumnList?.concat([
       {
         title: i18n.t('basic.Operating'),
         dataIndex: 'action',
@@ -175,6 +147,7 @@ const Comp = ({ inlongGroupId, readonly }: Props, ref) => {
           ),
       } as any,
     ]);
+  }, [Entity, onDelete, onEdit, readonly]);
 
   return (
     <>

@@ -17,9 +17,8 @@
 
 package org.apache.inlong.common.enums;
 
-import lombok.Getter;
-
 import java.util.Locale;
+import lombok.Getter;
 
 public enum DataTypeEnum {
     CSV("csv"),

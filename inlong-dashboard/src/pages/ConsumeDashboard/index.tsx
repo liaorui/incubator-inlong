@@ -26,7 +26,7 @@ import { useRequest, useHistory } from '@/hooks';
 import { useTranslation } from 'react-i18next';
 import request from '@/utils/request';
 import { defaultSize } from '@/configs/pagination';
-import { dashCardList, getFilterFormContent, getColumns } from './config';
+import { dashCardList, getFilterFormContent, useColumns } from './config';
 
 const Comp: React.FC = () => {
   const { t } = useTranslation();
@@ -39,7 +39,7 @@ const Comp: React.FC = () => {
   });
 
   const { data: summary = {} } = useRequest({
-    url: '/consumption/summary',
+    url: '/consume/countStatus',
   });
 
   const {
@@ -48,7 +48,7 @@ const Comp: React.FC = () => {
     run: getList,
   } = useRequest(
     {
-      url: '/consumption/list',
+      url: '/consume/list',
       params: options,
     },
     {
@@ -61,7 +61,7 @@ const Comp: React.FC = () => {
       title: t('basic.DeleteConfirm'),
       onOk: async () => {
         await request({
-          url: `/consumption/delete/${id}`,
+          url: `/consume/delete/${id}`,
           method: 'DELETE',
         });
         await getList();
@@ -97,6 +97,8 @@ const Comp: React.FC = () => {
     title: summary[item.dataIndex] || 0,
   }));
 
+  const columns = useColumns({ onDelete });
+
   return (
     <PageContainer useDefaultBreadcrumb={false} useDefaultContainer={false}>
       <Container>
@@ -116,7 +118,7 @@ const Comp: React.FC = () => {
               onFilter,
             }}
             table={{
-              columns: getColumns({ onDelete }),
+              columns,
               rowKey: 'id',
               dataSource: data?.list,
               pagination,

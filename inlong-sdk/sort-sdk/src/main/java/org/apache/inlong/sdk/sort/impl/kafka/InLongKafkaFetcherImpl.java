@@ -77,7 +77,7 @@ public class InLongKafkaFetcherImpl extends InLongTopicFetcher {
                 this.seeker = SeekerFactory.createKafkaSeeker(consumer, inLongTopic);
                 consumer.subscribe(Collections.singletonList(inLongTopic.getTopic()),
                         new AckOffsetOnRebalance(this.inLongTopic.getInLongCluster().getClusterId(), seeker,
-                                commitOffsetMap));
+                                commitOffsetMap, consumer));
             } else {
                 logger.info("consumer is null");
                 return false;
@@ -303,8 +303,8 @@ public class InLongKafkaFetcherImpl extends InLongTopicFetcher {
                     .addFetchTimeCost(System.currentTimeMillis() - startFetchTime);
             if (null != records && !records.isEmpty()) {
 
-                List<MessageRecord> msgs = new ArrayList<>();
                 for (ConsumerRecord<byte[], byte[]> msg : records) {
+                    List<MessageRecord> msgs = new ArrayList<>();
                     String offsetKey = getOffset(msg.partition(), msg.offset());
                     List<InLongMessage> inLongMessages = deserializer
                             .deserialize(context, inLongTopic, getMsgHeaders(msg.headers()), msg.value());
@@ -321,12 +321,12 @@ public class InLongKafkaFetcherImpl extends InLongTopicFetcher {
                             .getStatistics(context.getConfig().getSortTaskId(),
                                     inLongTopic.getInLongCluster().getClusterId(), inLongTopic.getTopic())
                             .addConsumeSize(msg.value().length);
+                    context.getStatManager()
+                            .getStatistics(context.getConfig().getSortTaskId(),
+                                    inLongTopic.getInLongCluster().getClusterId(), inLongTopic.getTopic())
+                            .addMsgCount(msgs.size());
+                    handleAndCallbackMsg(msgs);
                 }
-                context.getStatManager()
-                        .getStatistics(context.getConfig().getSortTaskId(),
-                                inLongTopic.getInLongCluster().getClusterId(), inLongTopic.getTopic())
-                        .addMsgCount(msgs.size());
-                handleAndCallbackMsg(msgs);
                 sleepTime = 0L;
             } else {
                 context.getStatManager()

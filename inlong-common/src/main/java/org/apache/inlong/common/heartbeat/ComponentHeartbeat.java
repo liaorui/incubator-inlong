@@ -33,20 +33,23 @@ public class ComponentHeartbeat {
 
     private String ip;
 
-    private int port;
+    private String port;
+
+    private String protocolType;
 
     private String inCharges;
 
     public ComponentHeartbeat() {
     }
 
-    public ComponentHeartbeat(String clusterTag, String clusterName, String componentType, String ip, int port,
-            String inCharges) {
+    public ComponentHeartbeat(String clusterTag, String clusterName, String componentType, String ip, String port,
+            String inCharges, String protocolType) {
         this.clusterTag = clusterTag;
         this.clusterName = clusterName;
         this.componentType = componentType;
         this.ip = ip;
         this.port = port;
+        this.protocolType = protocolType;
         this.inCharges = inCharges;
     }
 }

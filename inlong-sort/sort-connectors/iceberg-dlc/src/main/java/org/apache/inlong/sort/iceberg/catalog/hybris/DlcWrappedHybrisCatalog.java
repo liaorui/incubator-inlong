@@ -184,6 +184,16 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
     }
 
     @Override
+    public boolean tableExists(TableIdentifier identifier) {
+        try {
+            this.loadTable(identifier);
+            return true;
+        } catch (NoSuchTableException var3) {
+            return false;
+        }
+    }
+
+    @Override
     public boolean dropTable(TableIdentifier identifier, boolean purge) {
         if (!isValidIdentifier(identifier)) {
             return false;

@@ -86,6 +86,7 @@ public class FieldRelationUtils {
             case FILTER:
                 return createFieldRelations(fieldList, constantFieldMap);
             case JOINER:
+                return createJoinerFieldRelations(fieldList, constantFieldMap);
             case LOOKUP_JOINER:
             case TEMPORAL_JOINER:
             case INTERVAL_JOINER:
@@ -146,8 +147,7 @@ public class FieldRelationUtils {
                         inputField = new FieldInfo(streamField.getOriginFieldName(),
                                 streamField.getOriginNodeName(), formatInfo);
                     }
-                    FieldInfo outputField = new FieldInfo(streamField.getFieldName(),
-                            formatInfo);
+                    FieldInfo outputField = new FieldInfo(streamField.getFieldName(), formatInfo);
                     return new FieldRelation(inputField, outputField);
                 }).collect(Collectors.toList());
     }
@@ -277,7 +277,6 @@ public class FieldRelationUtils {
         FieldInfo targetFieldInfo = new FieldInfo(fieldName, transformName,
                 FieldInfoUtils.convertFieldFormat(FieldType.STRING.name()));
         encryptFields.add(fieldName);
-
         EncryptFunction encryptFunction = new EncryptFunction(fieldInfo, new StringConstantParam(key),
                 new StringConstantParam(encrypt));
         return new FieldRelation(encryptFunction, targetFieldInfo);

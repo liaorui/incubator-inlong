@@ -60,9 +60,36 @@ public enum MetaField {
     OP_TYPE,
 
     /**
-     * MySQL binlog data Row. Currently, it is used for MySQL database.
+     * Represents a canal json of a record in database (in string format)
+     * @deprecated please use DATA_CANAL \ DATA_DEBEZIUM
      */
     DATA,
+
+    /**
+     * Represents a canal json of a record in database (in string format)
+     */
+    DATA_CANAL,
+
+    /**
+     * Represents a debezium json of a record in database (in string format)
+     */
+    DATA_DEBEZIUM,
+
+    /**
+     * Represents a canal json of a record in database (in bytes format)
+     * @deprecated please use DATA_BYTES_DEBEZIUM \ DATA_CANAL_BYTES
+     */
+    DATA_BYTES,
+
+    /**
+     * Represents a debezium json of a record in database (in bytes format)
+     */
+    DATA_BYTES_DEBEZIUM,
+
+    /**
+     * Represents a canal json of a record in database (in bytes format)
+     */
+    DATA_BYTES_CANAL,
 
     /**
      * The value of the field before update. Currently, it is used for MySQL database.
@@ -88,6 +115,11 @@ public enum MetaField {
      * The table structure. It is only used for MySQL database
      */
     MYSQL_TYPE,
+
+    /**
+     * The table structure. It is only used for Oracle database
+     */
+    ORACLE_TYPE,
 
     /**
      * Primary key field name. Currently, it is used for MySQL database.

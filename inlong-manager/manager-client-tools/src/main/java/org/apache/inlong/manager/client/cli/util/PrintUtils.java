@@ -17,11 +17,10 @@
 
 package org.apache.inlong.manager.client.cli.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.inlong.manager.common.enums.SimpleGroupStatus;
+import org.apache.inlong.manager.common.enums.SimpleSourceStatus;
+import org.apache.inlong.manager.common.util.JsonUtils;
 
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
@@ -37,8 +36,6 @@ public class PrintUtils {
     private static final String joint = "+";
     private static final String horizontal = "—";
     private static final String vertical = "|";
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * Print a list info to console with format.
@@ -57,8 +54,8 @@ public class PrintUtils {
      */
     public static <T> void printJson(T item) {
         try {
-            System.out.println(OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(item));
-        } catch (JsonProcessingException e) {
+            System.out.println(JsonUtils.toPrettyJsonString(item));
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -112,10 +109,10 @@ public class PrintUtils {
      */
     private static <T, K> List<K> copyObject(List<T> list, Class<K> clazz) {
         List<K> newList = new ArrayList<>();
-        OBJECT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         list.forEach(item -> {
             try {
-                K value = OBJECT_MAPPER.readValue(OBJECT_MAPPER.writeValueAsString(item), clazz);
+                K value = JsonUtils.parseObject(JsonUtils.toJsonString(item), clazz);
+                assert value != null;
                 parseStatus(value);
                 newList.add(value);
             } catch (Exception e) {
@@ -182,9 +179,15 @@ public class PrintUtils {
             field.setAccessible(true);
             if (field.isAnnotationPresent(ParseStatus.class)) {
                 try {
-                    int status = Integer.parseInt(field.get(target).toString());
-                    SimpleGroupStatus groupStatus = SimpleGroupStatus.parseStatusByCode(status);
-                    field.set(target, String.format("%s (%d)", groupStatus, status));
+                    int code = Integer.parseInt(field.get(target).toString());
+                    String name = "";
+                    Class<?> clazz = field.getAnnotation(ParseStatus.class).clazz();
+                    if (SimpleGroupStatus.class.equals(clazz)) {
+                        name = SimpleGroupStatus.parseStatusByCode(code).toString();
+                    } else if (SimpleSourceStatus.class.equals(clazz)) {
+                        name = SimpleSourceStatus.parseByStatus(code).toString();
+                    }
+                    field.set(target, String.format("%s (%d)", name, code));
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }

@@ -27,7 +27,8 @@ public enum KafkaScanStartupMode {
     EARLIEST_OFFSET("earliest-offset"),
     LATEST_OFFSET("latest-offset"),
     SPECIFIC_OFFSETS("specific-offsets"),
-    GROUP_OFFSETS("group-offsets"),;
+    TIMESTAMP_MILLIS("timestamp"),
+    GROUP_OFFSETS("group-offsets");
 
     KafkaScanStartupMode(String value) {
         this.value = value;

@@ -32,6 +32,9 @@ import org.apache.inlong.manager.pojo.cluster.ClusterTagRequest;
 import org.apache.inlong.manager.pojo.cluster.ClusterTagResponse;
 import org.apache.inlong.manager.pojo.common.PageResult;
 import org.apache.inlong.manager.pojo.common.Response;
+import org.apache.inlong.manager.pojo.common.UpdateResult;
+
+import java.util.List;
 
 /**
  * Client for {@link InlongClusterApi}.
@@ -141,10 +144,10 @@ public class InlongClusterClient {
      * @param request query conditions
      * @return cluster list
      */
-    public ClusterInfo list(ClusterPageRequest request) {
-        Response<ClusterInfo> clusterInfoResponse = ClientUtils.executeHttpCall(inlongClusterApi.list(request));
-        ClientUtils.assertRespSuccess(clusterInfoResponse);
-        return clusterInfoResponse.getData();
+    public PageResult<ClusterInfo> list(ClusterPageRequest request) {
+        Response<PageResult<ClusterInfo>> response = ClientUtils.executeHttpCall(inlongClusterApi.list(request));
+        ClientUtils.assertRespSuccess(response);
+        return response.getData();
     }
 
     /**
@@ -154,7 +157,24 @@ public class InlongClusterClient {
      * @return whether succeed
      */
     public Boolean update(ClusterRequest request) {
+        Preconditions.checkNotNull(request.getId(), "inlong cluster id cannot be empty");
+
         Response<Boolean> response = ClientUtils.executeHttpCall(inlongClusterApi.update(request));
+        ClientUtils.assertRespSuccess(response);
+        return response.getData();
+    }
+
+    /**
+     * Update cluster information by unique key.
+     * Cluster name and type should not be null.
+     *
+     * @param request cluster to be modified
+     * @return update result
+     */
+    public UpdateResult updateByKey(ClusterRequest request) {
+        Preconditions.checkNotNull(request.getName(), "cluster name should not be null");
+        Preconditions.checkNotNull(request.getType(), "cluster type should not be null");
+        Response<UpdateResult> response = ClientUtils.executeHttpCall(inlongClusterApi.updateByKey(request));
         ClientUtils.assertRespSuccess(response);
         return response.getData();
     }
@@ -180,6 +200,21 @@ public class InlongClusterClient {
     public Boolean delete(Integer id) {
         Preconditions.checkNotNull(id, "cluster id should not be empty");
         Response<Boolean> response = ClientUtils.executeHttpCall(inlongClusterApi.delete(id));
+        ClientUtils.assertRespSuccess(response);
+        return response.getData();
+    }
+
+    /**
+     * Delete cluster by name and type
+     *
+     * @param name cluster name
+     * @param type cluster type
+     * @return wheter succeed
+     */
+    public Boolean deleteByKey(String name, String type) {
+        Preconditions.checkNotNull(name, "cluster name should not be empty");
+        Preconditions.checkNotNull(type, "cluster type should not be empty");
+        Response<Boolean> response = ClientUtils.executeHttpCall(inlongClusterApi.deleteByKey(name, type));
         ClientUtils.assertRespSuccess(response);
         return response.getData();
     }
@@ -218,6 +253,21 @@ public class InlongClusterClient {
     public PageResult<ClusterNodeResponse> listNode(ClusterPageRequest request) {
         Response<PageResult<ClusterNodeResponse>> response = ClientUtils.executeHttpCall(
                 inlongClusterApi.listNode(request));
+        ClientUtils.assertRespSuccess(response);
+        return response.getData();
+    }
+
+    /**
+     * List cluster nodes
+     *
+     * @param inlongGroupId inlong group id
+     * @param clusterType cluster type
+     * @param protocolType protocol type, such as: TCP, HTTP
+     * @return cluster node list
+     */
+    public List<ClusterNodeResponse> listNode(String inlongGroupId, String clusterType, String protocolType) {
+        Response<List<ClusterNodeResponse>> response = ClientUtils.executeHttpCall(
+                inlongClusterApi.listNodeByGroupId(inlongGroupId, clusterType, protocolType));
         ClientUtils.assertRespSuccess(response);
         return response.getData();
     }

@@ -45,12 +45,14 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
-import org.apache.inlong.common.util.BasicAuth;
 import org.apache.inlong.common.pojo.dataproxy.DataProxyNodeInfo;
 import org.apache.inlong.common.pojo.dataproxy.DataProxyNodeResponse;
+import org.apache.inlong.common.util.BasicAuth;
 import org.apache.inlong.sdk.dataproxy.ConfigConstants;
+import org.apache.inlong.sdk.dataproxy.LoadBalance;
 import org.apache.inlong.sdk.dataproxy.ProxyClientConfig;
 import org.apache.inlong.sdk.dataproxy.network.ClientMgr;
+import org.apache.inlong.sdk.dataproxy.network.HashRing;
 import org.apache.inlong.sdk.dataproxy.network.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +95,7 @@ public class ProxyConfigManager extends Thread {
     private final ReentrantReadWriteLock rw = new ReentrantReadWriteLock();
     private final JsonParser jsonParser = new JsonParser();
     private final Gson gson = new Gson();
+    private final HashRing hashRing = HashRing.getInstance();
     private List<HostInfo> proxyInfoList = new ArrayList<HostInfo>();
     /*the status of the cluster.if this value is changed,we need rechoose  three proxy*/
     private int oldStat = 0;
@@ -106,6 +109,7 @@ public class ProxyConfigManager extends Thread {
         this.clientConfig = configure;
         this.localIP = localIP;
         this.clientManager = clientManager;
+        this.hashRing.setVirtualNode(configure.getVirtualNode());
     }
 
     public String getGroupId() {
@@ -297,6 +301,7 @@ public class ProxyConfigManager extends Thread {
             }
         }
         compareProxyList(proxyEntry);
+
     }
 
     /**
@@ -339,6 +344,9 @@ public class ProxyConfigManager extends Thread {
                 } else {
                     newProxyInfoList.clear();
                     LOGGER.info("proxy IP list doesn't change, load {}", proxyEntry.getLoad());
+                }
+                if (clientConfig.getLoadBalance() == LoadBalance.CONSISTENCY_HASH) {
+                    updateHashRing(proxyInfoList);
                 }
             } else {
                 LOGGER.error("proxyEntry's size is zero");
@@ -582,6 +590,7 @@ public class ProxyConfigManager extends Thread {
         ArrayList<BasicNameValuePair> params = new ArrayList<BasicNameValuePair>();
         params.add(new BasicNameValuePair("extTag", clientConfig.getNetTag()));
         params.add(new BasicNameValuePair("ip", this.localIP));
+        params.add(new BasicNameValuePair("protocolType", clientConfig.getProtocolType()));
         LOGGER.info("Begin to get configure from manager {}, param is {}", url, params);
 
         String resultStr = requestConfiguration(url, params);
@@ -818,5 +827,10 @@ public class ProxyConfigManager extends Thread {
             LOGGER.error("Get local managerIpList occur exception,", t);
         }
         return localManagerIps;
+    }
+
+    public void updateHashRing(List<HostInfo> newHosts) {
+        this.hashRing.updateNode(newHosts);
+        LOGGER.debug("update hash ring {}", hashRing.getVirtualNode2RealNode());
     }
 }
