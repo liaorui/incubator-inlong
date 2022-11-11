@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.inlong.sort.iceberg.flink;
+package org.apache.inlong.sort.iceberg;
 
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.runtime.util.HadoopUtils;
@@ -54,7 +54,7 @@ import java.util.Map;
  *   <li><code>base-namespace</code> - a base namespace as the prefix for all databases (Hadoop catalog only)</li>
  *   <li><code>cache-enabled</code> - whether to enable catalog cache</li>
  * </ul>
- * <p>
+ * </p>
  * To use a custom catalog that is not a Hive or Hadoop catalog, extend this class and override
  * {@link #createCatalogLoader(String, Map, Configuration)}.
  *
@@ -79,7 +79,7 @@ public class FlinkCatalogFactory implements CatalogFactory {
     /**
      * Create an Iceberg {@link org.apache.iceberg.catalog.Catalog} loader to be used by this Flink catalog adapter.
      *
-     * @param name       Flink's catalog name
+     * @param name Flink's catalog name
      * @param properties Flink's catalog properties
      * @param hadoopConf Hadoop configuration for catalog
      * @return an Iceberg catalog loader
@@ -89,8 +89,8 @@ public class FlinkCatalogFactory implements CatalogFactory {
         if (catalogImpl != null) {
             String catalogType = properties.get(ICEBERG_CATALOG_TYPE);
             Preconditions.checkArgument(catalogType == null,
-                    "Cannot create catalog %s, both catalog-type and catalog-impl are set: "
-                            + "catalog-type=%s, catalog-impl=%s",
+                    "Cannot create catalog %s, both catalog-type and "
+                            + "catalog-impl are set: catalog-type=%s, catalog-impl=%s",
                     name, catalogType, catalogImpl);
             return CatalogLoader.custom(name, properties, hadoopConf, catalogImpl);
         }
@@ -98,8 +98,9 @@ public class FlinkCatalogFactory implements CatalogFactory {
         String catalogType = properties.getOrDefault(ICEBERG_CATALOG_TYPE, ICEBERG_CATALOG_TYPE_HIVE);
         switch (catalogType.toLowerCase(Locale.ENGLISH)) {
             case ICEBERG_CATALOG_TYPE_HIVE:
-                // The values of properties 'uri', 'warehouse', 'hive-conf-dir' are allowed to be null, in that case
-                // it will fallback to parse those values from hadoop configuration which is loaded from classpath.
+                // The values of properties 'uri', 'warehouse',
+                // 'hive-conf-dir' are allowed to be null, in that case it will
+                // fallback to parse those values from hadoop configuration which is loaded from classpath.
                 String hiveConfDir = properties.get(HIVE_CONF_DIR);
                 Configuration newHadoopConf = mergeHiveConf(hadoopConf, hiveConfDir);
                 return CatalogLoader.hive(name, newHadoopConf, properties);
@@ -111,6 +112,27 @@ public class FlinkCatalogFactory implements CatalogFactory {
                 throw new UnsupportedOperationException("Unknown catalog-type: " + catalogType
                         + " (Must be 'hive' or 'hadoop')");
         }
+    }
+
+    private static Configuration mergeHiveConf(Configuration hadoopConf, String hiveConfDir) {
+        Configuration newConf = new Configuration(hadoopConf);
+        if (!Strings.isNullOrEmpty(hiveConfDir)) {
+            Preconditions.checkState(Files.exists(Paths.get(hiveConfDir, "hive-site.xml")),
+                    "There should be a hive-site.xml file under the directory %s", hiveConfDir);
+            newConf.addResource(new Path(hiveConfDir, "hive-site.xml"));
+        } else {
+            // If don't provide the hive-site.xml path explicitly, it will try to load resource from classpath. If still
+            // couldn't load the configuration file, then it will throw exception in HiveCatalog.
+            URL configFile = CatalogLoader.class.getClassLoader().getResource("hive-site.xml");
+            if (configFile != null) {
+                newConf.addResource(configFile);
+            }
+        }
+        return newConf;
+    }
+
+    public static Configuration clusterHadoopConf() {
+        return HadoopUtils.getHadoopConfiguration(GlobalConfiguration.loadConfiguration());
     }
 
     @Override
@@ -142,26 +164,5 @@ public class FlinkCatalogFactory implements CatalogFactory {
 
         boolean cacheEnabled = Boolean.parseBoolean(properties.getOrDefault(CACHE_ENABLED, "true"));
         return new FlinkCatalog(name, defaultDatabase, baseNamespace, catalogLoader, cacheEnabled);
-    }
-
-    private static Configuration mergeHiveConf(Configuration hadoopConf, String hiveConfDir) {
-        Configuration newConf = new Configuration(hadoopConf);
-        if (!Strings.isNullOrEmpty(hiveConfDir)) {
-            Preconditions.checkState(Files.exists(Paths.get(hiveConfDir, "hive-site.xml")),
-                    "There should be a hive-site.xml file under the directory %s", hiveConfDir);
-            newConf.addResource(new Path(hiveConfDir, "hive-site.xml"));
-        } else {
-            // If don't provide the hive-site.xml path explicitly, it will try to load resource from classpath. If still
-            // couldn't load the configuration file, then it will throw exception in HiveCatalog.
-            URL configFile = CatalogLoader.class.getClassLoader().getResource("hive-site.xml");
-            if (configFile != null) {
-                newConf.addResource(configFile);
-            }
-        }
-        return newConf;
-    }
-
-    public static Configuration clusterHadoopConf() {
-        return HadoopUtils.getHadoopConfiguration(GlobalConfiguration.loadConfiguration());
     }
 }

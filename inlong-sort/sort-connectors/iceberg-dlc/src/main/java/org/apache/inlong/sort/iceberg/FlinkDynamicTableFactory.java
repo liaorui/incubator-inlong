@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.inlong.sort.iceberg.flink;
+package org.apache.inlong.sort.iceberg;
 
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
@@ -39,21 +39,33 @@ import org.apache.flink.util.Preconditions;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynMethods;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.IcebergTableSource;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
-import org.apache.inlong.sort.base.metric.MetricOption;
-import org.apache.inlong.sort.iceberg.flink.actions.SyncRewriteDataFilesActionOption;
 
 import java.util.Map;
 import java.util.Set;
 
 import static org.apache.inlong.sort.base.Constants.INLONG_AUDIT;
 import static org.apache.inlong.sort.base.Constants.INLONG_METRIC;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_DATABASE_PATTERN;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_ENABLE;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_FORMAT;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_PK_AUTO_GENERATED;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_SCHEMA_UPDATE_POLICY;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TABLE_PATTERN;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK;
+import static org.apache.inlong.sort.iceberg.FlinkConfigOptions.ICEBERG_IGNORE_ALL_CHANGELOG;
 
 /**
- * Copy from iceberg-flink:iceberg-flink-1.13:0.13.2
+ * Copy from org.apache.iceberg.flink:iceberg-flink-runtime-1.13:0.13.2
+ *
+ * <p>
+ * Factory for creating configured instances of {@link IcebergTableSource} and {@link
+ * IcebergTableSink}.We modify IcebergDynamicTableSink to support append-mode .
+ * </p>
  */
 public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, DynamicTableSourceFactory {
     static final String FACTORY_IDENTIFIER = "dlc-inlong";
@@ -82,12 +94,6 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
                     .noDefaultValue()
                     .withDescription("Table name managed in the underlying iceberg catalog and database.");
 
-    public static final ConfigOption<Boolean> ICEBERG_IGNORE_ALL_CHANGELOG =
-            ConfigOptions.key("sink.ignore.changelog")
-                    .booleanType()
-                    .defaultValue(false)
-                    .withDescription("Regard upsert delete as insert kind.");
-
     // Flink 1.13.x change the return type from CatalogTable interface to ResolvedCatalogTable which extends the
     // CatalogTable. Here we use the dynamic method loading approach to avoid adding explicit CatalogTable or
     // ResolvedCatalogTable class into the iceberg-flink-runtime jar for compatibility purpose.
@@ -110,73 +116,15 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         return GET_CATALOG_TABLE.invoke(context);
     }
 
-    @Override
-    public DynamicTableSource createDynamicTableSource(Context context) {
-        ObjectIdentifier objectIdentifier = context.getObjectIdentifier();
-        CatalogTable catalogTable = loadCatalogTable(context);
-        Map<String, String> tableProps = catalogTable.getOptions();
-        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
+    private static CatalogLoader createCatalogLoader(Map<String, String> tableProps) {
+        Configuration flinkConf = new Configuration();
+        tableProps.forEach(flinkConf::setString);
 
-        TableLoader tableLoader;
-        if (catalog != null) {
-            tableLoader = createTableLoader(catalog, objectIdentifier.toObjectPath());
-        } else {
-            tableLoader = createTableLoader(catalogTable, tableProps, objectIdentifier.getDatabaseName(),
-                    objectIdentifier.getObjectName());
-        }
+        String catalogName = flinkConf.getString(CATALOG_NAME);
+        Preconditions.checkNotNull(catalogName, "Table property '%s' cannot be null", CATALOG_NAME.key());
 
-        return new IcebergTableSource(tableLoader, tableSchema, tableProps, context.getConfiguration());
-    }
-
-    @Override
-    public DynamicTableSink createDynamicTableSink(Context context) {
-        ObjectPath objectPath = context.getObjectIdentifier().toObjectPath();
-        CatalogTable catalogTable = loadCatalogTable(context);
-        Map<String, String> tableProps = catalogTable.getOptions();
-        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
-        SyncRewriteDataFilesActionOption compactOption = new SyncRewriteDataFilesActionOption(tableProps);
-        MetricOption metricOption = MetricOption.builder()
-                .withInlongLabels(tableProps.getOrDefault(INLONG_METRIC.key(), INLONG_METRIC.defaultValue()))
-                .withInlongAudit(tableProps.getOrDefault(INLONG_AUDIT.key(), INLONG_AUDIT.defaultValue()))
-                .build();
-
-        boolean appendMode = tableProps.containsKey(ICEBERG_IGNORE_ALL_CHANGELOG.key())
-                ? Boolean.parseBoolean(tableProps.get(ICEBERG_IGNORE_ALL_CHANGELOG.key()))
-                : ICEBERG_IGNORE_ALL_CHANGELOG.defaultValue();
-
-        TableLoader tableLoader;
-        if (catalog != null) {
-            tableLoader = createTableLoader(catalog, objectPath);
-        } else {
-            tableLoader = createTableLoader(catalogTable, tableProps, objectPath.getDatabaseName(),
-                    objectPath.getObjectName());
-        }
-
-        return new IcebergTableSink(tableLoader, tableSchema, compactOption, metricOption, appendMode);
-    }
-
-    @Override
-    public Set<ConfigOption<?>> requiredOptions() {
-        Set<ConfigOption<?>> options = Sets.newHashSet();
-        options.add(CATALOG_TYPE);
-        options.add(CATALOG_NAME);
-        return options;
-    }
-
-    @Override
-    public Set<ConfigOption<?>> optionalOptions() {
-        Set<ConfigOption<?>> options = Sets.newHashSet();
-        options.add(CATALOG_DATABASE);
-        options.add(CATALOG_TABLE);
-        options.add(ICEBERG_IGNORE_ALL_CHANGELOG);
-        options.add(INLONG_METRIC);
-        options.add(INLONG_AUDIT);
-        return options;
-    }
-
-    @Override
-    public String factoryIdentifier() {
-        return FACTORY_IDENTIFIER;
+        org.apache.hadoop.conf.Configuration hadoopConf = FlinkCatalogFactory.clusterHadoopConf();
+        return FlinkCatalogFactory.createCatalogLoader(catalogName, tableProps, hadoopConf);
     }
 
     private static TableLoader createTableLoader(CatalogBaseTable catalogBaseTable,
@@ -203,11 +151,11 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         // Create database if not exists in the external catalog.
         if (!flinkCatalog.databaseExists(catalogDatabase)) {
             try {
-                flinkCatalog.createDatabase(catalogDatabase,
-                        new CatalogDatabaseImpl(Maps.newHashMap(), null), true);
+                flinkCatalog.createDatabase(catalogDatabase, new CatalogDatabaseImpl(Maps.newHashMap(), null), true);
             } catch (DatabaseAlreadyExistException e) {
-                throw new AlreadyExistsException(
-                        e, "Database %s already exists in the iceberg catalog %s.", catalogName, catalogDatabase);
+                throw new AlreadyExistsException(e, "Database %s already exists in the iceberg catalog %s.",
+                        catalogName,
+                        catalogDatabase);
             }
         }
 
@@ -221,12 +169,87 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
             }
         }
 
-        return TableLoader.fromCatalog(
-                flinkCatalog.getCatalogLoader(), TableIdentifier.of(catalogDatabase, catalogTable));
+        return TableLoader.fromCatalog(flinkCatalog.getCatalogLoader(),
+                TableIdentifier.of(catalogDatabase, catalogTable));
     }
 
     private static TableLoader createTableLoader(FlinkCatalog catalog, ObjectPath objectPath) {
         Preconditions.checkNotNull(catalog, "Flink catalog cannot be null");
         return TableLoader.fromCatalog(catalog.getCatalogLoader(), catalog.toIdentifier(objectPath));
     }
+
+    @Override
+    public DynamicTableSource createDynamicTableSource(Context context) {
+        ObjectIdentifier objectIdentifier = context.getObjectIdentifier();
+        CatalogTable catalogTable = loadCatalogTable(context);
+        Map<String, String> tableProps = catalogTable.getOptions();
+        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
+
+        TableLoader tableLoader;
+        if (catalog != null) {
+            tableLoader = createTableLoader(catalog, objectIdentifier.toObjectPath());
+        } else {
+            tableLoader = createTableLoader(catalogTable, tableProps, objectIdentifier.getDatabaseName(),
+                    objectIdentifier.getObjectName());
+        }
+
+        return new IcebergTableSource(tableLoader, tableSchema, tableProps, context.getConfiguration());
+    }
+
+    @Override
+    public DynamicTableSink createDynamicTableSink(Context context) {
+        ObjectPath objectPath = context.getObjectIdentifier().toObjectPath();
+        CatalogTable catalogTable = loadCatalogTable(context);
+        Map<String, String> tableProps = catalogTable.getOptions();
+        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
+
+        boolean multipleSink = Boolean.parseBoolean(
+                tableProps.getOrDefault(SINK_MULTIPLE_ENABLE.key(), SINK_MULTIPLE_ENABLE.defaultValue().toString()));
+        if (multipleSink) {
+            CatalogLoader catalogLoader = createCatalogLoader(tableProps);
+            return new IcebergTableSink(null, tableSchema, catalogTable, catalogLoader);
+        } else {
+            TableLoader tableLoader;
+            if (catalog != null) {
+                tableLoader = createTableLoader(catalog, objectPath);
+            } else {
+                tableLoader = createTableLoader(catalogTable, tableProps, objectPath.getDatabaseName(),
+                        objectPath.getObjectName());
+            }
+            return new IcebergTableSink(tableLoader, tableSchema, catalogTable, null);
+        }
+    }
+
+    @Override
+    public Set<ConfigOption<?>> requiredOptions() {
+        Set<ConfigOption<?>> options = Sets.newHashSet();
+        options.add(CATALOG_TYPE);
+        options.add(CATALOG_NAME);
+        return options;
+    }
+
+    @Override
+    public Set<ConfigOption<?>> optionalOptions() {
+        Set<ConfigOption<?>> options = Sets.newHashSet();
+        options.add(CATALOG_DATABASE);
+        options.add(CATALOG_TABLE);
+        options.add(ICEBERG_IGNORE_ALL_CHANGELOG);
+        options.add(INLONG_METRIC);
+        options.add(INLONG_AUDIT);
+
+        options.add(SINK_MULTIPLE_ENABLE);
+        options.add(SINK_MULTIPLE_FORMAT);
+        options.add(SINK_MULTIPLE_DATABASE_PATTERN);
+        options.add(SINK_MULTIPLE_TABLE_PATTERN);
+        options.add(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
+        options.add(SINK_MULTIPLE_PK_AUTO_GENERATED);
+        options.add(SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK);
+        return options;
+    }
+
+    @Override
+    public String factoryIdentifier() {
+        return FACTORY_IDENTIFIER;
+    }
 }
+

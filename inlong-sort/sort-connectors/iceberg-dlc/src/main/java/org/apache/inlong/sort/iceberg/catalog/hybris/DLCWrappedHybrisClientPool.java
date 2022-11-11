@@ -34,7 +34,7 @@ import org.apache.thrift.transport.TTransportException;
 /**
  * DLC Catalog client pool.
  */
-public class DLCWrappedHybrisClientPool extends ClientPoolImpl<IMetaStoreClient, TException> {
+public class DLCWrappedHybrisClientPool extends ClientPoolImpl<DLCDataCatalogMetastoreClient, TException> {
 
     // use appropriate ctor depending on whether we're working with Hive2 or Hive3 dependencies
     // we need to do this because there is a breaking API change between Hive2 and Hive3
@@ -52,7 +52,7 @@ public class DLCWrappedHybrisClientPool extends ClientPoolImpl<IMetaStoreClient,
     }
 
     @Override
-    protected IMetaStoreClient newClient()  {
+    protected DLCDataCatalogMetastoreClient newClient()  {
         try {
             try {
                 return CLIENT_CTOR.newInstance(hiveConf);
@@ -78,7 +78,7 @@ public class DLCWrappedHybrisClientPool extends ClientPoolImpl<IMetaStoreClient,
     }
 
     @Override
-    protected IMetaStoreClient reconnect(IMetaStoreClient client) {
+    protected DLCDataCatalogMetastoreClient reconnect(DLCDataCatalogMetastoreClient client) {
         try {
             client.close();
             client.reconnect();
@@ -95,7 +95,7 @@ public class DLCWrappedHybrisClientPool extends ClientPoolImpl<IMetaStoreClient,
     }
 
     @Override
-    protected void close(IMetaStoreClient client) {
+    protected void close(DLCDataCatalogMetastoreClient client) {
         client.close();
     }
 

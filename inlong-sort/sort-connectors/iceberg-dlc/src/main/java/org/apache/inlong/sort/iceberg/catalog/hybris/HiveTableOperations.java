@@ -198,7 +198,6 @@ public class HiveTableOperations extends BaseMetastoreTableOperations {
             if (currentMetadataLocation() != null) {
                 throw new NoSuchTableException("No such table: %s.%s", database, tableName);
             }
-
         } catch (TException e) {
             String errMsg = String.format("Failed to get table info from metastore %s.%s", database, tableName);
             throw new RuntimeException(errMsg, e);
@@ -390,6 +389,11 @@ public class HiveTableOperations extends BaseMetastoreTableOperations {
                     "org.apache.iceberg.mr.hive.HiveIcebergStorageHandler");
         } else {
             parameters.remove(hive_metastoreConstants.META_TABLE_STORAGE);
+        }
+
+        // If needed set the dlc managed table when data in lakefs
+        if (newMetadataLocation != null && newMetadataLocation.startsWith("lakefs")) {
+            parameters.put("lakehouse.storage.type", "lakefs");
         }
 
         // Set the basic statistics
