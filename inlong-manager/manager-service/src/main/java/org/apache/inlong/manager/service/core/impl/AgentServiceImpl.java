@@ -288,7 +288,8 @@ public class AgentServiceImpl implements AgentService {
                 SourceStatus.TO_BE_ISSUED_RETRY.getCode(), SourceStatus.TO_BE_ISSUED_BACKTRACK.getCode(),
                 SourceStatus.TO_BE_ISSUED_FROZEN.getCode(), SourceStatus.TO_BE_ISSUED_CHECK.getCode(),
                 SourceStatus.TO_BE_ISSUED_REDO_METRIC.getCode(), SourceStatus.TO_BE_ISSUED_MAKEUP.getCode());
-        List<StreamSourceEntity> sourceEntities = sourceMapper.selectByStatusAndIp(statusList, agentIp, uuid);
+        List<StreamSourceEntity> sourceEntities = sourceMapper.selectByStatusAndIp(statusList, agentIp,
+                taskRequest.getClusterName(), uuid);
         List<DataConfig> issuedTasks = Lists.newArrayList();
         for (StreamSourceEntity issuedTask : sourceEntities) {
             int op = getOp(issuedTask.getStatus());
