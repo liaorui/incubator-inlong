@@ -33,6 +33,7 @@ import org.apache.hadoop.fs.CosNConfigKeys;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.auth.DlcCloudCredentialsProvider;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
@@ -100,7 +101,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
     private String name;
     private Configuration conf;
     private FileIO fileIO;
-    private ClientPool<IMetaStoreClient, TException> clients;
+    private ClientPool<DLCDataCatalogMetastoreClient, TException> clients;
     private boolean listAllTables = false;
 
     public DlcWrappedHybrisCatalog() {
@@ -127,6 +128,8 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         if (properties.containsKey(CatalogProperties.WAREHOUSE_LOCATION)) {
             this.conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname,
                     properties.get(CatalogProperties.WAREHOUSE_LOCATION));
+        } else {
+            this.conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname, ConfVars.METASTOREWAREHOUSE.defaultStrVal);
         }
 
         this.listAllTables = Boolean.parseBoolean(properties.getOrDefault(LIST_ALL_TABLES, LIST_ALL_TABLES_DEFAULT));
@@ -181,6 +184,16 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
     @Override
     public String name() {
         return name;
+    }
+
+    @Override
+    public boolean tableExists(TableIdentifier identifier) {
+        try {
+            this.loadTable(identifier);
+            return true;
+        } catch (NoSuchTableException var3) {
+            return false;
+        }
     }
 
     @Override
@@ -325,7 +338,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
             return ImmutableList.of();
         }
         try {
-            List<Namespace> namespaces = clients.run(IMetaStoreClient::getAllDatabases)
+            List<Namespace> namespaces = clients.run(DLCDataCatalogMetastoreClient::getAllDatabases)
                     .stream()
                     .map(Namespace::of)
                     .collect(Collectors.toList());
@@ -484,6 +497,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         return new HiveTableOperations(conf, clients, fileIO, name, dbName, tableName);
     }
 
+    // 因为dlc的库表逻辑不遵循hive的建表逻辑，所以这里需要修改
     @Override
     protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
         // This is a little edgy since we basically duplicate the HMS location generation logic.
@@ -491,13 +505,25 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         // - Create meta files
         // - Create the metadata in HMS, and this way committing the changes
 
-        // Create a new location based on the namespace / database if it is set on database level
+        // 'warehouse' parameters determine whether the table is managed table
+        // Managed table:
+        // - dlc client internally obtained warehouse address
+        // Not managed table:
+        // - stick to the {WAREHOUSE_DIR}/{DB_NAME}.db/{TABLE_NAME} path
+        String warehouseLocation = getWarehouseLocation();
+        if (!ConfVars.METASTOREWAREHOUSE.defaultStrVal.equals(warehouseLocation)) {
+            return String.format(
+                    "%s/%s.db/%s",
+                    warehouseLocation,
+                    tableIdentifier.namespace().levels()[0],
+                    tableIdentifier.name());
+        }
+
         try {
-            Database databaseData = clients.run(client -> client.getDatabase(tableIdentifier.namespace().levels()[0]));
-            if (databaseData.getLocationUri() != null) {
-                // If the database location is set use it as a base.
-                return String.format("%s/%s", databaseData.getLocationUri(), tableIdentifier.name());
-            }
+            String warehouse = clients.run(client ->
+                    client.getTableLocation(tableIdentifier.namespace().levels()[0], tableIdentifier.name()));
+
+            return warehouse;
 
         } catch (TException e) {
             throw new RuntimeException(String.format("Metastore operation failed for %s", tableIdentifier), e);
@@ -506,14 +532,6 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted during commit", e);
         }
-
-        // Otherwise stick to the {WAREHOUSE_DIR}/{DB_NAME}.db/{TABLE_NAME} path
-        String warehouseLocation = getWarehouseLocation();
-        return String.format(
-                "%s/%s.db/%s",
-                warehouseLocation,
-                tableIdentifier.namespace().levels()[0],
-                tableIdentifier.name());
     }
 
     private String getWarehouseLocation() {

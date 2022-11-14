@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.inlong.sort.iceberg.flink.sink;
+package org.apache.inlong.sort.iceberg.sink;
 
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
@@ -62,6 +62,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
     private transient OutputFileFactory outputFileFactory;
 
     public RowDataTaskWriterFactory(Table table,
+            Schema scheam,
             RowType flinkSchema,
             long targetFileSizeBytes,
             FileFormat format,
@@ -69,7 +70,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
             boolean upsert,
             boolean appendMode) {
         this.table = table;
-        this.schema = table.schema();
+        this.schema = scheam;
         this.flinkSchema = flinkSchema;
         this.spec = table.spec();
         this.io = table.io();

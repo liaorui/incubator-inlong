@@ -1,28 +1,28 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
  */
 
-package org.apache.inlong.sort.iceberg.flink.actions;
+package org.apache.inlong.sort.iceberg.actions;
 
 import com.qcloud.dlc.common.Constants;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.PropertyUtil;
-import org.apache.inlong.sort.iceberg.flink.FlinkCatalogFactory;
+import org.apache.inlong.sort.iceberg.FlinkCatalogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,14 +34,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.ACTION_AUTO_COMPACT_OPTIONS;
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.COMPACT_INTERVAL;
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.COMPACT_INTERVAL_DEFAULT;
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.COMPACT_PREFIX;
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.COMPACT_RESOUCE_POOL;
-import static org.apache.inlong.sort.iceberg.flink.CompactTableProperties.COMPACT_RESOUCE_POOL_DEFAULT;
-import static org.apache.inlong.sort.iceberg.flink.FlinkDynamicTableFactory.CATALOG_DATABASE;
-import static org.apache.inlong.sort.iceberg.flink.FlinkDynamicTableFactory.CATALOG_TABLE;
+import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_DATABASE;
+import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_TABLE;
 
 public class SyncRewriteDataFilesActionOption implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -112,7 +106,7 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
                             urlParams.put(param[0], param[1]);
                         }
                     });
-            Optional.ofNullable(properties.get(COMPACT_RESOUCE_POOL))
+            Optional.ofNullable(properties.get(CompactTableProperties.COMPACT_RESOUCE_POOL))
                     .ifPresent(v -> urlParams.put(URL_DATA_RESOURCE_NAME, v));
         } else {
             endpoint = properties.getOrDefault(URL_ENDPOINT, URL_ENDPOINT_DEFAULT);
@@ -122,7 +116,9 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
             urlParams.put(URL_DATA_SOURCE, properties.getOrDefault(URL_DATA_SOURCE, URL_DATA_SOURCE_DEFAULT));
             urlParams.put(URL_REGION, properties.getOrDefault(URL_REGION, URL_REGION_DEFAULT));
             urlParams.put(URL_DATA_RESOURCE_NAME,
-                    properties.getOrDefault(COMPACT_RESOUCE_POOL, COMPACT_RESOUCE_POOL_DEFAULT));
+                    properties.getOrDefault(
+                            CompactTableProperties.COMPACT_RESOUCE_POOL,
+                            CompactTableProperties.COMPACT_RESOUCE_POOL_DEFAULT));
 
         }
         List<String> urlParamsList =
@@ -139,16 +135,18 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
         return properties.get(AUTH_SECRET_KEY);
     }
 
-    public String rewriteSql() {
+    public String rewriteSql(Table table) {
         String dbName = properties.get(REWRITE_DB_NAME);
         String tableName = properties.get(REWRITE_TABLE_NAME);
         Preconditions.checkNotNull(dbName);
         Preconditions.checkNotNull(tableName);
         String wholeTableName = String.format("%s.%s", dbName, tableName);
+        properties.put(CompactTableProperties.COMPACT_END_SNAPSHOT_ID, String.valueOf(table.currentSnapshot().snapshotId()));  // todo:后续优化这段添加snapshop-id的逻辑
         String rewriteOptions = String.join(",",
-                ACTION_AUTO_COMPACT_OPTIONS.stream()
+                CompactTableProperties.ACTION_AUTO_COMPACT_OPTIONS.stream()
                     .filter(properties::containsKey)
-                    .map(k -> String.format("'%s', '%s'", k.substring(COMPACT_PREFIX.length()), properties.get(k)))
+                    .map(k -> String.format("'%s', '%s'",
+                            k.substring(CompactTableProperties.COMPACT_PREFIX.length()), properties.get(k)))
                     .collect(Collectors.toList()));
         String rewriteTableSql;
         if (rewriteOptions.isEmpty()) {
@@ -166,6 +164,7 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
     }
 
     public int interval() {
-        return PropertyUtil.propertyAsInt(properties, COMPACT_INTERVAL, COMPACT_INTERVAL_DEFAULT);
+        return PropertyUtil.propertyAsInt(properties,
+                CompactTableProperties.COMPACT_INTERVAL, CompactTableProperties.COMPACT_INTERVAL_DEFAULT);
     }
 }
