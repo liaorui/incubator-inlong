@@ -74,7 +74,7 @@ public class StartupStreamListener implements SortOperateListener {
         }
 
         log.info("add startup stream listener for groupId [{}] streamId [{}]", groupId, streamId);
-        return true;
+        return false;
     }
 
     @Override
