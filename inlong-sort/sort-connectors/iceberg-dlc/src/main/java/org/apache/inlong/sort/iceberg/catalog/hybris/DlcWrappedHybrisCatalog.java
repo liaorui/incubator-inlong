@@ -19,6 +19,7 @@
 
 package org.apache.inlong.sort.iceberg.catalog.hybris;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +77,10 @@ import org.slf4j.LoggerFactory;
 public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements SupportsNamespaces, Configurable {
     public static final String LIST_ALL_TABLES = "list-all-tables";
     public static final String LIST_ALL_TABLES_DEFAULT = "false";
+    public static final Set<String> SUPPORTED_WAREHOUSE = new HashSet<String>(){{
+        add("lakefs://");
+        add("cosn://");
+    }};
     public static final Set<String> DLC_WHITELIST_PARAMS = Stream.of(
             Constants.DLC_REGION_CONF,
             Constants.DLC_ENDPOINT,
@@ -126,8 +131,12 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         }
 
         if (properties.containsKey(CatalogProperties.WAREHOUSE_LOCATION)) {
-            this.conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname,
-                    properties.get(CatalogProperties.WAREHOUSE_LOCATION));
+            String warehouse = properties.get(CatalogProperties.WAREHOUSE_LOCATION);
+            if (SUPPORTED_WAREHOUSE.stream().noneMatch(warehousePre -> warehouse.startsWith(warehousePre))) {
+                throw new IllegalArgumentException(
+                        "Illegal warehouse location, supportted location:" + SUPPORTED_WAREHOUSE);
+            }
+            this.conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname, warehouse);
         } else {
             this.conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname, ConfVars.METASTOREWAREHOUSE.defaultStrVal);
         }
