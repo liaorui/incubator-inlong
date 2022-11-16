@@ -67,7 +67,7 @@ public class PostgresExtractFlinkSqlParseTest extends AbstractTestBase {
                 new MetaFieldInfo("schema_name", MetaField.SCHEMA_NAME)
         );
         return new PostgresExtractNode("1", "postgres_input", fields, null, null, null, Arrays.asList("user"),
-                "localhost", "postgres", "inlong", "postgres", "public", 5432, null);
+                "localhost", "postgres", "inlong", "postgres", "public", 5432, null, null, null);
     }
 
     /**

@@ -68,6 +68,10 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
     private Integer port;
     @JsonProperty("decodingPluginName")
     private String decodingPluginName;
+    @JsonProperty("serverTimeZone")
+    private String serverTimeZone;
+    @JsonProperty("scanStartupMode")
+    private String scanStartupMode;
 
     @JsonCreator
     public PostgresExtractNode(@JsonProperty("id") String id,
@@ -83,7 +87,9 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
             @JsonProperty("database") String database,
             @JsonProperty("schema") String schema,
             @JsonProperty("port") Integer port,
-            @JsonProperty("decodingPluginName") String decodingPluginName) {
+            @JsonProperty("decodingPluginName") String decodingPluginName,
+            @JsonProperty("serverTimeZone") String serverTimeZone,
+            @JsonProperty("scanStartupMode") String scanStartupMode) {
         super(id, name, fields, watermarkField, properties);
         this.primaryKey = primaryKey;
         this.tableNames = Preconditions.checkNotNull(tableNames, "tableNames is null");
@@ -94,6 +100,8 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
         this.schema = Preconditions.checkNotNull(schema, "schema is null");
         this.port = Preconditions.checkNotNull(port, "port is null");
         this.decodingPluginName = decodingPluginName;
+        this.serverTimeZone = serverTimeZone;
+        this.scanStartupMode = scanStartupMode;
     }
 
     /**
@@ -125,6 +133,12 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
         options.put(PostgresConstant.DECODING_PLUGIN_NAME, decodingPluginNameOption);
         options.put(PostgresConstant.SLOT_NAME, UUID.randomUUID().toString().toLowerCase(Locale.ROOT).replaceAll(
                 "[\\-\\d]", ""));
+        if (StringUtils.isNotBlank(serverTimeZone)) {
+            options.put(PostgresConstant.SERVER_TIME_ZONE, serverTimeZone);
+        }
+        if (StringUtils.isNotBlank(scanStartupMode)) {
+            options.put(PostgresConstant.DEBEZIUM_SNAPSHOT_MODE, scanStartupMode);
+        }
         return options;
     }
 
@@ -146,6 +160,7 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
     @Override
     public Set<MetaField> supportedMetaFields() {
         return EnumSet.of(MetaField.PROCESS_TIME, MetaField.TABLE_NAME, MetaField.DATABASE_NAME,
-                MetaField.SCHEMA_NAME, MetaField.OP_TS);
+                MetaField.SCHEMA_NAME, MetaField.OP_TS, MetaField.DATA, MetaField.DATA_CANAL,
+                MetaField.DATA_BYTES, MetaField.DATA_BYTES_CANAL);
     }
 }
