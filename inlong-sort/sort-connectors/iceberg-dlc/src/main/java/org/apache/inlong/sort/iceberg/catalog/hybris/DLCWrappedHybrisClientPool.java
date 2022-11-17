@@ -22,7 +22,6 @@ package org.apache.inlong.sort.iceberg.catalog.hybris;
 import com.qcloud.dlc.metastore.DLCDataCatalogMetastoreClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.iceberg.ClientPoolImpl;
 import org.apache.iceberg.common.DynConstructors;

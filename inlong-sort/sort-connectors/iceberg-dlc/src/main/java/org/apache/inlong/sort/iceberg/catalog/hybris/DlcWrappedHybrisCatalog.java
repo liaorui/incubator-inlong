@@ -19,13 +19,6 @@
 
 package org.apache.inlong.sort.iceberg.catalog.hybris;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import com.qcloud.dlc.common.Constants;
 import com.qcloud.dlc.metastore.DLCDataCatalogMetastoreClient;
 import org.apache.hadoop.conf.Configurable;
@@ -36,7 +29,6 @@ import org.apache.hadoop.fs.auth.DlcCloudCredentialsProvider;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
-import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.InvalidOperationException;
@@ -70,14 +62,22 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * The only changed point is HiveClientPool, from
  * {@link HiveMetaStoreClient} to {@link DLCDataCatalogMetastoreClient}
  */
 public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements SupportsNamespaces, Configurable {
+
     public static final String LIST_ALL_TABLES = "list-all-tables";
     public static final String LIST_ALL_TABLES_DEFAULT = "false";
-    public static final Set<String> SUPPORTED_WAREHOUSE = new HashSet<String>(){{
+    public static final Set<String> SUPPORTED_WAREHOUSE = new HashSet<String>() {{
         add("lakefs://");
         add("cosn://");
     }};
@@ -99,7 +99,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
             CosNConfigKeys.COSN_CREDENTIALS_PROVIDER,
             "fs.lakefs.impl",
             "fs.cosn.impl"
-        ).collect(Collectors.toSet());
+    ).collect(Collectors.toSet());
 
     private static final Logger LOG = LoggerFactory.getLogger(DlcWrappedHybrisCatalog.class);
 
@@ -169,8 +169,8 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
                 tableIdentifiers = tableObjects.stream()
                         .filter(table -> table.getParameters() != null
                                 && BaseMetastoreTableOperations.ICEBERG_TABLE_TYPE_VALUE
-                                    .equalsIgnoreCase(
-                                            table.getParameters().get(BaseMetastoreTableOperations.TABLE_TYPE_PROP)))
+                                .equalsIgnoreCase(
+                                        table.getParameters().get(BaseMetastoreTableOperations.TABLE_TYPE_PROP)))
                         .map(table -> TableIdentifier.of(namespace, table.getTableName()))
                         .collect(Collectors.toList());
             }
@@ -356,7 +356,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
             return namespaces;
 
         } catch (TException e) {
-            throw new RuntimeException("Failed to list all namespace: " + namespace + " in Hive Metastore",  e);
+            throw new RuntimeException("Failed to list all namespace: " + namespace + " in Hive Metastore", e);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -400,7 +400,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
     }
 
     @Override
-    public boolean setProperties(Namespace namespace,  Map<String, String> properties) {
+    public boolean setProperties(Namespace namespace, Map<String, String> properties) {
         Map<String, String> parameter = Maps.newHashMap();
 
         parameter.putAll(loadNamespaceMetadata(namespace));
@@ -415,7 +415,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
     }
 
     @Override
-    public boolean removeProperties(Namespace namespace,  Set<String> properties) {
+    public boolean removeProperties(Namespace namespace, Set<String> properties) {
         Map<String, String> parameter = Maps.newHashMap();
 
         parameter.putAll(loadNamespaceMetadata(namespace));
@@ -429,7 +429,7 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         return true;
     }
 
-    private void alterHiveDataBase(Namespace namespace,  Database database) {
+    private void alterHiveDataBase(Namespace namespace, Database database) {
         try {
             clients.run(client -> {
                 client.alterDatabase(namespace.level(0), database);
@@ -506,7 +506,8 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
         return new HiveTableOperations(conf, clients, fileIO, name, dbName, tableName);
     }
 
-    // 因为dlc的库表逻辑不遵循hive的建表逻辑，所以这里需要修改
+    // Because the database table logic of dlc does not follow the table creation logic of hive, it needs to be
+    // modified here
     @Override
     protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
         // This is a little edgy since we basically duplicate the HMS location generation logic.

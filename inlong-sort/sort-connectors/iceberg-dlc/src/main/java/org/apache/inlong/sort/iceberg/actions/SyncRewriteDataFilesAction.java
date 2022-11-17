@@ -82,7 +82,8 @@ public class SyncRewriteDataFilesAction implements
             LOG.info("Do compact: {}", rewriteTableSql);
             boolean firstIsResultSet = statement.execute(rewriteTableSql);
 
-            if (false) {  // todo:可以配置当做同步还是异步，获取ResultSet是同步的，不获取就只是异步的
+            if (false) {  // todo:It can be configured as synchronous or asynchronous. Obtaining ResultSet is
+                // synchronous, and not obtaining it is only asynchronous
                 ResultSet rs = statement.getResultSet();
                 ResultSetMetaData rsmd = rs.getMetaData();
                 int columnsNumber = rsmd.getColumnCount();

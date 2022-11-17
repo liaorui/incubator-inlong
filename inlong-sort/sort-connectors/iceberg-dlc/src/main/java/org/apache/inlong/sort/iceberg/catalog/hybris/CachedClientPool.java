@@ -19,13 +19,9 @@
 
 package org.apache.inlong.sort.iceberg.catalog.hybris;
 
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 import com.qcloud.dlc.metastore.DLCDataCatalogMetastoreClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.ClientPool;
 import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
@@ -36,8 +32,12 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 public class CachedClientPool implements ClientPool<DLCDataCatalogMetastoreClient, TException> {
-    private static final Logger LOG  = LoggerFactory.getLogger(CachedClientPool.class);
+
+    private static final Logger LOG = LoggerFactory.getLogger(CachedClientPool.class);
     private static Cache<String, DLCWrappedHybrisClientPool> clientPoolCache;
 
     private final Configuration conf;
@@ -76,7 +76,8 @@ public class CachedClientPool implements ClientPool<DLCDataCatalogMetastoreClien
     }
 
     @Override
-    public <R> R run(Action<R, DLCDataCatalogMetastoreClient, TException> action) throws TException, InterruptedException {
+    public <R> R run(Action<R, DLCDataCatalogMetastoreClient, TException> action)
+            throws TException, InterruptedException {
         return clientPool().run(action);
     }
 

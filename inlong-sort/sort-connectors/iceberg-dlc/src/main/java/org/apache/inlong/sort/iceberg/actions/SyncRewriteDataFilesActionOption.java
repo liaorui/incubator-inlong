@@ -38,6 +38,7 @@ import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_DA
 import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_TABLE;
 
 public class SyncRewriteDataFilesActionOption implements Serializable {
+
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(SyncRewriteDataFilesAction.class);
 
@@ -141,13 +142,14 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
         Preconditions.checkNotNull(dbName);
         Preconditions.checkNotNull(tableName);
         String wholeTableName = String.format("%s.%s", dbName, tableName);
-        properties.put(CompactTableProperties.COMPACT_END_SNAPSHOT_ID, String.valueOf(table.currentSnapshot().snapshotId()));  // todo:后续优化这段添加snapshop-id的逻辑
+        properties.put(CompactTableProperties.COMPACT_END_SNAPSHOT_ID, String.valueOf(
+                table.currentSnapshot().snapshotId()));  // todo: optimization of this logic of adding snapshop-id
         String rewriteOptions = String.join(",",
                 CompactTableProperties.ACTION_AUTO_COMPACT_OPTIONS.stream()
-                    .filter(properties::containsKey)
-                    .map(k -> String.format("'%s', '%s'",
-                            k.substring(CompactTableProperties.COMPACT_PREFIX.length()), properties.get(k)))
-                    .collect(Collectors.toList()));
+                        .filter(properties::containsKey)
+                        .map(k -> String.format("'%s', '%s'",
+                                k.substring(CompactTableProperties.COMPACT_PREFIX.length()), properties.get(k)))
+                        .collect(Collectors.toList()));
         String rewriteTableSql;
         if (rewriteOptions.isEmpty()) {
             rewriteTableSql = String.format(
