@@ -18,8 +18,8 @@
 
 package org.apache.inlong.sort.kafka.table;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -47,6 +47,8 @@ import org.apache.inlong.sort.kafka.FlinkKafkaConsumer;
 import org.apache.inlong.sort.kafka.table.DynamicKafkaDeserializationSchema.MetadataConverter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
@@ -176,7 +178,9 @@ public class KafkaDynamicSource
 
     protected final String auditHostAndPorts;
 
-    private static final Gson GSON = new Gson();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaDynamicSource.class);
 
     public KafkaDynamicSource(
             DataType physicalDataType,
@@ -569,12 +573,17 @@ public class KafkaDynamicSource
 
                     @Override
                     public Object read(ConsumerRecord<?, ?> record) {
-                        JsonObject headerObj = new JsonObject();
+                        Map<String, String> headerMap = new HashMap<>();
                         for (Header header : record.headers()) {
-                            headerObj.addProperty(header.key(),
+                            headerMap.put(header.key(),
                                     new String(header.value(), StandardCharsets.UTF_8));
                         }
-                        return StringData.fromString(GSON.toJson(headerObj));
+                        try {
+                            return StringData.fromString(MAPPER.writeValueAsString(headerMap));
+                        } catch (JsonProcessingException e) {
+                            LOG.warn("Failed to parse headers to json string", e);
+                            return null;
+                        }
                     }
                 }),
 
@@ -590,7 +599,7 @@ public class KafkaDynamicSource
                     }
                 }),
 
-        value(
+        VALUE(
                 "value",
                 DataTypes.STRING().notNull(),
                 new MetadataConverter() {
