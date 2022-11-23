@@ -31,10 +31,8 @@ import org.apache.inlong.sort.protocol.node.extract.PostgresExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.PulsarExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.RedisExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.SqlServerExtractNode;
-import org.apache.inlong.sort.protocol.node.extract.TidbExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.TubeMQExtractNode;
 import org.apache.inlong.sort.protocol.node.extract.DorisExtractNode;
-import org.apache.inlong.sort.protocol.node.extract.TdsqlKafkaExtractNode;
 import org.apache.inlong.sort.protocol.node.load.ClickHouseLoadNode;
 import org.apache.inlong.sort.protocol.node.load.DLCIcebergLoadNode;
 import org.apache.inlong.sort.protocol.node.load.DorisLoadNode;
@@ -49,6 +47,7 @@ import org.apache.inlong.sort.protocol.node.load.MySqlLoadNode;
 import org.apache.inlong.sort.protocol.node.load.OracleLoadNode;
 import org.apache.inlong.sort.protocol.node.load.PostgresLoadNode;
 import org.apache.inlong.sort.protocol.node.load.SqlServerLoadNode;
+import org.apache.inlong.sort.protocol.node.load.StarRocksLoadNode;
 import org.apache.inlong.sort.protocol.node.load.TDSQLPostgresLoadNode;
 import org.apache.inlong.sort.protocol.node.transform.DistinctNode;
 import org.apache.inlong.sort.protocol.node.transform.TransformNode;
@@ -77,8 +76,6 @@ import java.util.TreeMap;
         @JsonSubTypes.Type(value = TubeMQExtractNode.class, name = "tubeMQExtract"),
         @JsonSubTypes.Type(value = RedisExtractNode.class, name = "redisExtract"),
         @JsonSubTypes.Type(value = DorisExtractNode.class, name = "dorisExtract"),
-        @JsonSubTypes.Type(value = TdsqlKafkaExtractNode.class, name = "tdsqlKafkaExtract"),
-        @JsonSubTypes.Type(value = TidbExtractNode.class, name = "tidbExtract"),
         @JsonSubTypes.Type(value = TransformNode.class, name = "baseTransform"),
         @JsonSubTypes.Type(value = DistinctNode.class, name = "distinct"),
         @JsonSubTypes.Type(value = KafkaLoadNode.class, name = "kafkaLoad"),
@@ -95,7 +92,8 @@ import java.util.TreeMap;
         @JsonSubTypes.Type(value = OracleLoadNode.class, name = "oracleLoad"),
         @JsonSubTypes.Type(value = GreenplumLoadNode.class, name = "greenplumLoad"),
         @JsonSubTypes.Type(value = DLCIcebergLoadNode.class, name = "dlcIcebergLoad"),
-        @JsonSubTypes.Type(value = DorisLoadNode.class, name = "dorisLoad")
+        @JsonSubTypes.Type(value = DorisLoadNode.class, name = "dorisLoad"),
+        @JsonSubTypes.Type(value = StarRocksLoadNode.class, name = "starRocksLoad"),
 })
 public interface Node {
 

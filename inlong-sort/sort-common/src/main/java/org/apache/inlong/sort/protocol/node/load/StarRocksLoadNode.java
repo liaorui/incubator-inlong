@@ -44,7 +44,7 @@ import org.apache.inlong.sort.protocol.transformation.FilterFunction;
  * starrocks load node using flink-connector-starrocks-1.13.5_2.11
  */
 @EqualsAndHashCode(callSuper = true)
-@JsonTypeName("starRocksLoadNode")
+@JsonTypeName("starRocksLoad")
 @JsonInclude(Include.NON_NULL)
 @Data
 @NoArgsConstructor

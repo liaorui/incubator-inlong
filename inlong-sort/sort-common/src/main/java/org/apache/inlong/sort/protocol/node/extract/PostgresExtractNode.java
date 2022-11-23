@@ -74,20 +74,14 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
     private String scanStartupMode;
 
     @JsonCreator
-    public PostgresExtractNode(@JsonProperty("id") String id,
-            @JsonProperty("name") String name,
+    public PostgresExtractNode(@JsonProperty("id") String id, @JsonProperty("name") String name,
             @JsonProperty("fields") List<FieldInfo> fields,
             @JsonProperty("watermark_field") WatermarkField watermarkField,
-            @JsonProperty("properties") Map<String, String> properties,
-            @JsonProperty("primaryKey") String primaryKey,
-            @JsonProperty("tableNames") List<String> tableNames,
-            @JsonProperty("hostname") String hostname,
-            @JsonProperty("username") String username,
-            @JsonProperty("password") String password,
-            @JsonProperty("database") String database,
-            @JsonProperty("schema") String schema,
-            @JsonProperty("port") Integer port,
-            @JsonProperty("decodingPluginName") String decodingPluginName,
+            @JsonProperty("properties") Map<String, String> properties, @JsonProperty("primaryKey") String primaryKey,
+            @JsonProperty("tableNames") List<String> tableNames, @JsonProperty("hostname") String hostname,
+            @JsonProperty("username") String username, @JsonProperty("password") String password,
+            @JsonProperty("database") String database, @JsonProperty("schema") String schema,
+            @JsonProperty("port") Integer port, @JsonProperty("decodingPluginName") String decodingPluginName,
             @JsonProperty("serverTimeZone") String serverTimeZone,
             @JsonProperty("scanStartupMode") String scanStartupMode) {
         super(id, name, fields, watermarkField, properties);
@@ -109,7 +103,7 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
      *
      * @return options
      * @see <a href="https://ververica.github.io/flink-cdc-connectors/master/content/connectors/postgres-cdc.html">postgres
-     * cdc</a>
+     *         cdc</a>
      */
     @Override
     public Map<String, String> tableOptions() {
@@ -121,8 +115,8 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
         options.put(PostgresConstant.DATABASE_NAME, database);
         options.put(PostgresConstant.SCHEMA_NAME, schema);
         options.put(PostgresConstant.PORT, port.toString());
-        String formatTable = tableNames.size() == 1 ? tableNames.get(0) :
-                String.format("(%s)", StringUtils.join(tableNames, "|"));
+        String formatTable =
+                tableNames.size() == 1 ? tableNames.get(0) : String.format("(%s)", StringUtils.join(tableNames, "|"));
         options.put(PostgresConstant.TABLE_NAME, String.format("%s", formatTable));
         String decodingPluginNameOption;
         if (StringUtils.isNotEmpty(decodingPluginName)) {
@@ -131,8 +125,8 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
             decodingPluginNameOption = PostgresConstant.PGOUTPUT;
         }
         options.put(PostgresConstant.DECODING_PLUGIN_NAME, decodingPluginNameOption);
-        options.put(PostgresConstant.SLOT_NAME, UUID.randomUUID().toString().toLowerCase(Locale.ROOT).replaceAll(
-                "[\\-\\d]", ""));
+        options.put(PostgresConstant.SLOT_NAME,
+                UUID.randomUUID().toString().toLowerCase(Locale.ROOT).replaceAll("[\\-\\d]", ""));
         if (StringUtils.isNotBlank(serverTimeZone)) {
             options.put(PostgresConstant.SERVER_TIME_ZONE, serverTimeZone);
         }
@@ -159,8 +153,59 @@ public class PostgresExtractNode extends ExtractNode implements Metadata, Inlong
 
     @Override
     public Set<MetaField> supportedMetaFields() {
-        return EnumSet.of(MetaField.PROCESS_TIME, MetaField.TABLE_NAME, MetaField.DATABASE_NAME,
-                MetaField.SCHEMA_NAME, MetaField.OP_TS, MetaField.DATA, MetaField.DATA_CANAL,
-                MetaField.DATA_BYTES, MetaField.DATA_BYTES_CANAL);
+        return EnumSet.of(MetaField.PROCESS_TIME, MetaField.TABLE_NAME, MetaField.DATABASE_NAME, MetaField.SCHEMA_NAME,
+                MetaField.OP_TS, MetaField.OP_TYPE, MetaField.DATA, MetaField.DATA_BYTES, MetaField.DATA_CANAL,
+                MetaField.DATA_BYTES_CANAL, MetaField.DATA_DEBEZIUM, MetaField.DATA_BYTES_DEBEZIUM, MetaField.IS_DDL,
+                MetaField.TS, MetaField.SQL_TYPE, MetaField.PK_NAMES);
+    }
+
+    @Override
+    public String getMetadataKey(MetaField metaField) {
+        String metadataKey;
+        switch (metaField) {
+            case TABLE_NAME:
+                metadataKey = "meta.table_name";
+                break;
+            case DATABASE_NAME:
+                metadataKey = "meta.database_name";
+                break;
+            case SCHEMA_NAME:
+                metadataKey = "meta.schema_name";
+                break;
+            case OP_TS:
+                metadataKey = "meta.op_ts";
+                break;
+            case OP_TYPE:
+                metadataKey = "meta.op_type";
+                break;
+            case DATA:
+            case DATA_BYTES:
+                metadataKey = "meta.data";
+                break;
+            case DATA_CANAL:
+            case DATA_BYTES_CANAL:
+                metadataKey = "meta.data_canal";
+                break;
+            case DATA_DEBEZIUM:
+            case DATA_BYTES_DEBEZIUM:
+                metadataKey = "meta.data_debezium";
+                break;
+            case IS_DDL:
+                metadataKey = "meta.is_ddl";
+                break;
+            case TS:
+                metadataKey = "meta.ts";
+                break;
+            case SQL_TYPE:
+                metadataKey = "meta.sql_type";
+                break;
+            case PK_NAMES:
+                metadataKey = "meta.pk_names";
+                break;
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unsupport meta field for %s: %s", this.getClass().getSimpleName(), metaField));
+        }
+        return metadataKey;
     }
 }
