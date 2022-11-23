@@ -18,6 +18,9 @@
 
 package org.apache.inlong.sort.kafka.table;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -46,6 +49,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 
 import javax.annotation.Nullable;
+
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -170,6 +175,8 @@ public class KafkaDynamicSource
     protected final String inlongMetric;
 
     protected final String auditHostAndPorts;
+
+    private static final Gson GSON = new Gson();
 
     public KafkaDynamicSource(
             DataType physicalDataType,
@@ -551,6 +558,47 @@ public class KafkaDynamicSource
                     @Override
                     public Object read(ConsumerRecord<?, ?> record) {
                         return TimestampData.fromEpochMillis(record.timestamp());
+                    }
+                }),
+
+        HEADERS_TO_JSON_STR(
+                "headers_to_json_str",
+                DataTypes.STRING().nullable(),
+                new MetadataConverter() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public Object read(ConsumerRecord<?, ?> record) {
+                        JsonObject headerObj = new JsonObject();
+                        for (Header header : record.headers()) {
+                            headerObj.addProperty(header.key(),
+                                    new String(header.value(), StandardCharsets.UTF_8));
+                        }
+                        return StringData.fromString(GSON.toJson(headerObj));
+                    }
+                }),
+
+        KEY(
+                "key",
+                DataTypes.STRING().notNull(),
+                new MetadataConverter() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public Object read(ConsumerRecord<?, ?> record) {
+                        return StringData.fromBytes((byte[]) record.key());
+                    }
+                }),
+
+        value(
+                "value",
+                DataTypes.STRING().notNull(),
+                new MetadataConverter() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public Object read(ConsumerRecord<?, ?> record) {
+                        return StringData.fromBytes((byte[]) record.value());
                     }
                 }),
 
