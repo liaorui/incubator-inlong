@@ -121,7 +121,8 @@ public class DynamicKafkaDeserializationSchema implements KafkaDeserializationSc
             valueDeserialization.deserialize(record.value(), collector);
             // output metrics
             if (metricData != null) {
-                metricData.outputMetrics(1, record.value().length);
+                long dataSize = record.value() == null ? 0L : record.value().length;
+                metricData.outputMetrics(1, dataSize);
             }
             return;
         }
@@ -143,7 +144,8 @@ public class DynamicKafkaDeserializationSchema implements KafkaDeserializationSc
             valueDeserialization.deserialize(record.value(), outputCollector);
             // output metrics
             if (metricData != null) {
-                metricData.outputMetrics(1, record.value().length);
+                long dataSize = record.value() == null ? 0L : record.value().length;
+                metricData.outputMetrics(1, dataSize);
             }
         }
 
