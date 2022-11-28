@@ -43,7 +43,7 @@ public class EncryptFunction implements CascadeFunction, Serializable {
     private static final long serialVersionUID = -2701547146694616429L;
 
     @JsonProperty("field")
-    private FieldInfo field;
+    private FunctionParam field;
     @JsonProperty("key")
     private StringConstantParam key;
     @JsonProperty("encrypt")
@@ -57,7 +57,7 @@ public class EncryptFunction implements CascadeFunction, Serializable {
      * @param encrypt encryption algorithm
      */
     @JsonCreator
-    public EncryptFunction(@JsonProperty("field") FieldInfo field,
+    public EncryptFunction(@JsonProperty("field") FunctionParam field,
             @JsonProperty("key") StringConstantParam key,
             @JsonProperty("encrypt") StringConstantParam encrypt) {
         this.field = Preconditions.checkNotNull(field, "field is null");
