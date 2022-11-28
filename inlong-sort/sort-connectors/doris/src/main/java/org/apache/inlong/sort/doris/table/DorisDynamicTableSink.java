@@ -20,11 +20,9 @@ package org.apache.inlong.sort.doris.table;
 import org.apache.doris.flink.cfg.DorisExecutionOptions;
 import org.apache.doris.flink.cfg.DorisOptions;
 import org.apache.doris.flink.cfg.DorisReadOptions;
-import org.apache.doris.flink.table.DorisDynamicOutputFormat;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
-import org.apache.flink.table.connector.sink.OutputFormatProvider;
 import org.apache.flink.table.connector.sink.SinkFunctionProvider;
 import org.apache.flink.types.RowKind;
 import org.apache.inlong.sort.doris.internal.GenericDorisSinkFunction;
@@ -86,30 +84,25 @@ public class DorisDynamicTableSink implements DynamicTableSink {
     @SuppressWarnings({"unchecked"})
     @Override
     public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
-        if (!multipleSink) {
-            DorisDynamicOutputFormat.Builder builder = DorisDynamicOutputFormat.builder()
-                    .setFenodes(options.getFenodes())
-                    .setUsername(options.getUsername())
-                    .setPassword(options.getPassword())
-                    .setTableIdentifier(options.getTableIdentifier())
-                    .setReadOptions(readOptions)
-                    .setExecutionOptions(executionOptions)
-                    .setFieldDataTypes(tableSchema.getFieldDataTypes())
-                    .setFieldNames(tableSchema.getFieldNames());
-            return OutputFormatProvider.of(builder.build());
-        }
         DorisDynamicSchemaOutputFormat.Builder builder = DorisDynamicSchemaOutputFormat.builder()
                 .setFenodes(options.getFenodes())
                 .setUsername(options.getUsername())
                 .setPassword(options.getPassword())
                 .setReadOptions(readOptions)
                 .setExecutionOptions(executionOptions)
+                .setInlongMetric(inlongMetric)
+                .setAuditHostAndPorts(auditHostAndPorts)
+                .setTableIdentifier(options.getTableIdentifier())
+                .setFieldDataTypes(tableSchema.getFieldDataTypes())
+                .setFieldNames(tableSchema.getFieldNames())
+                .setInlongMetric(inlongMetric)
+                .setAuditHostAndPorts(auditHostAndPorts)
+                .setMultipleSink(multipleSink)
                 .setDatabasePattern(databasePattern)
                 .setTablePattern(tablePattern)
                 .setDynamicSchemaFormat(sinkMultipleFormat)
-                .setIgnoreSingleTableErrors(ignoreSingleTableErrors)
-                .setInlongMetric(inlongMetric)
-                .setAuditHostAndPorts(auditHostAndPorts);
+                .setIgnoreSingleTableErrors(ignoreSingleTableErrors);
+
         return SinkFunctionProvider.of(
                 new GenericDorisSinkFunction<>(builder.build()), parallelism);
     }
