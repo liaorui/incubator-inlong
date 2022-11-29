@@ -110,7 +110,7 @@ public class FieldRelationUtils {
                     String fieldKey = String.format("%s-%s", fieldInfo.getNodeId(), fieldInfo.getName());
                     StreamField constantField = constantFieldMap.get(fieldKey);
                     if (constantField != null ) {
-                        if (!FieldType.FUNCTION.equals(constantField.getFieldType())) {
+                        if (!FieldType.FUNCTION.name().equalsIgnoreCase(constantField.getFieldType())) {
                             if (fieldInfo.getFormatInfo() != null
                                     && fieldInfo.getFormatInfo().getTypeInfo() == StringTypeInfo.INSTANCE) {
                                 inputField = new StringConstantParam(constantField.getFieldValue());
@@ -143,7 +143,7 @@ public class FieldRelationUtils {
                             streamField.getOriginFieldName());
                     StreamField constantField = constantFieldMap.get(fieldKey);
                     if (constantField != null) {
-                        if (!FieldType.FUNCTION.equals(constantField.getFieldType())) {
+                        if (!FieldType.FUNCTION.name().equalsIgnoreCase(constantField.getFieldType())) {
                             if (formatInfo != null && formatInfo.getTypeInfo() == StringTypeInfo.INSTANCE) {
                                 inputField = new StringConstantParam(constantField.getFieldValue());
                             } else {
