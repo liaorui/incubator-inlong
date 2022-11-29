@@ -144,7 +144,10 @@ public class MongoExtractNode extends ExtractNode implements InlongMetric, Metad
             case DATA_BYTES_DEBEZIUM:
                 metadataKey = "meta.data_debezium";
                 break;
-
+            case DATA_CANAL:
+            case DATA_BYTES_CANAL:
+                metadataKey = "meta.data_canal";
+                break;
             default:
                 throw new UnsupportedOperationException(String.format("Unsupport meta field for %s: %s",
                         this.getClass().getSimpleName(), metaField));
@@ -160,6 +163,8 @@ public class MongoExtractNode extends ExtractNode implements InlongMetric, Metad
     @Override
     public Set<MetaField> supportedMetaFields() {
         return EnumSet.of(MetaField.PROCESS_TIME, MetaField.COLLECTION_NAME,
-                MetaField.DATABASE_NAME, MetaField.OP_TS, MetaField.DATA_BYTES_DEBEZIUM);
+                MetaField.DATABASE_NAME, MetaField.OP_TS,
+                MetaField.DATA_DEBEZIUM, MetaField.DATA_BYTES_DEBEZIUM,
+                MetaField.DATA_CANAL, MetaField.DATA_BYTES_CANAL);
     }
 }
