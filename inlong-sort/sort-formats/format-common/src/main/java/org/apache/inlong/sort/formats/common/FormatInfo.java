@@ -48,7 +48,8 @@ import java.io.Serializable;
         @JsonSubTypes.Type(name = "binary", value = BinaryFormatInfo.class),
         @JsonSubTypes.Type(name = "null", value = NullFormatInfo.class),
         @JsonSubTypes.Type(name = "local_zoned_timestamp", value = LocalZonedTimestampFormatInfo.class),
-        @JsonSubTypes.Type(name = "varbinary", value = VarBinaryFormatInfo.class)
+        @JsonSubTypes.Type(name = "varbinary", value = VarBinaryFormatInfo.class),
+        @JsonSubTypes.Type(name = "function", value = FunctionFormatInfo.class)
 })
 public interface FormatInfo extends Serializable {
 

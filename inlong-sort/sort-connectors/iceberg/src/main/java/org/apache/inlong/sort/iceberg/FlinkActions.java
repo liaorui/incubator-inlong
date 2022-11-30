@@ -30,7 +30,7 @@ import java.util.Map;
  * An implementation of {@link ActionsProvider} for Flink.
  * <p>
  * This class is the primary API for Flink runtime to execute some iceberg metadata action.
- * For example, execunte compact action、expire action at checkpoint.
+ * For example, execunte compact action, expire action at checkpoint.
  */
 public interface FlinkActions extends ActionsProvider, Serializable {
 
