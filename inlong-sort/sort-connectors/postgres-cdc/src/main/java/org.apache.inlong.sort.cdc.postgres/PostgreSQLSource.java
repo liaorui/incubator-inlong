@@ -18,12 +18,12 @@
 
 package org.apache.inlong.sort.cdc.postgres;
 
-import com.ververica.cdc.debezium.DebeziumDeserializationSchema;
 import com.ververica.cdc.debezium.Validator;
 import io.debezium.connector.postgresql.PostgresConnector;
-
 import java.time.Duration;
 import java.util.Properties;
+import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumSourceFunction;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -39,7 +39,9 @@ public class PostgreSQLSource {
         return new Builder<>();
     }
 
-    /** Builder class of {@link PostgreSQLSource}. */
+    /**
+     * Builder class of {@link PostgreSQLSource}.
+     */
     public static class Builder<T> {
 
         private String pluginName = "decoderbufs";
@@ -51,6 +53,7 @@ public class PostgreSQLSource {
         private String password;
         private String[] schemaList;
         private String[] tableList;
+        private String serverTimeZone;
         private Properties dbzProperties;
         private DebeziumDeserializationSchema<T> deserializer;
         private String inlongMetric;
@@ -71,13 +74,17 @@ public class PostgreSQLSource {
             return this;
         }
 
-        /** Integer port number of the PostgreSQL database server. */
+        /**
+         * Integer port number of the PostgreSQL database server.
+         */
         public Builder<T> port(int port) {
             this.port = port;
             return this;
         }
 
-        /** The name of the PostgreSQL database from which to stream the changes. */
+        /**
+         * The name of the PostgreSQL database from which to stream the changes.
+         */
         public Builder<T> database(String database) {
             this.database = database;
             return this;
@@ -112,7 +119,9 @@ public class PostgreSQLSource {
             return this;
         }
 
-        /** Password to use when connecting to the PostgreSQL database server. */
+        /**
+         * Password to use when connecting to the PostgreSQL database server.
+         */
         public Builder<T> password(String password) {
             this.password = password;
             return this;
@@ -133,7 +142,18 @@ public class PostgreSQLSource {
             return this;
         }
 
-        /** The Debezium Postgres connector properties. */
+        /**
+         * The session time zone in database server, e.g. "America/Los_Angeles". It controls how the
+         * TIMESTAMP type in MYSQL converted to STRING
+         */
+        public Builder<T> serverTimeZone(String timeZone) {
+            this.serverTimeZone = timeZone;
+            return this;
+        }
+
+        /**
+         * The Debezium Postgres connector properties.
+         */
         public Builder<T> debeziumProperties(Properties properties) {
             this.dbzProperties = properties;
             return this;
