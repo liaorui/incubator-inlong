@@ -377,6 +377,7 @@ public class LoadNodeUtils {
                 starRocksSink.getPassword(),
                 starRocksSink.getDatabaseName(),
                 starRocksSink.getTableName(),
+                starRocksSink.getPrimaryKey(),
                 starRocksSink.getSinkMultipleEnable(),
                 format,
                 starRocksSink.getDatabasePattern(),

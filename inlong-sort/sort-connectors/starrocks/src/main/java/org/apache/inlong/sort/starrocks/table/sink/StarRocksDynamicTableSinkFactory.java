@@ -52,8 +52,8 @@ public class StarRocksDynamicTableSinkFactory implements DynamicTableSinkFactory
         ReadableConfig options = helper.getOptions();
         // validate some special properties
         StarRocksSinkOptions sinkOptions = new StarRocksSinkOptions(options, context.getCatalogTable().getOptions());
+        sinkOptions.enableUpsertDelete();
         TableSchema physicalSchema = TableSchemaUtils.getPhysicalSchema(context.getCatalogTable().getSchema());
-
         boolean multipleSink = helper.getOptions().get(SINK_MULTIPLE_ENABLE);
         String sinkMultipleFormat = helper.getOptions().getOptional(SINK_MULTIPLE_FORMAT).orElse(null);
         String databasePattern = helper.getOptions().getOptional(SINK_MULTIPLE_DATABASE_PATTERN).orElse(null);
@@ -149,4 +149,5 @@ public class StarRocksDynamicTableSinkFactory implements DynamicTableSinkFactory
             }
         }
     }
+
 }

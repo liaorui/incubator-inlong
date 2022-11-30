@@ -76,6 +76,9 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
     @JsonProperty("table-name")
     private String tableName;
 
+    @JsonProperty("primaryKey")
+    private String primaryKey;
+
     @Nullable
     @JsonProperty("sinkMultipleEnable")
     private Boolean sinkMultipleEnable = false;
@@ -107,6 +110,7 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
             @Nonnull @JsonProperty("password") String password,
             @Nullable @JsonProperty("database-name") String databaseName,
             @JsonProperty("table-name") String tableName,
+            @JsonProperty("primaryKey") String primaryKey,
             @Nullable @JsonProperty(value = "sinkMultipleEnable", defaultValue = "false") Boolean sinkMultipleEnable,
             @Nullable @JsonProperty("sinkMultipleFormat") Format sinkMultipleFormat,
             @Nullable @JsonProperty("databasePattern") String databasePattern,
@@ -118,6 +122,7 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
         this.password = Preconditions.checkNotNull(password, "password is null");
         this.databaseName = Preconditions.checkNotNull(databaseName, "database-name is null");
         this.tableName = Preconditions.checkNotNull(tableName, "table-name is null");
+        this.primaryKey = primaryKey;
         this.sinkMultipleEnable = sinkMultipleEnable;
         if (sinkMultipleEnable != null && sinkMultipleEnable) {
             this.databasePattern = Preconditions.checkNotNull(databasePattern, "databasePattern is null");
@@ -158,4 +163,8 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
         return String.format("table_%s", super.getId());
     }
 
+    @Override
+    public String getPrimaryKey() {
+        return primaryKey;
+    }
 }

@@ -29,6 +29,7 @@ import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.row.sink.StarRocksIRowTransformer;
 import com.starrocks.connector.flink.row.sink.StarRocksISerializer;
 import com.starrocks.connector.flink.row.sink.StarRocksSerializerFactory;
+import com.starrocks.connector.flink.row.sink.StarRocksSinkOP;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkRowDataWithMeta;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkSemantic;
@@ -40,6 +41,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.alter.Alter;
 import net.sf.jsqlparser.statement.truncate.Truncate;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeHint;
@@ -98,29 +100,17 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
 
     private transient JsonDynamicSchemaFormat jsonDynamicSchemaFormat;
 
-    public StarRocksDynamicSinkFunction(StarRocksSinkOptions sinkOptions,
-            TableSchema schema,
-            StarRocksIRowTransformer<T> rowTransformer,
-            boolean multipleSink,
-            String sinkMultipleFormat,
-            String databasePattern,
-            String tablePattern,
-            boolean ignoreSingleTableErrors,
-            String inlongMetric,
-            String auditHostAndPorts,
-            SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
+    public StarRocksDynamicSinkFunction(StarRocksSinkOptions sinkOptions, TableSchema schema,
+            StarRocksIRowTransformer<T> rowTransformer, boolean multipleSink, String sinkMultipleFormat,
+            String databasePattern, String tablePattern, boolean ignoreSingleTableErrors, String inlongMetric,
+            String auditHostAndPorts, SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
         StarRocksJdbcConnectionOptions jdbcOptions = new StarRocksJdbcConnectionOptions(sinkOptions.getJdbcUrl(),
                 sinkOptions.getUsername(), sinkOptions.getPassword());
         StarRocksJdbcConnectionProvider jdbcConnProvider = new StarRocksJdbcConnectionProvider(jdbcOptions);
         StarRocksQueryVisitor starrocksQueryVisitor = new StarRocksQueryVisitor(jdbcConnProvider,
                 sinkOptions.getDatabaseName(), sinkOptions.getTableName());
-        this.sinkManager = new StarRocksSinkManager(sinkOptions,
-                schema,
-                jdbcConnProvider,
-                starrocksQueryVisitor,
-                multipleSink,
-                ignoreSingleTableErrors,
-                schemaUpdatePolicy);
+        this.sinkManager = new StarRocksSinkManager(sinkOptions, schema, jdbcConnProvider, starrocksQueryVisitor,
+                multipleSink, ignoreSingleTableErrors, schemaUpdatePolicy);
 
         rowTransformer.setStarRocksColumns(starrocksQueryVisitor.getFieldMapping());
         rowTransformer.setTableSchema(schema);
@@ -246,20 +236,28 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
             }
             for (int i = 0; i < physicalDataList.size(); i++) {
                 for (RowKind rowKind : rowKinds) {
+                    String record = null;
                     switch (rowKind) {
                         case INSERT:
                         case UPDATE_AFTER:
+                            physicalDataList.get(i).put("__op", String.valueOf(StarRocksSinkOP.UPSERT.ordinal()));
+                            record = JSON.toJSONString(physicalDataList.get(i));
+                            break;
                         case DELETE:
-                            String record = JSON.toJSONString(physicalDataList.get(i));
-                            sinkManager.writeRecords(databaseName, tableName, record);
+                            physicalDataList.get(i).put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
+                            record = JSON.toJSONString(physicalDataList.get(i));
                             break;
                         case UPDATE_BEFORE:
                             if (updateBeforeList != null && updateBeforeList.size() > i) {
+                                updateBeforeList.get(i).put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
                                 record = JSON.toJSONString(updateBeforeList.get(i));
                             }
                             break;
                         default:
                             throw new RuntimeException("Unrecognized row kind:" + rowKind);
+                    }
+                    if (StringUtils.isNotBlank(record)) {
+                        sinkManager.writeRecords(databaseName, tableName, record);
                     }
                 }
             }
