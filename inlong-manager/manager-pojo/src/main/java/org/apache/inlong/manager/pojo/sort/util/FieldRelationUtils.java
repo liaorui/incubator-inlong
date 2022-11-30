@@ -34,6 +34,8 @@ import org.apache.inlong.manager.pojo.transform.replacer.StringReplacerDefinitio
 import org.apache.inlong.manager.pojo.transform.splitter.SplitterDefinition;
 import org.apache.inlong.manager.pojo.transform.splitter.SplitterDefinition.SplitRule;
 import org.apache.inlong.sort.formats.common.FormatInfo;
+import org.apache.inlong.sort.formats.common.FunctionTypeInfo;
+import org.apache.inlong.sort.formats.common.StringFormatInfo;
 import org.apache.inlong.sort.formats.common.StringTypeInfo;
 import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.transformation.CascadeFunction;
@@ -109,17 +111,17 @@ public class FieldRelationUtils {
                     FunctionParam inputField;
                     String fieldKey = String.format("%s-%s", fieldInfo.getNodeId(), fieldInfo.getName());
                     StreamField constantField = constantFieldMap.get(fieldKey);
-                    if (constantField != null ) {
-                        if (!FieldType.FUNCTION.name().equalsIgnoreCase(constantField.getFieldType())) {
-                            if (fieldInfo.getFormatInfo() != null
-                                    && fieldInfo.getFormatInfo().getTypeInfo() == StringTypeInfo.INSTANCE) {
-                                inputField = new StringConstantParam(constantField.getFieldValue());
-                            } else {
-                                inputField = new ConstantParam(constantField.getFieldValue());
-                            }
+                    if (constantField != null) {
+                        if (fieldInfo.getFormatInfo() != null
+                                && fieldInfo.getFormatInfo().getTypeInfo() == StringTypeInfo.INSTANCE) {
+                            inputField = new StringConstantParam(constantField.getFieldValue());
                         } else {
-                            inputField = new CustomFunction(constantField.getFieldValue());
+                            inputField = new ConstantParam(constantField.getFieldValue());
                         }
+                    } else if (fieldInfo.getFormatInfo() != null
+                            && fieldInfo.getFormatInfo().getTypeInfo() == FunctionTypeInfo.INSTANCE) {
+                        inputField = new CustomFunction(fieldInfo.getName());
+                        fieldInfo.setFormatInfo(new StringFormatInfo());
                     } else {
                         inputField = new FieldInfo(fieldInfo.getName(), fieldInfo.getNodeId(),
                                 fieldInfo.getFormatInfo());
@@ -143,15 +145,14 @@ public class FieldRelationUtils {
                             streamField.getOriginFieldName());
                     StreamField constantField = constantFieldMap.get(fieldKey);
                     if (constantField != null) {
-                        if (!FieldType.FUNCTION.name().equalsIgnoreCase(constantField.getFieldType())) {
-                            if (formatInfo != null && formatInfo.getTypeInfo() == StringTypeInfo.INSTANCE) {
-                                inputField = new StringConstantParam(constantField.getFieldValue());
-                            } else {
-                                inputField = new ConstantParam(constantField.getFieldValue());
-                            }
+                        if (formatInfo != null && formatInfo.getTypeInfo() == StringTypeInfo.INSTANCE) {
+                            inputField = new StringConstantParam(constantField.getFieldValue());
                         } else {
-                            inputField = new CustomFunction(constantField.getFieldValue());
+                            inputField = new ConstantParam(constantField.getFieldValue());
                         }
+                    } else if (formatInfo != null && formatInfo.getTypeInfo() == FunctionTypeInfo.INSTANCE) {
+                        inputField = new CustomFunction(streamField.getFieldName());
+                        formatInfo = new StringFormatInfo();
                     } else {
                         inputField = new FieldInfo(streamField.getOriginFieldName(),
                                 streamField.getOriginNodeName(), formatInfo);
@@ -262,11 +263,17 @@ public class FieldRelationUtils {
                 FieldInfoUtils.convertFieldFormat(FieldType.STRING.name()));
         replaceFields.add(fieldName);
         if (replaceMode == ReplaceMode.RELACE_ALL) {
-            RegexpReplaceFunction regexpReplaceFunction = new RegexpReplaceFunction(fieldInfo,
+            RegexpReplaceFunction regexpReplaceFunction = new RegexpReplaceFunction(
+                    fieldInfo.getFormatInfo() != null
+                            && fieldInfo.getFormatInfo().getTypeInfo() == FunctionTypeInfo.INSTANCE
+                            ? new CustomFunction(fieldName) : fieldInfo,
                     new StringConstantParam(regex), new StringConstantParam(targetValue));
             return new FieldRelation(regexpReplaceFunction, targetFieldInfo);
         } else {
-            RegexpReplaceFirstFunction regexpReplaceFirstFunction = new RegexpReplaceFirstFunction(fieldInfo,
+            RegexpReplaceFirstFunction regexpReplaceFirstFunction = new RegexpReplaceFirstFunction(
+                    fieldInfo.getFormatInfo() != null
+                            && fieldInfo.getFormatInfo().getTypeInfo() == FunctionTypeInfo.INSTANCE
+                            ? new CustomFunction(fieldName) : fieldInfo,
                     new StringConstantParam(regex), new StringConstantParam(targetValue));
             return new FieldRelation(regexpReplaceFirstFunction, targetFieldInfo);
         }
@@ -286,7 +293,11 @@ public class FieldRelationUtils {
         FieldInfo targetFieldInfo = new FieldInfo(fieldName, transformName,
                 FieldInfoUtils.convertFieldFormat(FieldType.STRING.name()));
         encryptFields.add(fieldName);
-        EncryptFunction encryptFunction = new EncryptFunction(fieldInfo, new StringConstantParam(key),
+        EncryptFunction encryptFunction = new EncryptFunction(
+                fieldInfo.getFormatInfo() != null
+                        && fieldInfo.getFormatInfo().getTypeInfo() == FunctionTypeInfo.INSTANCE
+                        ? new CustomFunction(fieldName) : fieldInfo,
+                new StringConstantParam(key),
                 new StringConstantParam(encrypt));
         return new FieldRelation(encryptFunction, targetFieldInfo);
     }
@@ -304,7 +315,10 @@ public class FieldRelationUtils {
         List<FieldRelation> splitRelations = Lists.newArrayList();
         for (int index = 0; index < targetSources.size(); index++) {
             SplitIndexFunction splitIndexFunction = new SplitIndexFunction(
-                    fieldInfo, new StringConstantParam(separator), new ConstantParam(index));
+                    fieldInfo.getFormatInfo() != null
+                            && fieldInfo.getFormatInfo().getTypeInfo() == FunctionTypeInfo.INSTANCE
+                            ? new CustomFunction(fieldInfo.getName()) : fieldInfo,
+                    new StringConstantParam(separator), new ConstantParam(index));
             FieldInfo targetFieldInfo = new FieldInfo(
                     targetSources.get(index), transformName, FieldInfoUtils.convertFieldFormat(FieldType.STRING.name())
             );
