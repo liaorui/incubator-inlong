@@ -1,0 +1,1345 @@
+From 8b02caad90f7bd192e07afed1b709577d7849cd5 Mon Sep 17 00:00:00 2001
+From: thesumery <xiayu2017@126.com>
+Date: Mon, 28 Nov 2022 10:15:59 +0800
+Subject: [PATCH] =?utf-8?q?=E5=A2=9E=E5=8A=A0node=20tag=E5=B1=9E=E6=80=A7?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+---
+ .../inlong/agent/constant/JobConstants.java   |   3 +-
+ .../apache/inlong/agent/db/JobProfileDb.java  |   2 +-
+ .../inlong/agent/db/TriggerProfileDb.java     |   2 +-
+ .../org/apache/inlong/agent/pojo/FileJob.java |   6 +-
+ .../inlong/agent/pojo/JobProfileDto.java      |   3 +-
+ .../apache/inlong/agent/utils/AgentUtils.java |   2 +
+ .../inlong/agent/core/job/JobManager.java     |   2 +-
+ .../agent/core/trigger/TriggerManager.java    |   6 +-
+ .../agent/plugin/fetcher/ManagerFetcher.java  |   1 +
+ .../plugin/trigger/DirectoryTrigger.java      |  46 +++--
+ .../agent/plugin/utils/PluginUtils.java       |  38 +++--
+ .../inlong/agent/plugin/TestFileAgent.java    |  18 +-
+ .../plugin/filter/TestDateFormatRegex.java    |   4 +-
+ .../plugin/sources/TestTextFileReader.java    |   8 +-
+ .../inlong/agent/plugin/utils/TestUtils.java  |   2 +-
+ .../api/inner/client/InlongClusterClient.java |  15 ++
+ .../client/api/service/InlongClusterApi.java  |   4 +
+ .../client/api/inner/ClientFactoryTest.java   |  28 +++-
+ inlong-manager/manager-dao/pom.xml            |  14 +-
+ .../dao/entity/InlongClusterNodeEntity.java   |   1 +
+ .../dao/entity/StreamSourceEntity.java        |   1 +
+ .../src/main/resources/generatorConfig.xml    |  14 +-
+ .../mappers/InlongClusterNodeEntityMapper.xml |  17 +-
+ .../mappers/StreamSourceEntityMapper.xml      |  15 +-
+ .../cluster/ClusterNodeBindTagRequest.java    |  55 ++++++
+ .../service/cluster/InlongClusterService.java |  11 ++
+ .../cluster/InlongClusterServiceImpl.java     |  56 +++++++
+ .../service/core/impl/AgentServiceImpl.java   | 158 +++++++++++++-----
+ .../service/heartbeat/HeartbeatManager.java   |   1 -
+ .../manager-web/sql/apache_inlong_manager.sql |   2 +
+ .../controller/InlongClusterController.java   |   8 +
+ 31 files changed, 421 insertions(+), 122 deletions(-)
+ create mode 100644 inlong-manager/manager-pojo/src/main/java/org/apache/inlong/manager/pojo/cluster/ClusterNodeBindTagRequest.java
+
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/constant/JobConstants.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/constant/JobConstants.java
+index b4b8cb6e3..b22dc9a9c 100755
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/constant/JobConstants.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/constant/JobConstants.java
+@@ -46,7 +46,8 @@ public class JobConstants extends CommonConstants {
+ 
+     // File job
+     public static final String JOB_TRIGGER = "job.fileJob.trigger";
+-    public static final String JOB_DIR_FILTER_PATTERN = "job.fileJob.dir.pattern";
++    public static final String JOB_DIR_FILTER_PATTERNS = "job.fileJob.dir.patterns";
++    public static final String JOB_DIR_FILTER_BLACKLISTS = "job.fileJob.dir.blackLists";
+     public static final String JOB_FILE_TIME_OFFSET = "job.fileJob.timeOffset";
+     public static final String JOB_FILE_MAX_WAIT = "job.fileJob.file.max.wait";
+     public static final String JOB_CYCLE_UNIT = "job.fileJob.cycleUnit";
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/JobProfileDb.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/JobProfileDb.java
+index 11f1739e4..143fc13f0 100644
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/JobProfileDb.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/JobProfileDb.java
+@@ -78,7 +78,7 @@ public class JobProfileDb {
+             String keyName = jobProfile.get(JobConstants.JOB_INSTANCE_ID);
+             jobProfile.setLong(JobConstants.JOB_STORE_TIME, System.currentTimeMillis());
+             KeyValueEntity entity = new KeyValueEntity(keyName,
+-                    jobProfile.toJsonStr(), jobProfile.get(JobConstants.JOB_DIR_FILTER_PATTERN, ""));
++                    jobProfile.toJsonStr(), jobProfile.get(JobConstants.JOB_DIR_FILTER_PATTERNS, ""));
+             entity.setStateSearchKey(StateSearchKey.ACCEPTED);
+             LOGGER.info("store job {} to db", jobProfile.toJsonStr());
+             db.put(entity);
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/TriggerProfileDb.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/TriggerProfileDb.java
+index af35fbe51..f949eb537 100755
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/TriggerProfileDb.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/db/TriggerProfileDb.java
+@@ -63,7 +63,7 @@ public class TriggerProfileDb {
+         if (trigger.allRequiredKeyExist()) {
+             String keyName = CommonConstants.TRIGGER_ID_PREFIX + trigger.get(JobConstants.JOB_ID);
+             KeyValueEntity entity = new KeyValueEntity(keyName,
+-                    trigger.toJsonStr(), trigger.get(JobConstants.JOB_DIR_FILTER_PATTERN));
++                    trigger.toJsonStr(), trigger.get(JobConstants.JOB_DIR_FILTER_PATTERNS));
+             KeyValueEntity oldEntity = db.put(entity);
+             if (oldEntity != null) {
+                 LOGGER.warn("trigger profile {} has been replaced", oldEntity.getKey());
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/FileJob.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/FileJob.java
+index 49657147b..5675cdb17 100644
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/FileJob.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/FileJob.java
+@@ -64,7 +64,9 @@ public class FileJob {
+     @Data
+     public static class Dir {
+ 
+-        private String pattern;
++        private String patterns;
++
++        private String blackLists;
+     }
+ 
+     @Data
+@@ -89,6 +91,8 @@ public class FileJob {
+     public static class FileJobTaskConfig {
+ 
+         private String pattern;
++
++        private String blackLists;
+         // '1m' means one minute after, '-1m' means one minute before
+         // '1h' means one hour after, '-1h' means one hour before
+         // '1d' means one day after, '-1d' means one day before
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/JobProfileDto.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/JobProfileDto.java
+index f967dd1a8..ecfb5fbe6 100644
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/JobProfileDto.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/pojo/JobProfileDto.java
+@@ -118,7 +118,8 @@ public class JobProfileDto {
+                 FileJob.FileJobTaskConfig.class);
+ 
+         FileJob.Dir dir = new FileJob.Dir();
+-        dir.setPattern(fileJobTaskConfig.getPattern());
++        dir.setPatterns(fileJobTaskConfig.getPattern());
++        dir.setBlackLists(fileJobTaskConfig.getBlackLists());
+         fileJob.setDir(dir);
+         fileJob.setCollectType(fileJobTaskConfig.getCollectType());
+         fileJob.setContentCollectType(fileJobTaskConfig.getContentCollectType());
+diff --git a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/utils/AgentUtils.java b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/utils/AgentUtils.java
+index 4acc7868a..276b6088b 100644
+--- a/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/utils/AgentUtils.java
++++ b/inlong-agent/agent-common/src/main/java/org/apache/inlong/agent/utils/AgentUtils.java
+@@ -30,6 +30,7 @@ import java.io.InputStream;
+ import java.net.DatagramSocket;
+ import java.net.InetAddress;
+ import java.nio.file.Files;
++import java.nio.file.PathMatcher;
+ import java.nio.file.Paths;
+ import java.text.ParseException;
+ import java.text.SimpleDateFormat;
+@@ -241,6 +242,7 @@ public class AgentUtils {
+             return matchHiddenDir(pathStr, patternStr);
+         }
+ 
++
+         boolean result = true;
+         String[] pathNames = StringUtils.split(pathStr, File.separator);
+         String[] patternNames = StringUtils.split(patternStr, File.separator);
+diff --git a/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/job/JobManager.java b/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/job/JobManager.java
+index 42dce296e..6b80e2fb1 100644
+--- a/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/job/JobManager.java
++++ b/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/job/JobManager.java
+@@ -201,7 +201,7 @@ public class JobManager extends AbstractDaemon {
+             getJobConfDb().deleteJob(jobInstancId);
+             return true;
+         }
+-        return false;
++        return true;
+     }
+ 
+     /**
+diff --git a/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/trigger/TriggerManager.java b/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/trigger/TriggerManager.java
+index 38df48aef..df1a35e80 100755
+--- a/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/trigger/TriggerManager.java
++++ b/inlong-agent/agent-core/src/main/java/org/apache/inlong/agent/core/trigger/TriggerManager.java
+@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
+ 
+ import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_TRIGGER_MAX_RUNNING_NUM;
+ import static org.apache.inlong.agent.constant.AgentConstants.TRIGGER_MAX_RUNNING_NUM;
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_ID;
+ import static org.apache.inlong.agent.constant.JobConstants.TRIGGER_ONLY_ONE_JOB;
+ 
+@@ -180,7 +180,7 @@ public class TriggerManager extends AbstractDaemon {
+                 return true;
+             }
+             for (Task task : tasks) {
+-                if (task.getJobConf().hasKey(profile.get(JOB_DIR_FILTER_PATTERN))) {
++                if (task.getJobConf().hasKey(profile.get(JOB_DIR_FILTER_PATTERNS))) {
+                     return false;
+                 }
+             }
+@@ -278,7 +278,7 @@ public class TriggerManager extends AbstractDaemon {
+             return true;
+         }
+         LOGGER.warn("cannot find trigger {}", triggerId);
+-        return false;
++        return true;  // todo:这里就算找不到也可以认为是删除成功了，反正你给我的triggerId我这里没有的，保证最终一致性
+     }
+ 
+     /**
+diff --git a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/fetcher/ManagerFetcher.java b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/fetcher/ManagerFetcher.java
+index 1ea04ca6a..c475aa467 100755
+--- a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/fetcher/ManagerFetcher.java
++++ b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/fetcher/ManagerFetcher.java
+@@ -303,6 +303,7 @@ public class ManagerFetcher extends AbstractDaemon implements ProfileFetcher {
+             }
+         }
+ 
++        // todo:删除这段逻辑，cmd这张表没用了
+         for (CmdConfig cmdConfig : taskResult.getCmdConfigs()) {
+             dealWithTdmCmd(cmdConfig);
+         }
+diff --git a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/trigger/DirectoryTrigger.java b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/trigger/DirectoryTrigger.java
+index 4bef74b9b..c201e4072 100644
+--- a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/trigger/DirectoryTrigger.java
++++ b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/trigger/DirectoryTrigger.java
+@@ -44,9 +44,10 @@ import java.util.List;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.LinkedBlockingQueue;
+ import java.util.concurrent.TimeUnit;
++import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+ 
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ 
+ /**
+  * Watch directory, if new valid files are created, create jobs correspondingly.
+@@ -131,7 +132,7 @@ public class DirectoryTrigger extends AbstractDaemon implements Trigger {
+                 JobProfile copiedJobProfile = PluginUtils.copyJobProfile(profile,
+                         entity.getSuitTime(), path.toFile());
+                 LOGGER.info("trigger {} generate job profile to read file {}",
+-                        getTriggerProfile().getTriggerId(), path.toString());
++                        getTriggerProfile().getTriggerId(), path);
+                 queue.offer(copiedJobProfile);
+             }
+         }
+@@ -226,17 +227,21 @@ public class DirectoryTrigger extends AbstractDaemon implements Trigger {
+     /**
+      * register pathPattern into watchers
+      */
+-    public void register(String pathPattern) throws IOException {
+-        PathPattern entity = new PathPattern(pathPattern);
+-        innerRegister(pathPattern, entity);
++    public void register(List<String> pathPatterns) throws IOException {
++        for (String pathPattern : pathPatterns) {
++            PathPattern entity = new PathPattern(pathPattern);
++            innerRegister(pathPattern, entity);
++        }
+     }
+ 
+     /**
+      * register pathPattern into watchers, with offset
+      */
+-    public void register(String pathPattern, String offset) throws IOException {
+-        PathPattern entity = new PathPattern(pathPattern, offset);
+-        innerRegister(pathPattern, entity);
++    public void register(List<String> pathPatterns, String offset) throws IOException {
++        for (String pathPattern : pathPatterns) {
++            PathPattern entity = new PathPattern(pathPattern, offset);
++            innerRegister(pathPattern, entity);
++        }
+     }
+ 
+     private void innerRegister(String pathPattern, PathPattern entity) throws IOException {
+@@ -274,13 +279,14 @@ public class DirectoryTrigger extends AbstractDaemon implements Trigger {
+         interval = profile.getInt(
+                 AgentConstants.TRIGGER_CHECK_INTERVAL, AgentConstants.DEFAULT_TRIGGER_CHECK_INTERVAL);
+         this.profile = profile;
+-        if (this.profile.hasKey(JOB_DIR_FILTER_PATTERN)) {
+-            String pathPattern = this.profile.get(JOB_DIR_FILTER_PATTERN);
++        if (this.profile.hasKey(JOB_DIR_FILTER_PATTERNS)) {
++            List<String> pathPatterns = Stream.of(
++                    this.profile.get(JOB_DIR_FILTER_PATTERNS).split(",")).collect(Collectors.toList());
+             String timeOffset = this.profile.get(JobConstants.JOB_FILE_TIME_OFFSET, "");
+             if (timeOffset.isEmpty()) {
+-                register(pathPattern);
++                register(pathPatterns);
+             } else {
+-                register(pathPattern, timeOffset);
++                register(pathPatterns, timeOffset);
+             }
+         }
+     }
+@@ -293,4 +299,20 @@ public class DirectoryTrigger extends AbstractDaemon implements Trigger {
+             throw new IllegalStateException(exception);
+         }
+     }
++
++    public static void main(String[] args) throws Exception {
++        initWatchService();
++        Path rootPath = Paths.get("D:/tmp/test");
++        WatchKey watchKey = rootPath.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
++
++        while (true) {
++            Thread.sleep(1000L);
++            List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
++            if (!watchEvents.isEmpty()) {
++                System.out.println(watchEvents);
++            }
++        }
++
++    }
++
+ }
+diff --git a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/utils/PluginUtils.java b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/utils/PluginUtils.java
+index afb122c68..eff4b3da1 100755
+--- a/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/utils/PluginUtils.java
++++ b/inlong-agent/agent-plugins/src/main/java/org/apache/inlong/agent/plugin/utils/PluginUtils.java
+@@ -42,6 +42,8 @@ import java.util.Collection;
+ import java.util.Enumeration;
+ import java.util.List;
+ import java.util.Objects;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
+ 
+ import static org.apache.inlong.agent.constant.CommonConstants.AGENT_COLON;
+ import static org.apache.inlong.agent.constant.CommonConstants.AGENT_NIX_OS;
+@@ -49,7 +51,7 @@ import static org.apache.inlong.agent.constant.CommonConstants.AGENT_NUX_OS;
+ import static org.apache.inlong.agent.constant.CommonConstants.AGENT_OS_NAME;
+ import static org.apache.inlong.agent.constant.CommonConstants.DEFAULT_FILE_MAX_NUM;
+ import static org.apache.inlong.agent.constant.CommonConstants.FILE_MAX_NUM;
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_TIME_OFFSET;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_RETRY_TIME;
+ import static org.apache.inlong.agent.constant.KubernetesConstants.HTTPS;
+@@ -87,31 +89,35 @@ public class PluginUtils {
+      * scan and return files based on job dir conf
+      */
+     public static Collection<File> findSuitFiles(JobProfile jobConf) {
+-        String dirPattern = jobConf.get(JOB_DIR_FILTER_PATTERN);
+-        LOGGER.info("start to find files with dir pattern {}", dirPattern);
+-        PathPattern pattern =
+-                jobConf.hasKey(JOB_FILE_TIME_OFFSET) ? new PathPattern(dirPattern, jobConf.get(JOB_FILE_TIME_OFFSET))
+-                        : new PathPattern(dirPattern);
+-        updateRetryTime(jobConf, pattern);
++        List<String> dirPatterns = Stream.of(jobConf.get(JOB_DIR_FILTER_PATTERNS).split(",")).collect(Collectors.toList());
++        LOGGER.info("start to find files with dir pattern {}", dirPatterns);
++        List<PathPattern> patterns = dirPatterns.stream().map(dirPattern ->
++            jobConf.hasKey(JOB_FILE_TIME_OFFSET) ? new PathPattern(dirPattern, jobConf.get(JOB_FILE_TIME_OFFSET))
++                    : new PathPattern(dirPattern)
++        ).collect(Collectors.toList());
++
++        updateRetryTime(jobConf, patterns);
+         int maxFileNum = jobConf.getInt(FILE_MAX_NUM, DEFAULT_FILE_MAX_NUM);
+-        LOGGER.info("dir pattern {}, max file num {}", dirPattern, maxFileNum);
++        LOGGER.info("dir pattern {}, max file num {}", dirPatterns, maxFileNum);
+         Collection<File> allFiles = new ArrayList<>();
+-        try {
+-            pattern.walkAllSuitableFiles(allFiles, maxFileNum);
+-        } catch (IOException ex) {
+-            LOGGER.warn("cannot get all files from {}", dirPattern, ex);
+-        }
++        patterns.forEach(pattern -> {
++            try {
++                pattern.walkAllSuitableFiles(allFiles, maxFileNum);
++            } catch (IOException ex) {
++                LOGGER.warn("cannot get all files from {}", pattern, ex);
++            }
++        });
+         return allFiles;
+     }
+ 
+     /**
+      * if the job is retry job, the date is determined
+      */
+-    public static void updateRetryTime(JobProfile jobConf, PathPattern pattern) {
++    public static void updateRetryTime(JobProfile jobConf, List<PathPattern> patterns) {
+         if (jobConf.hasKey(JOB_RETRY_TIME)) {
+             LOGGER.info("job {} is retry job with specific time, update file time to {}"
+                     + "", jobConf.toJsonStr(), jobConf.get(JOB_RETRY_TIME));
+-            pattern.updateDateFormatRegex(jobConf.get(JOB_RETRY_TIME));
++            patterns.forEach(pattern -> pattern.updateDateFormatRegex(jobConf.get(JOB_RETRY_TIME)));
+         }
+     }
+ 
+@@ -123,7 +129,7 @@ public class PluginUtils {
+         JobProfile copiedProfile = TriggerProfile.parseJsonStr(triggerProfile.toJsonStr());
+         String md5 = AgentUtils.getFileMd5(pendingFile);
+         copiedProfile.set(pendingFile.getAbsolutePath() + ".md5", md5);
+-        copiedProfile.set(JobConstants.JOB_DIR_FILTER_PATTERN, pendingFile.getAbsolutePath());
++        copiedProfile.set(JobConstants.JOB_DIR_FILTER_PATTERNS, pendingFile.getAbsolutePath());
+         // the time suit for file name is just the data time
+         copiedProfile.set(JobConstants.JOB_DATA_TIME, dataTime);
+         return copiedProfile;
+diff --git a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/TestFileAgent.java b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/TestFileAgent.java
+index 67236c3da..eac36a186 100755
+--- a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/TestFileAgent.java
++++ b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/TestFileAgent.java
+@@ -51,7 +51,7 @@ import static org.apache.inlong.agent.constant.AgentConstants.AGENT_MESSAGE_FILT
+ import static org.apache.inlong.agent.constant.CommonConstants.PROXY_INLONG_GROUP_ID;
+ import static org.apache.inlong.agent.constant.CommonConstants.PROXY_INLONG_STREAM_ID;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_CYCLE_UNIT;
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_COLLECT_TYPE;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_MAX_WAIT;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_TIME_OFFSET;
+@@ -121,7 +121,7 @@ public class TestFileAgent {
+             if (stream != null) {
+                 String jobJson = IOUtils.toString(stream, StandardCharsets.UTF_8);
+                 JobProfile profile = JobProfile.parseJsonStr(jobJson);
+-                profile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testRootDir.toString(),
++                profile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testRootDir.toString(),
+                         "hugeFile.[0-9].txt").toString());
+                 profile.set(JOB_READ_WAIT_TIMEOUT, String.valueOf(readWaitTimeMilliseconds));
+                 profile.set(PROXY_INLONG_GROUP_ID, "groupid");
+@@ -135,8 +135,8 @@ public class TestFileAgent {
+     public void testOneJobOnly() throws Exception {
+         String jsonString = TestUtils.getTestTriggerProfile();
+         TriggerProfile triggerProfile = TriggerProfile.parseJsonStr(jsonString);
+-        triggerProfile.set(JOB_DIR_FILTER_PATTERN, helper.getParentPath() + triggerProfile.get(JOB_DIR_FILTER_PATTERN));
+-        triggerProfile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testRootDir.toString(),
++        triggerProfile.set(JOB_DIR_FILTER_PATTERNS, helper.getParentPath() + triggerProfile.get(JOB_DIR_FILTER_PATTERNS));
++        triggerProfile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testRootDir.toString(),
+                 "test[0-9].dat").toString());
+         triggerProfile.set(JOB_FILE_MAX_WAIT, "-1");
+         TriggerManager triggerManager = agent.getManager().getTriggerManager();
+@@ -164,7 +164,7 @@ public class TestFileAgent {
+         String path = Paths.get(uri).toString();
+         String jsonString = TestUtils.getTestTriggerProfile();
+         TriggerProfile triggerProfile = TriggerProfile.parseJsonStr(jsonString);
+-        triggerProfile.set(JOB_DIR_FILTER_PATTERN, path);
++        triggerProfile.set(JOB_DIR_FILTER_PATTERNS, path);
+         triggerProfile.set(JOB_FILE_MAX_WAIT, "-1");
+         triggerProfile.set(JOB_FILE_COLLECT_TYPE, FileCollectType.FULL);
+         triggerProfile.set(JOB_ID, "2");
+@@ -178,7 +178,7 @@ public class TestFileAgent {
+         Map<String, JobWrapper> jobs = agent.getManager().getJobManager().getJobs();
+         AtomicBoolean result = new AtomicBoolean(false);
+         if (jobs.size() == 1) {
+-            jobs.forEach((s, jobWrapper) -> result.set(jobWrapper.getJob().getJobConf().get(JOB_DIR_FILTER_PATTERN)
++            jobs.forEach((s, jobWrapper) -> result.set(jobWrapper.getJob().getJobConf().get(JOB_DIR_FILTER_PATTERNS)
+                     .equals(testRootDir + FileSystems.getDefault().getSeparator() + "test0.dat")));
+         }
+         return result.get();
+@@ -191,7 +191,7 @@ public class TestFileAgent {
+             if (stream != null) {
+                 String jobJson = IOUtils.toString(stream, StandardCharsets.UTF_8);
+                 JobProfile profile = JobProfile.parseJsonStr(jobJson);
+-                profile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testRootDir.toString(),
++                profile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testRootDir.toString(),
+                         "YYYYMMDD").toString());
+                 profile.set(JOB_CYCLE_UNIT, "D");
+                 agent.submitTriggerJob(profile);
+@@ -208,7 +208,7 @@ public class TestFileAgent {
+             if (stream != null) {
+                 String jobJson = IOUtils.toString(stream, StandardCharsets.UTF_8);
+                 JobProfile profile = JobProfile.parseJsonStr(jobJson);
+-                profile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testRootDir.toString(),
++                profile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testRootDir.toString(),
+                         "YYYYMMDD").toString());
+                 profile.set(JOB_CYCLE_UNIT, "D");
+                 profile.set(AGENT_MESSAGE_FILTER_CLASSNAME,
+@@ -227,7 +227,7 @@ public class TestFileAgent {
+             if (stream != null) {
+                 String jobJson = IOUtils.toString(stream, StandardCharsets.UTF_8);
+                 JobProfile profile = JobProfile.parseJsonStr(jobJson);
+-                profile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testRootDir.toString(),
++                profile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testRootDir.toString(),
+                         "YYYYMMDD").toString());
+                 profile.set(JOB_FILE_TIME_OFFSET, "-1d");
+                 profile.set(JOB_CYCLE_UNIT, "D");
+diff --git a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/filter/TestDateFormatRegex.java b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/filter/TestDateFormatRegex.java
+index d73195b9a..478bda2cb 100755
+--- a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/filter/TestDateFormatRegex.java
++++ b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/filter/TestDateFormatRegex.java
+@@ -36,7 +36,7 @@ import java.time.format.DateTimeFormatter;
+ import java.util.List;
+ import java.util.Locale;
+ 
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_GROUP_ID;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_INSTANCE_ID;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_STREAM_ID;
+@@ -85,7 +85,7 @@ public class TestDateFormatRegex {
+         Paths.get(testPath.toString(), currentDate + "_0").toFile().createNewFile();
+         TextFileSource source = new TextFileSource();
+         JobProfile profile = new JobProfile();
+-        profile.set(JOB_DIR_FILTER_PATTERN, Paths.get(testPath.toString(), "YYYYMMDD_0").toString());
++        profile.set(JOB_DIR_FILTER_PATTERNS, Paths.get(testPath.toString(), "YYYYMMDD_0").toString());
+         profile.set(JOB_INSTANCE_ID, "test");
+         profile.set(JOB_GROUP_ID, "groupId");
+         profile.set(JOB_STREAM_ID, "streamId");
+diff --git a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/sources/TestTextFileReader.java b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/sources/TestTextFileReader.java
+index 30d7692d0..16bafe4d4 100755
+--- a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/sources/TestTextFileReader.java
++++ b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/sources/TestTextFileReader.java
+@@ -51,7 +51,7 @@ import java.util.stream.Stream;
+ 
+ import static org.apache.inlong.agent.constant.CommonConstants.PROXY_INLONG_GROUP_ID;
+ import static org.apache.inlong.agent.constant.CommonConstants.PROXY_INLONG_STREAM_ID;
+-import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERN;
++import static org.apache.inlong.agent.constant.JobConstants.JOB_DIR_FILTER_PATTERNS;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_COLLECT_TYPE;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_CONTENT_COLLECT_TYPE;
+ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_LINE_END_PATTERN;
+@@ -107,7 +107,7 @@ public class TestTextFileReader {
+         URI uri = getClass().getClassLoader().getResource("test").toURI();
+         JobProfile jobConfiguration = JobProfile.parseJsonStr("{}");
+         String mainPath = Paths.get(uri).toString();
+-        jobConfiguration.set(JOB_DIR_FILTER_PATTERN, Paths.get(mainPath,
++        jobConfiguration.set(JOB_DIR_FILTER_PATTERNS, Paths.get(mainPath,
+                 "[2].txt").toFile().getAbsolutePath());
+         jobConfiguration.set(JOB_INSTANCE_ID, "test");
+         jobConfiguration.set(PROXY_INLONG_GROUP_ID, "groupid");
+@@ -138,7 +138,7 @@ public class TestTextFileReader {
+         URI uri = getClass().getClassLoader().getResource("test").toURI();
+         JobProfile jobConfiguration = JobProfile.parseJsonStr("{}");
+         String mainPath = Paths.get(uri).toString();
+-        jobConfiguration.set(JOB_DIR_FILTER_PATTERN, Paths.get(mainPath,
++        jobConfiguration.set(JOB_DIR_FILTER_PATTERNS, Paths.get(mainPath,
+                 "[1].txt").toFile().getAbsolutePath());
+         jobConfiguration.set(JOB_INSTANCE_ID, "test");
+         jobConfiguration.set(PROXY_INLONG_GROUP_ID, "groupid");
+@@ -172,7 +172,7 @@ public class TestTextFileReader {
+         URI uri = getClass().getClassLoader().getResource("test").toURI();
+         JobProfile jobConfiguration = JobProfile.parseJsonStr("{}");
+         String mainPath = Paths.get(uri).toString();
+-        jobConfiguration.set(JOB_DIR_FILTER_PATTERN, Paths.get(mainPath,
++        jobConfiguration.set(JOB_DIR_FILTER_PATTERNS, Paths.get(mainPath,
+                 "[1].txt").toFile().getAbsolutePath());
+         jobConfiguration.set(JOB_INSTANCE_ID, "test");
+         jobConfiguration.set(PROXY_INLONG_GROUP_ID, "groupid");
+diff --git a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/utils/TestUtils.java b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/utils/TestUtils.java
+index 92613bd42..34900ba6d 100644
+--- a/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/utils/TestUtils.java
++++ b/inlong-agent/agent-plugins/src/test/java/org/apache/inlong/agent/plugin/utils/TestUtils.java
+@@ -46,7 +46,7 @@ public class TestUtils {
+                 + "      \"trigger\": \"org.apache.inlong.agent.plugin.trigger.DirectoryTrigger\",\n"
+                 + "      \"dir\": {\n"
+                 + "        \"path\": \"\",\n"
+-                + "        \"pattern\": \"/AgentBaseTestsHelper/"
++                + "        \"patterns\": \"/AgentBaseTestsHelper/"
+                 + "org.apache.tubemq.inlong.plugin.fetcher.TestTdmFetcher/test[0-9].dat\"\n"
+                 + "      },\n"
+                 + "      \"thread\" : {\n"
+diff --git a/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/inner/client/InlongClusterClient.java b/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/inner/client/InlongClusterClient.java
+index 7140bf595..c1c14a4c8 100644
+--- a/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/inner/client/InlongClusterClient.java
++++ b/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/inner/client/InlongClusterClient.java
+@@ -23,6 +23,7 @@ import org.apache.inlong.manager.client.api.util.ClientUtils;
+ import org.apache.inlong.manager.common.util.Preconditions;
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+@@ -33,6 +34,8 @@ import org.apache.inlong.manager.pojo.cluster.ClusterTagResponse;
+ import org.apache.inlong.manager.pojo.common.PageResult;
+ import org.apache.inlong.manager.pojo.common.Response;
+ import org.apache.inlong.manager.pojo.common.UpdateResult;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.RequestBody;
+ 
+ import java.util.List;
+ 
+@@ -296,4 +299,16 @@ public class InlongClusterClient {
+         ClientUtils.assertRespSuccess(response);
+         return response.getData();
+     }
++
++    /**
++     * Bind or unbind cluster tag node for cluster node.
++     *
++     * @param request cluster info to be modified
++     * @return whether succeed
++     */
++    public Boolean bindNodeTag(ClusterNodeBindTagRequest request) {
++        Response<Boolean> response = ClientUtils.executeHttpCall(inlongClusterApi.bindNodeTag(request));
++        ClientUtils.assertRespSuccess(response);
++        return response.getData();
++    }
+ }
+diff --git a/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/service/InlongClusterApi.java b/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/service/InlongClusterApi.java
+index 776aacec0..79b98bf9b 100644
+--- a/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/service/InlongClusterApi.java
++++ b/inlong-manager/manager-client/src/main/java/org/apache/inlong/manager/client/api/service/InlongClusterApi.java
+@@ -19,6 +19,7 @@ package org.apache.inlong.manager.client.api.service;
+ 
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+@@ -98,4 +99,7 @@ public interface InlongClusterApi {
+ 
+     @DELETE("cluster/node/delete/{id}")
+     Call<Response<Boolean>> deleteNode(@Path("id") Integer id);
++
++    @POST("cluster/node/bindTag")
++    Call<Response<Boolean>> bindNodeTag(@Body ClusterNodeBindTagRequest request);
+ }
+diff --git a/inlong-manager/manager-client/src/test/java/org/apache/inlong/manager/client/api/inner/ClientFactoryTest.java b/inlong-manager/manager-client/src/test/java/org/apache/inlong/manager/client/api/inner/ClientFactoryTest.java
+index 9f1351307..201cf377a 100644
+--- a/inlong-manager/manager-client/src/test/java/org/apache/inlong/manager/client/api/inner/ClientFactoryTest.java
++++ b/inlong-manager/manager-client/src/test/java/org/apache/inlong/manager/client/api/inner/ClientFactoryTest.java
+@@ -47,6 +47,7 @@ import org.apache.inlong.manager.common.enums.UserTypeEnum;
+ import org.apache.inlong.manager.common.util.JsonUtils;
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterRequest;
+@@ -77,9 +78,11 @@ import org.apache.inlong.manager.pojo.sink.kafka.KafkaSink;
+ import org.apache.inlong.manager.pojo.sink.mysql.MySQLSink;
+ import org.apache.inlong.manager.pojo.sink.postgresql.PostgreSQLSink;
+ import org.apache.inlong.manager.pojo.sort.FlinkSortConf;
++import org.apache.inlong.manager.pojo.source.SourceRequest;
+ import org.apache.inlong.manager.pojo.source.StreamSource;
+ import org.apache.inlong.manager.pojo.source.autopush.AutoPushSource;
+ import org.apache.inlong.manager.pojo.source.file.FileSource;
++import org.apache.inlong.manager.pojo.source.file.FileSourceRequest;
+ import org.apache.inlong.manager.pojo.source.kafka.KafkaSource;
+ import org.apache.inlong.manager.pojo.source.mysql.MySQLBinlogSource;
+ import org.apache.inlong.manager.pojo.stream.InlongStreamInfo;
+@@ -111,7 +114,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
+ @Slf4j
+ class ClientFactoryTest {
+ 
+-    private static final int SERVICE_PORT = 8085;
++    private static final int SERVICE_PORT = 8083;
+     static ClientFactory clientFactory;
+     private static WireMockServer wireMockServer;
+     private static InlongGroupClient groupClient;
+@@ -126,11 +129,12 @@ class ClientFactoryTest {
+ 
+     @BeforeAll
+     static void setup() {
++        /**
+         wireMockServer = new WireMockServer(options().port(SERVICE_PORT));
+         wireMockServer.start();
+         WireMock.configureFor(wireMockServer.port());
+-
+-        String serviceUrl = "127.0.0.1:" + SERVICE_PORT;
++        **/
++        String serviceUrl = "172.21.71.20:" + SERVICE_PORT;
+         ClientConfiguration configuration = new ClientConfiguration();
+         configuration.setAuthentication(new DefaultAuthentication("admin", "inlong"));
+         InlongClientImpl inlongClient = new InlongClientImpl(serviceUrl, configuration);
+@@ -150,7 +154,23 @@ class ClientFactoryTest {
+ 
+     @AfterAll
+     static void teardown() {
+-        wireMockServer.stop();
++        //wireMockServer.stop();
++    }
++
++    // todo:仅仅为了测试用
++    @Test
++    void testNewAPI() {
++        /** bindTag */
++        ClusterNodeBindTagRequest request = new ClusterNodeBindTagRequest();
++        request.setClusterId(1);
++        request.setType("AGENT");
++        request.setClusterNodeTag("drink,play");
++        request.setUnbindClusterNodes(Lists.newArrayList("127.0.0.1"));
++        clusterClient.bindNodeTag(request);
++
++
++        /** create stream source*/
++
+     }
+ 
+     @Test
+diff --git a/inlong-manager/manager-dao/pom.xml b/inlong-manager/manager-dao/pom.xml
+index 6205ea852..a861eb28b 100644
+--- a/inlong-manager/manager-dao/pom.xml
++++ b/inlong-manager/manager-dao/pom.xml
+@@ -110,11 +110,19 @@
+                 </configuration>
+                 <dependencies>
+                     <dependency>
+-                        <groupId>org.postgresql</groupId>
+-                        <artifactId>postgresql</artifactId>
+-                        <version>${postgresql.version}</version>
++                        <groupId>mysql</groupId>
++                        <artifactId>mysql-connector-java</artifactId>
++                        <version>8.0.27</version>
+                     </dependency>
+                 </dependencies>
++                <executions>
++                    <execution>
++                        <id>generat_xml</id>
++                        <goals>
++                            <goal>generate</goal>
++                        </goals>
++                    </execution>
++                </executions>
+             </plugin>
+         </plugins>
+     </build>
+diff --git a/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/InlongClusterNodeEntity.java b/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/InlongClusterNodeEntity.java
+index b57aa6d26..a084f72fb 100644
+--- a/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/InlongClusterNodeEntity.java
++++ b/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/InlongClusterNodeEntity.java
+@@ -36,6 +36,7 @@ public class InlongClusterNodeEntity implements Serializable {
+     private Integer port;
+     private String protocolType;
+     private Integer nodeLoad;
++    private String nodeTags;
+     private String extParams;
+     private String description;
+ 
+diff --git a/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/StreamSourceEntity.java b/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/StreamSourceEntity.java
+index dab6db269..c4de96c0f 100644
+--- a/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/StreamSourceEntity.java
++++ b/inlong-manager/manager-dao/src/main/java/org/apache/inlong/manager/dao/entity/StreamSourceEntity.java
+@@ -42,6 +42,7 @@ public class StreamSourceEntity implements Serializable {
+ 
+     private String dataNodeName;
+     private String inlongClusterName;
++    private String inlongClusterNodeTag;
+     private String serializationType;
+     private String snapshot;
+     private Date reportTime;
+diff --git a/inlong-manager/manager-dao/src/main/resources/generatorConfig.xml b/inlong-manager/manager-dao/src/main/resources/generatorConfig.xml
+index e2fe3d8ae..da38ad90a 100644
+--- a/inlong-manager/manager-dao/src/main/resources/generatorConfig.xml
++++ b/inlong-manager/manager-dao/src/main/resources/generatorConfig.xml
+@@ -38,7 +38,7 @@
+         <!-- Database connection URL, username, password -->
+         <jdbcConnection driverClass="com.mysql.cj.jdbc.Driver"
+                 connectionURL="jdbc:mysql://127.0.0.1:3306/apache_inlong_manager?nullCatalogMeansCurrent=true"
+-                userId="root" password="inlong">
++                userId="root" password="123456">
+         </jdbcConnection>
+ 
+         <javaTypeResolver>
+@@ -67,9 +67,15 @@
+         </javaClientGenerator>
+ 
+         <!-- Which entities to generate -->
+-        <table tableName="inlong_stream_ext" domainObjectName="InlongStreamExtEntity"
+-                enableInsert="true" enableSelectByPrimaryKey="true"
+-                enableUpdateByPrimaryKey="true" enableDeleteByPrimaryKey="true"
++        <table tableName="inlong_cluster_node" domainObjectName="InlongClusterNodeEntity"
++            enableInsert="true" enableSelectByPrimaryKey="false"
++            enableUpdateByPrimaryKey="false" enableDeleteByPrimaryKey="false"
++            enableCountByExample="false" enableDeleteByExample="false"
++            enableSelectByExample="false" enableUpdateByExample="false">
++        </table>
++        <table tableName="stream_source" domainObjectName="StreamSourceEntity"
++                enableInsert="true" enableSelectByPrimaryKey="false"
++                enableUpdateByPrimaryKey="false" enableDeleteByPrimaryKey="false"
+                 enableCountByExample="false" enableDeleteByExample="false"
+                 enableSelectByExample="false" enableUpdateByExample="false">
+         </table>
+diff --git a/inlong-manager/manager-dao/src/main/resources/mappers/InlongClusterNodeEntityMapper.xml b/inlong-manager/manager-dao/src/main/resources/mappers/InlongClusterNodeEntityMapper.xml
+index 713aa16d8..7901cdaf0 100644
+--- a/inlong-manager/manager-dao/src/main/resources/mappers/InlongClusterNodeEntityMapper.xml
++++ b/inlong-manager/manager-dao/src/main/resources/mappers/InlongClusterNodeEntityMapper.xml
+@@ -28,6 +28,7 @@
+         <result column="port" jdbcType="INTEGER" property="port"/>
+         <result column="protocol_type" jdbcType="VARCHAR" property="protocolType"/>
+         <result column="node_load" jdbcType="INTEGER" property="nodeLoad"/>
++        <result column="node_tags" jdbcType="VARCHAR" property="nodeTags"/>
+         <result column="ext_params" jdbcType="LONGVARCHAR" property="extParams"/>
+         <result column="description" jdbcType="VARCHAR" property="description"/>
+         <result column="status" jdbcType="INTEGER" property="status"/>
+@@ -39,7 +40,7 @@
+         <result column="version" jdbcType="INTEGER" property="version"/>
+     </resultMap>
+     <sql id="Base_Column_List">
+-        id, parent_id, type, ip, port, protocol_type, node_load, ext_params, description,
++        id, parent_id, type, ip, port, protocol_type, node_load, node_tags, ext_params, description,
+         status, is_deleted, creator, modifier, create_time, modify_time, version
+     </sql>
+ 
+@@ -47,12 +48,12 @@
+             parameterType="org.apache.inlong.manager.dao.entity.InlongClusterNodeEntity">
+         insert into inlong_cluster_node (id, parent_id, type,
+                                          ip, port, protocol_type,
+-                                         node_load, ext_params,
++                                         node_load, node_tags, ext_params,
+                                          description, status,
+                                          creator, modifier)
+         values (#{id,jdbcType=INTEGER}, #{parentId,jdbcType=INTEGER}, #{type,jdbcType=VARCHAR},
+                 #{ip,jdbcType=VARCHAR}, #{port,jdbcType=INTEGER}, #{protocolType,jdbcType=VARCHAR},
+-                #{nodeLoad,jdbcType=INTEGER}, #{extParams,jdbcType=LONGVARCHAR},
++                #{nodeLoad,jdbcType=INTEGER}, #{nodeTags,jdbcType=VARCHAR}, #{extParams,jdbcType=LONGVARCHAR},
+                 #{description, jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                 #{creator,jdbcType=VARCHAR}, #{modifier,jdbcType=VARCHAR})
+     </insert>
+@@ -61,13 +62,14 @@
+             parameterType="org.apache.inlong.manager.dao.entity.InlongClusterNodeEntity">
+         insert into inlong_cluster_node (id, parent_id, type,
+                                          ip, port, protocol_type,
+-                                         node_load, ext_params, status,
+-                                         creator, modifier)
++                                         node_load, node_tags, ext_params,
++                                         status, creator, modifier)
+         values (#{id,jdbcType=INTEGER}, #{parentId,jdbcType=INTEGER}, #{type,jdbcType=VARCHAR},
+                 #{ip,jdbcType=VARCHAR}, #{port,jdbcType=INTEGER}, #{protocolType,jdbcType=VARCHAR},
+-                #{nodeLoad,jdbcType=INTEGER}, #{extParams,jdbcType=LONGVARCHAR}, #{status,jdbcType=INTEGER},
+-                #{creator,jdbcType=VARCHAR}, #{modifier,jdbcType=VARCHAR})
++                #{nodeLoad,jdbcType=INTEGER}, #{nodeTags,jdbcType=VARCHAR}, #{extParams,jdbcType=LONGVARCHAR},
++                #{status,jdbcType=INTEGER}, #{creator,jdbcType=VARCHAR}, #{modifier,jdbcType=VARCHAR})
+         ON DUPLICATE KEY UPDATE node_load  = VALUES(node_load),
++                                node_tags  = VALUES(node_tags),
+                                 ext_params = VALUES(ext_params),
+                                 status     = VALUES(status),
+                                 modifier   = VALUES(modifier)
+@@ -141,6 +143,7 @@
+             port          = #{port,jdbcType=INTEGER},
+             protocol_type = #{protocolType,jdbcType=VARCHAR},
+             node_load     = #{nodeLoad,jdbcType=INTEGER},
++            node_tags     = #{nodeTags,jdbcType=VARCHAR},
+             ext_params    = #{extParams,jdbcType=LONGVARCHAR},
+             description   = #{description,jdbcType=VARCHAR},
+             status        = #{status,jdbcType=INTEGER},
+diff --git a/inlong-manager/manager-dao/src/main/resources/mappers/StreamSourceEntityMapper.xml b/inlong-manager/manager-dao/src/main/resources/mappers/StreamSourceEntityMapper.xml
+index e19a05edc..848993223 100644
+--- a/inlong-manager/manager-dao/src/main/resources/mappers/StreamSourceEntityMapper.xml
++++ b/inlong-manager/manager-dao/src/main/resources/mappers/StreamSourceEntityMapper.xml
+@@ -31,6 +31,7 @@
+         <result column="uuid" jdbcType="VARCHAR" property="uuid"/>
+         <result column="data_node_name" jdbcType="VARCHAR" property="dataNodeName"/>
+         <result column="inlong_cluster_name" jdbcType="VARCHAR" property="inlongClusterName"/>
++        <result column="inlong_cluster_node_tag" jdbcType="VARCHAR" property="inlongClusterNodeTag"/>
+         <result column="serialization_type" jdbcType="VARCHAR" property="serializationType"/>
+         <result column="snapshot" jdbcType="LONGVARCHAR" property="snapshot"/>
+         <result column="report_time" jdbcType="TIMESTAMP" property="reportTime"/>
+@@ -46,22 +47,22 @@
+     </resultMap>
+     <sql id="Base_Column_List">
+         id, inlong_group_id, inlong_stream_id, source_type, source_name, template_id, agent_ip, uuid,
+-        data_node_name, inlong_cluster_name, serialization_type, snapshot, report_time, ext_params,
+-        version, status, previous_status, is_deleted, creator, modifier, create_time, modify_time
++        data_node_name, inlong_cluster_name, inlong_cluster_node_tag, serialization_type, snapshot, report_time,
++        ext_params, version, status, previous_status, is_deleted, creator, modifier, create_time, modify_time
+     </sql>
+ 
+     <insert id="insert" useGeneratedKeys="true" keyProperty="id"
+             parameterType="org.apache.inlong.manager.dao.entity.StreamSourceEntity">
+         insert into stream_source (inlong_group_id, inlong_stream_id,
+                                    source_type, source_name, template_id, agent_ip,
+-                                   uuid, data_node_name, inlong_cluster_name,
++                                   uuid, data_node_name, inlong_cluster_name, inlong_cluster_node_tag,
+                                    serialization_type, snapshot,
+                                    report_time, ext_params, status,
+                                    previous_status, creator, modifier)
+         values (#{inlongGroupId,jdbcType=VARCHAR}, #{inlongStreamId,jdbcType=VARCHAR},
+                 #{sourceType,jdbcType=VARCHAR}, #{sourceName,jdbcType=VARCHAR}, #{templateId,jdbcType=INTEGER},
+-                #{agentIp,jdbcType=VARCHAR}, #{uuid,jdbcType=VARCHAR},
+-                #{dataNodeName,jdbcType=VARCHAR}, #{inlongClusterName,jdbcType=VARCHAR},
++                #{agentIp,jdbcType=VARCHAR}, #{uuid,jdbcType=VARCHAR}, #{dataNodeName,jdbcType=VARCHAR},
++                #{inlongClusterName,jdbcType=VARCHAR}, #{inlongClusterNodeTag,jdbcType=VARCHAR},
+                 #{serializationType,jdbcType=VARCHAR}, #{snapshot,jdbcType=LONGVARCHAR},
+                 #{modifyTime,jdbcType=TIMESTAMP}, #{extParams,jdbcType=LONGVARCHAR}, #{status,jdbcType=INTEGER},
+                 #{previousStatus,jdbcType=INTEGER}, #{creator,jdbcType=VARCHAR}, #{modifier,jdbcType=VARCHAR})
+@@ -310,6 +311,9 @@
+             <if test="inlongClusterName != null">
+                 inlong_cluster_name = #{inlongClusterName,jdbcType=INTEGER},
+             </if>
++            <if test="inlongClusterNodeTag != null">
++                inlong_cluster_node_tag = #{inlongClusterNodeTag,jdbcType=INTEGER},
++            </if>
+             <if test="serializationType != null">
+                 serialization_type = #{serializationType,jdbcType=VARCHAR},
+             </if>
+@@ -352,6 +356,7 @@
+             uuid                = #{uuid,jdbcType=VARCHAR},
+             data_node_name      = #{dataNodeName,jdbcType=VARCHAR},
+             inlong_cluster_name = #{inlongClusterName,jdbcType=VARCHAR},
++            inlong_cluster_node_tag = #{inlongClusterNodeTag,jdbcType=VARCHAR},
+             serialization_type  = #{serializationType,jdbcType=VARCHAR},
+             snapshot            = #{snapshot,jdbcType=LONGVARCHAR},
+             report_time         = #{reportTime,jdbcType=TIMESTAMP},
+diff --git a/inlong-manager/manager-pojo/src/main/java/org/apache/inlong/manager/pojo/cluster/ClusterNodeBindTagRequest.java b/inlong-manager/manager-pojo/src/main/java/org/apache/inlong/manager/pojo/cluster/ClusterNodeBindTagRequest.java
+new file mode 100644
+index 000000000..634d211e8
+--- /dev/null
++++ b/inlong-manager/manager-pojo/src/main/java/org/apache/inlong/manager/pojo/cluster/ClusterNodeBindTagRequest.java
+@@ -0,0 +1,55 @@
++/*
++ *  Licensed to the Apache Software Foundation (ASF) under one or more
++ *  contributor license agreements. See the NOTICE file distributed with
++ *  this work for additional information regarding copyright ownership.
++ *  The ASF licenses this file to You under the Apache License, Version 2.0
++ *  (the "License"); you may not use this file except in compliance with
++ *  the License. You may obtain a copy of the License at
++ *
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ *  Unless required by applicable law or agreed to in writing, software
++ *  distributed under the License is distributed on an "AS IS" BASIS,
++ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ *  See the License for the specific language governing permissions and
++ *  limitations under the License.
++ *
++ */
++
++package org.apache.inlong.manager.pojo.cluster;
++
++
++import io.swagger.annotations.ApiModel;
++import io.swagger.annotations.ApiModelProperty;
++import lombok.Data;
++
++import javax.validation.constraints.NotBlank;
++import javax.validation.constraints.NotNull;
++import java.util.List;
++
++/**
++ * Inlong cluster node bind or unbind tag request
++ */
++@Data
++@ApiModel("Cluster node bind and unbind tag request")
++public class ClusterNodeBindTagRequest {
++
++    @NotBlank(message = "clusterTag cannot be blank")
++    @ApiModelProperty(value = "Cluster tag")
++    private String clusterNodeTag;
++
++    @NotNull(message = "clusterTag cannot be blank")
++    @ApiModelProperty(value = "Cluster tag")
++    private Integer clusterId;
++
++    @NotBlank(message = "type cannot be blank")
++    @ApiModelProperty(value = "Cluster type, including AGENT, DATAPROXY, etc.")
++    private String type;
++
++    @ApiModelProperty(value = "Cluster node ip list which needs to bind tag")
++    private List<String> bindClusterNodes;
++
++    @ApiModelProperty(value = "Cluster node ip list which needs to unbind tag")
++    private List<String> unbindClusterNodes;
++
++}
+diff --git a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterService.java b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterService.java
+index de4467181..6619b06af 100644
+--- a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterService.java
++++ b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterService.java
+@@ -21,6 +21,7 @@ import org.apache.inlong.common.pojo.dataproxy.DataProxyConfig;
+ import org.apache.inlong.common.pojo.dataproxy.DataProxyNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+@@ -237,6 +238,16 @@ public interface InlongClusterService {
+      */
+     Boolean deleteNode(Integer id, String operator);
+ 
++
++    /**
++     * Bind or unbind cluster tag node for cluster node.
++     *
++     * @param request cluster info to be modified
++     * @param operator current operator
++     * @return whether succeed
++     */
++    Boolean bindNodeTag(ClusterNodeBindTagRequest request, String operator);
++
+     /**
+      * Query data proxy nodes by the given inlong group id and protocol type
+      *
+diff --git a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterServiceImpl.java b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterServiceImpl.java
+index 8b2b378a1..0d41260d1 100644
+--- a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterServiceImpl.java
++++ b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/cluster/InlongClusterServiceImpl.java
+@@ -22,6 +22,7 @@ import com.github.pagehelper.PageHelper;
+ import com.google.common.base.Joiner;
+ import com.google.common.collect.Sets;
+ import com.google.gson.Gson;
++import com.scurrilous.circe.Hash;
+ import org.apache.commons.collections.CollectionUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.inlong.common.pojo.dataproxy.DataProxyCluster;
+@@ -53,6 +54,7 @@ import org.apache.inlong.manager.dao.mapper.InlongStreamEntityMapper;
+ import org.apache.inlong.manager.dao.mapper.UserEntityMapper;
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+@@ -710,6 +712,60 @@ public class InlongClusterServiceImpl implements InlongClusterService {
+         return true;
+     }
+ 
++    @Override
++    public Boolean bindNodeTag(ClusterNodeBindTagRequest request, String operator) {
++        HashSet<String> bindSet = Sets.newHashSet();
++        HashSet<String> unbindSet = Sets.newHashSet();
++        if (request.getBindClusterNodes() != null) {
++            bindSet.addAll(request.getBindClusterNodes());
++        }
++        if (request.getUnbindClusterNodes() != null) {
++            unbindSet.addAll(request.getUnbindClusterNodes());
++        }
++        Preconditions.checkTrue(Sets.union(bindSet, unbindSet).size() == bindSet.size() + unbindSet.size(),
++                "can not add and del node tag in the sameTime");
++        InlongClusterEntity cluster = clusterMapper.selectById(request.getClusterId());
++        String message = "Current user does not have permission to bind cluster node tag";
++        checkUser(cluster, operator, message);
++
++        if (CollectionUtils.isNotEmpty(bindSet)) {
++            bindSet.stream().flatMap(clusterNode -> {
++                        ClusterPageRequest pageRequest = new ClusterPageRequest();
++                        pageRequest.setParentId(cluster.getId());
++                        pageRequest.setType(request.getType());
++                        pageRequest.setKeyword(clusterNode);
++                        return clusterNodeMapper.selectByCondition(pageRequest).stream();
++                    }).filter(entity -> entity != null)
++                    .forEach(entity -> {
++                        String nodeTags = entity.getNodeTags();
++                        Set<String> tagSet = nodeTags == null ? Sets.newHashSet()
++                                : Sets.newHashSet(entity.getNodeTags().split(InlongConstants.COMMA));
++                        tagSet.add(request.getClusterNodeTag());
++                        entity.setNodeTags(String.join(InlongConstants.COMMA, tagSet));
++                        clusterNodeMapper.updateById(entity);
++                    });
++        }
++
++        if (CollectionUtils.isNotEmpty(unbindSet)) {
++            unbindSet.stream().flatMap(clusterNode -> {
++                        ClusterPageRequest pageRequest = new ClusterPageRequest();
++                        pageRequest.setParentId(cluster.getId());
++                        pageRequest.setType(request.getType());
++                        pageRequest.setKeyword(clusterNode);
++                        return clusterNodeMapper.selectByCondition(pageRequest).stream();
++                    }).filter(entity -> entity != null)
++                    .forEach(entity -> {
++                        String nodeTags = entity.getNodeTags();
++                        Set<String> tagSet = nodeTags == null ? Sets.newHashSet()
++                                : Sets.newHashSet(entity.getNodeTags().split(InlongConstants.COMMA));
++                        tagSet.remove(request.getClusterNodeTag());
++                        entity.setNodeTags(String.join(InlongConstants.COMMA, tagSet));
++                        clusterNodeMapper.updateById(entity);
++                    });
++        }
++        return true;
++    }
++
+     @Override
+     public DataProxyNodeResponse getDataProxyNodes(String groupId, String protocolType) {
+         LOGGER.debug("begin to get data proxy nodes for groupId={}, protocol={}", groupId, protocolType);
+diff --git a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/core/impl/AgentServiceImpl.java b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/core/impl/AgentServiceImpl.java
+index ce643dd53..776c390ac 100644
+--- a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/core/impl/AgentServiceImpl.java
++++ b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/core/impl/AgentServiceImpl.java
+@@ -35,20 +35,25 @@ import org.apache.inlong.common.pojo.dataproxy.MQClusterInfo;
+ import org.apache.inlong.manager.common.consts.InlongConstants;
+ import org.apache.inlong.manager.common.consts.MQType;
+ import org.apache.inlong.manager.common.consts.SourceType;
++import org.apache.inlong.manager.common.enums.ClusterType;
+ import org.apache.inlong.manager.common.enums.SourceStatus;
+ import org.apache.inlong.manager.common.exceptions.BusinessException;
+ import org.apache.inlong.manager.common.util.CommonBeanUtils;
+ import org.apache.inlong.manager.common.util.JsonUtils;
+ import org.apache.inlong.manager.common.util.Preconditions;
+ import org.apache.inlong.manager.dao.entity.InlongClusterEntity;
++import org.apache.inlong.manager.dao.entity.InlongClusterNodeEntity;
+ import org.apache.inlong.manager.dao.entity.InlongGroupEntity;
+ import org.apache.inlong.manager.dao.entity.InlongStreamEntity;
+ import org.apache.inlong.manager.dao.entity.StreamSourceEntity;
+ import org.apache.inlong.manager.dao.mapper.DataSourceCmdConfigEntityMapper;
+ import org.apache.inlong.manager.dao.mapper.InlongClusterEntityMapper;
++import org.apache.inlong.manager.dao.mapper.InlongClusterNodeEntityMapper;
+ import org.apache.inlong.manager.dao.mapper.InlongGroupEntityMapper;
+ import org.apache.inlong.manager.dao.mapper.InlongStreamEntityMapper;
+ import org.apache.inlong.manager.dao.mapper.StreamSourceEntityMapper;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
++import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+ import org.apache.inlong.manager.pojo.cluster.pulsar.PulsarClusterDTO;
+ import org.apache.inlong.manager.pojo.source.file.FileSourceDTO;
+ import org.apache.inlong.manager.service.core.AgentService;
+@@ -65,10 +70,14 @@ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Objects;
++import java.util.Optional;
++import java.util.Set;
+ import java.util.stream.Collectors;
++import java.util.stream.Stream;
+ 
+ /**
+  * Agent service layer implementation
+@@ -106,6 +115,8 @@ public class AgentServiceImpl implements AgentService {
+     private InlongStreamEntityMapper streamMapper;
+     @Autowired
+     private InlongClusterEntityMapper clusterMapper;
++    @Autowired
++    private InlongClusterNodeEntityMapper clusterNodeMapper;
+ 
+     @Override
+     public Boolean reportSnapshot(TaskSnapshotRequest request) {
+@@ -183,18 +194,51 @@ public class AgentServiceImpl implements AgentService {
+         }
+ 
+         List<DataConfig> tasks = Lists.newArrayList();
+-        // Query the tasks that needed to add or active - without agentIp and uuid
+-        tasks.addAll(fetchNonFileTasks(request));
+-        // Query file collecting tasks
+-        tasks.addAll(fetchFileTasks(request));
+-        // Query other tasks by agentIp and uuid
+-        tasks.addAll(fetchNeedIssuedTasks(request));
++        tasks.addAll(fetchNormalTasks(request));
++        tasks.addAll(fetchQueuedTasks(request));
+ 
+         // Query pending special commands
+         List<CmdConfig> cmdConfigs = getAgentCmdConfigs(request);
+         return TaskResult.builder().dataConfigs(tasks).cmdConfigs(cmdConfigs).build();
+     }
+ 
++    /**
++     * Query the tasks that source is need to add or active.
++     *
++     * @param request
++     * @return
++     */
++    private List<DataConfig> fetchNormalTasks(TaskRequest request) {
++        List<DataConfig> tasks = Lists.newArrayList();
++        // Query the tasks for non file collecting tasks
++        tasks.addAll(fetchNonFileTasks(request));
++        // Query the tasks for file collecting tasks
++        tasks.addAll(fetchFileTasks(request));
++        return tasks;
++    }
++
++    /**
++     * Query the tasks that source is waited to be operated.(Status in {@link NEED_ISSUED_STATUS})
++     *
++     * @param request
++     * @return
++     */
++    private List<DataConfig> fetchQueuedTasks(TaskRequest request) {
++        List<StreamSourceEntity> sourceEntities = sourceMapper.selectByStatusAndCluster(NEED_ISSUED_STATUS,
++                request.getClusterName(), request.getAgentIp(), request.getUuid());
++        List<DataConfig> issuedTasks = Lists.newArrayList();
++        for (StreamSourceEntity issuedTask : sourceEntities) {
++            int op = getOp(issuedTask.getStatus());
++            int nextStatus = getNextStatus(issuedTask.getStatus());
++            issuedTask.setStatus(nextStatus);
++            if (sourceMapper.updateByPrimaryKeySelective(issuedTask) == 1) {
++                issuedTask.setVersion(issuedTask.getVersion() + 1);
++                issuedTasks.add(getDataConfig(issuedTask, op));
++            }
++        }
++        return issuedTasks;
++    }
++
+     private List<DataConfig> fetchNonFileTasks(TaskRequest taskRequest) {
+         List<Integer> needAddStatusList;
+         if (PullJobTypeEnum.NEVER == PullJobTypeEnum.getPullJobType(taskRequest.getPullJobType())) {
+@@ -236,11 +280,26 @@ public class AgentServiceImpl implements AgentService {
+         final String agentClusterName = taskRequest.getClusterName();
+         Preconditions.checkTrue(StringUtils.isNotBlank(agentIp) || StringUtils.isNotBlank(agentClusterName),
+                 "both agent ip and cluster name are blank when fetching file task");
++        // 这里寻找匹配agentClusterName的cluster下属node并且agentIp匹配上的tags的任务
++        // todo:优化下这里的逻辑,这里的逻辑有点乱
++        InlongClusterEntity clusterEntity = clusterMapper.selectByNameAndType(agentClusterName, ClusterType.AGENT);
++        List<DataConfig> fileTasks = Lists.newArrayList();
++        if (clusterEntity == null) {
++            LOGGER.error("could not find cluster: " + agentClusterName);
++            return fileTasks;
++        }
++
++        ClusterPageRequest nodeRequest = new ClusterPageRequest();
++        nodeRequest.setKeyword(agentIp);
++        nodeRequest.setParentId(clusterEntity.getId());
++        nodeRequest.setType(ClusterType.AGENT);
++        InlongClusterNodeEntity clusterNodeEntity =
++                clusterNodeMapper.selectByCondition(nodeRequest).stream().findFirst().orElse(null);
+         List<StreamSourceEntity> sourceEntities = sourceMapper.selectByAgentIpOrCluster(needAddStatusList,
+                 Lists.newArrayList(SourceType.FILE), agentIp, agentClusterName);
+-        List<DataConfig> fileTasks = Lists.newArrayList();
++
+         for (StreamSourceEntity sourceEntity : sourceEntities) {
+-            DataConfig taskConfig = getFileTaskFromEntity(taskRequest, sourceEntity);
++            DataConfig taskConfig = getFileTaskFromEntity(taskRequest, sourceEntity, clusterNodeEntity);
+             if (taskConfig == null) {
+                 continue;
+             }
+@@ -252,7 +311,8 @@ public class AgentServiceImpl implements AgentService {
+         return fileTasks;
+     }
+ 
+-    private DataConfig getFileTaskFromEntity(TaskRequest taskRequest, StreamSourceEntity sourceEntity) {
++    private DataConfig getFileTaskFromEntity(
++            TaskRequest taskRequest, StreamSourceEntity sourceEntity, InlongClusterNodeEntity clusterNodeEntity) {
+         final String agentIp = taskRequest.getAgentIp();
+         final String uuid = taskRequest.getUuid();
+ 
+@@ -277,48 +337,41 @@ public class AgentServiceImpl implements AgentService {
+         if (isTemplateTask) {
+             // is the task already fetched by this agent ?
+             List<StreamSourceEntity> subSources = sourceMapper.selectByTemplateId(sourceEntity.getId());
+-            if (subSources.stream().anyMatch(subSource -> subSource.getAgentIp().equals(agentIp))) {
+-                return null;
++            // 某个模板的子任务中是否有该节点的任务，若没有，判断tag是否匹配匹配了则应该让它有；若有，则判断tag是否匹配不匹配则应该让他没有
++            Optional<StreamSourceEntity> optionalSource =  subSources.stream()
++                    .filter(subSource -> subSource.getAgentIp().equals(agentIp))
++                    .findAny();
++            if (optionalSource.isPresent() && !matchTag(optionalSource.get(), clusterNodeEntity)) {
++                StreamSourceEntity fileEntity = optionalSource.get();
++                if (!fileEntity.getStatus().equals(SourceStatus.SOURCE_DISABLE)) { // 如果不是最终态，则一直下发删除直到成为转变成为SOURCE_DISABLE状态
++                    fileEntity.setStatus(SourceStatus.TO_BE_ISSUED_DELETE.getCode());
++                    sourceMapper.updateByPrimaryKey(fileEntity);
++                }
++            } else if (!optionalSource.isPresent() && matchTag(sourceEntity, clusterNodeEntity)) {
++                // if not, clone a subtask for this Agent.
++                // note: a new source name with random suffix is generated to adhere to the unique constraint
++                StreamSourceEntity fileEntity = CommonBeanUtils.copyProperties(sourceEntity, StreamSourceEntity::new);
++                fileEntity.setExtParams(sourceEntity.getExtParams());
++                fileEntity.setInlongClusterNodeTag(sourceEntity.getInlongClusterNodeTag());
++                fileEntity.setAgentIp(agentIp);
++                fileEntity.setUuid(uuid);
++                fileEntity.setSourceName(fileEntity.getSourceName() + "-"
++                        + RandomStringUtils.randomAlphanumeric(10).toLowerCase(Locale.ROOT));
++                fileEntity.setTemplateId(sourceEntity.getId());
++                int nextStatus = getNextStatus(fileEntity.getStatus());
++                fileEntity.setStatus(nextStatus);
++
++                // create new sub source task
++                sourceMapper.insert(fileEntity);
++
++                // select again to refresh entity version and others.
++                return getDataConfig(sourceMapper.selectById(fileEntity.getId()), getOp(fileEntity.getStatus()));
+             }
+-
+-            // if not, clone a subtask for this Agent.
+-            // note: a new source name with random suffix is generated to adhere to the unique constraint
+-            StreamSourceEntity fileEntity = CommonBeanUtils.copyProperties(sourceEntity, StreamSourceEntity::new);
+-            fileEntity.setExtParams(sourceEntity.getExtParams());
+-            fileEntity.setAgentIp(agentIp);
+-            fileEntity.setUuid(uuid);
+-            fileEntity.setSourceName(fileEntity.getSourceName() + "-"
+-                    + RandomStringUtils.randomAlphanumeric(10).toLowerCase(Locale.ROOT));
+-            fileEntity.setTemplateId(sourceEntity.getId());
+-            int nextStatus = getNextStatus(fileEntity.getStatus());
+-            fileEntity.setStatus(nextStatus);
+-
+-            // create new sub source task
+-            sourceMapper.insert(fileEntity);
+-
+-            // select again to refresh entity version and others.
+-            return getDataConfig(sourceMapper.selectById(fileEntity.getId()), getOp(fileEntity.getStatus()));
+         }
+ 
+         return null;
+     }
+ 
+-    private List<DataConfig> fetchNeedIssuedTasks(TaskRequest taskRequest) {
+-        List<StreamSourceEntity> sourceEntities = sourceMapper.selectByStatusAndCluster(NEED_ISSUED_STATUS,
+-                taskRequest.getClusterName(), taskRequest.getAgentIp(), taskRequest.getUuid());
+-        List<DataConfig> issuedTasks = Lists.newArrayList();
+-        for (StreamSourceEntity issuedTask : sourceEntities) {
+-            int op = getOp(issuedTask.getStatus());
+-            int nextStatus = getNextStatus(issuedTask.getStatus());
+-            issuedTask.setStatus(nextStatus);
+-            if (sourceMapper.updateByPrimaryKeySelective(issuedTask) == 1) {
+-                issuedTask.setVersion(issuedTask.getVersion() + 1);
+-                issuedTasks.add(getDataConfig(issuedTask, op));
+-            }
+-        }
+-        return issuedTasks;
+-    }
+-
+     private int getOp(int status) {
+         return status % MODULUS_100;
+     }
+@@ -434,6 +487,7 @@ public class AgentServiceImpl implements AgentService {
+         return taskType.getType();
+     }
+ 
++    // todo:删除
+     /**
+      * Get the agent command config by the agent ip.
+      *
+@@ -451,4 +505,18 @@ public class AgentServiceImpl implements AgentService {
+         }).collect(Collectors.toList());
+     }
+ 
++    private boolean matchTag(StreamSourceEntity sourceEntity, InlongClusterNodeEntity clusterNodeEntity) {
++        Preconditions.checkNotNull(sourceEntity, "cluster must be valid");
++        if (sourceEntity.getInlongClusterNodeTag() == null) {
++            return true;
++        }
++        if (clusterNodeEntity == null) {
++            return false;
++        }
++
++        Set<String> tags = Stream.of(
++                clusterNodeEntity.getNodeTags().split(InlongConstants.COMMA)).collect(Collectors.toSet());
++        return tags.contains(sourceEntity.getInlongClusterNodeTag());
++    }
++
+ }
+diff --git a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/heartbeat/HeartbeatManager.java b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/heartbeat/HeartbeatManager.java
+index 8401c76a3..6661489c8 100644
+--- a/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/heartbeat/HeartbeatManager.java
++++ b/inlong-manager/manager-service/src/main/java/org/apache/inlong/manager/service/heartbeat/HeartbeatManager.java
+@@ -96,7 +96,6 @@ public class HeartbeatManager implements AbstractHeartbeatManager {
+                     componentHeartbeat.getComponentType());
+             return;
+         }
+-
+         // if the heartbeat was not in the cache, insert or update the node by the heartbeat info
+         HeartbeatMsg lastHeartbeat = heartbeatCache.getIfPresent(componentHeartbeat);
+ 
+diff --git a/inlong-manager/manager-web/sql/apache_inlong_manager.sql b/inlong-manager/manager-web/sql/apache_inlong_manager.sql
+index 509037e1c..155945560 100644
+--- a/inlong-manager/manager-web/sql/apache_inlong_manager.sql
++++ b/inlong-manager/manager-web/sql/apache_inlong_manager.sql
+@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS `inlong_cluster_node`
+     `port`          int(6)       NULL COMMENT 'Cluster port',
+     `protocol_type` varchar(20)           DEFAULT NULL COMMENT 'DATAPROXY Source listen protocol type, such as: TCP/HTTP',
+     `node_load`     int(11)               DEFAULT '-1' COMMENT 'Current load value of the node',
++    `node_tags`     varchar(512)          DEFAULT NULL COMMENT 'Cluster node tag, separated by commas, only uniquely identified by parent_id and ip',
+     `ext_params`    mediumtext            DEFAULT NULL COMMENT 'Another fields will be saved as JSON string',
+     `description`   varchar(256)          DEFAULT '' COMMENT 'Description of cluster node',
+     `status`        int(4)                DEFAULT '0' COMMENT 'Cluster status',
+@@ -346,6 +347,7 @@ CREATE TABLE IF NOT EXISTS `stream_source`
+     `uuid`                varchar(30)           DEFAULT NULL COMMENT 'Mac uuid of the agent running the task',
+     `data_node_name`      varchar(128)          DEFAULT NULL COMMENT 'Node name, which links to data_node table',
+     `inlong_cluster_name` varchar(128)          DEFAULT NULL COMMENT 'Cluster name of the agent running the task',
++    `inlong_cluster_node_tag` varchar(128)      DEFAULT NULL COMMENT 'Cluster node tag',
+     `serialization_type`  varchar(20)           DEFAULT NULL COMMENT 'Serialization type, support: csv, json, canal, avro, etc',
+     `snapshot`            mediumtext            DEFAULT NULL COMMENT 'Snapshot of this source task',
+     `report_time`         timestamp    NULL COMMENT 'Snapshot time',
+diff --git a/inlong-manager/manager-web/src/main/java/org/apache/inlong/manager/web/controller/InlongClusterController.java b/inlong-manager/manager-web/src/main/java/org/apache/inlong/manager/web/controller/InlongClusterController.java
+index 69a91dd68..ed34d77a0 100644
+--- a/inlong-manager/manager-web/src/main/java/org/apache/inlong/manager/web/controller/InlongClusterController.java
++++ b/inlong-manager/manager-web/src/main/java/org/apache/inlong/manager/web/controller/InlongClusterController.java
+@@ -25,6 +25,7 @@ import org.apache.inlong.manager.common.enums.OperationType;
+ import org.apache.inlong.manager.common.validation.UpdateValidation;
+ import org.apache.inlong.manager.pojo.cluster.BindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterInfo;
++import org.apache.inlong.manager.pojo.cluster.ClusterNodeBindTagRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeRequest;
+ import org.apache.inlong.manager.pojo.cluster.ClusterNodeResponse;
+ import org.apache.inlong.manager.pojo.cluster.ClusterPageRequest;
+@@ -227,4 +228,11 @@ public class InlongClusterController {
+         return Response.success(clusterService.deleteNode(id, LoginUserUtils.getLoginUser().getName()));
+     }
+ 
++    @RequestMapping(value = "/cluster/node/bindTag")
++    @OperationLog(operation = OperationType.UPDATE)
++    @ApiOperation(value = "Bind or unbind cluster node tag")
++    public Response<Boolean> bindTag(@Validated @RequestBody ClusterNodeBindTagRequest request) {
++        String username = LoginUserUtils.getLoginUser().getName();
++        return Response.success(clusterService.bindNodeTag(request, username));
++    }
+ }
+-- 
+2.34.0.windows.1
+
