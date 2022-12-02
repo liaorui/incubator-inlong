@@ -282,6 +282,8 @@ public class FieldInfoUtils {
             case FUNCTION:
                 formatInfo = new FunctionFormatInfo();
                 break;
+            case VARCHAR:
+            case TEXT:
             default: // default is string
                 formatInfo = new StringFormatInfo();
         }
