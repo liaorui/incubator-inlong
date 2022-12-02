@@ -20,6 +20,8 @@ package org.apache.inlong.sort.iceberg.actions;
 
 import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.Action;
+import org.apache.iceberg.actions.RewriteDataFiles;
+import org.apache.iceberg.expressions.Expression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,13 +33,13 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Do rewrite action with dlc Spark SQL.
  */
-public class SyncRewriteDataFilesAction implements
-        Action<SyncRewriteDataFilesAction, RewriteResult> {
+public class SyncRewriteDataFilesAction implements RewriteDataFiles {
 
     private static final Logger LOG = LoggerFactory.getLogger(SyncRewriteDataFilesAction.class);
     private static final String DLC_JDBC_CLASS = "com.tencent.cloud.dlc.jdbc.DlcDriver";
@@ -46,10 +48,13 @@ public class SyncRewriteDataFilesAction implements
     private AtomicInteger snapshotCounter;
     private transient Table table;
 
-    public SyncRewriteDataFilesAction(SyncRewriteDataFilesActionOption option, Table table) {
+    public SyncRewriteDataFilesAction(SyncRewriteDataFilesActionOption actionOption, Table table) {
         this.snapshotCounter = new AtomicInteger();
-        this.options = option;
+        this.options = actionOption;
         this.table = table;
+        CompactTableProperties.TABLE_AUTO_COMPACT_PROPERTIES.stream()
+                .forEach(k -> Optional.ofNullable(table.properties().get(k))
+                        .ifPresent(v -> options.option(k, v)));
     }
 
     @Override
@@ -65,15 +70,31 @@ public class SyncRewriteDataFilesAction implements
     }
 
     @Override
-    public RewriteResult execute() {
+    public RewriteDataFiles binPack() {
+        return this;
+    }
+
+    @Override
+    public RewriteDataFiles filter(Expression expression) {
+        return this;
+    }
+
+    @Override
+    public RewriteDataFiles snapshotProperty(String s, String s1) {
+        return this;
+    }
+
+    @Override
+    public RewriteDataFiles.Result execute() {
         if (!shouldExecute()) {
-            return new RewriteResult("Skip This compact.");
+            LOG.info("Skip This compact.");
+            return null;
         }
 
         Connection connection = buildConnection();
         if (connection == null) {
             LOG.error("Can't get DLC JDBC Connection");
-            return new RewriteResult("fail.");
+            return null;
         }
 
         String rewriteTableSql = options.rewriteSql(table);
@@ -104,9 +125,9 @@ public class SyncRewriteDataFilesAction implements
             connection.close();
         } catch (SQLException e) {
             LOG.warn("[Result:]Execute rewrite sql({}) err.", rewriteTableSql, e);
-            return new RewriteResult("fail.");
+            return null;
         }
-        return new RewriteResult("success.");
+        return null;
     }
 
     private boolean shouldExecute() {

@@ -18,6 +18,8 @@
 
 package org.apache.inlong.sort.protocol.constant;
 
+import org.apache.inlong.sort.protocol.constant.IcebergConstant.CatalogType;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,12 +71,18 @@ public class DLCConstant {
 
     public static final String DLC_CATALOG_IMPL_CLASS =
             "org.apache.inlong.sort.iceberg.catalog.hybris.DlcWrappedHybrisCatalog";
+    public static final String DLC_ACTION_IMPL_CLASS =
+            "org.apache.inlong.sort.iceberg.actions.SparkActions";
     public static final Map<String, String> DLC_DEFAULT_IMPL =
             Collections.unmodifiableMap(new HashMap<String, String>() {
                 {
                     put(FS_LAKEFS_IMPL, "org.apache.hadoop.fs.CosFileSystem");
                     put(FS_COS_IMPL, "org.apache.hadoop.fs.CosFileSystem");
                     put(FS_COS_AUTH_PROVIDER, "org.apache.hadoop.fs.auth.DlcCloudCredentialsProvider");
+                    put("sink.multiple.typemap-compatible-with-spark", "true");
+                    put("catalog-name", CatalogType.HYBRIS.name());
+                    put("catalog-impl", DLCConstant.DLC_CATALOG_IMPL_CLASS);
+                    put("action-impl", DLCConstant.DLC_ACTION_IMPL_CLASS);
                 }
             });
 }

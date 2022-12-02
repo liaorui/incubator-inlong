@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,12 +67,7 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
     public static final String AUTH_SECRET_ID = "secret_id";
     public static final String AUTH_SECRET_KEY = "secret_key";
 
-    public static final String REWRITE_DB_NAME = "db_name";
-    public static final String REWRITE_TABLE_NAME = "table_name";
-
     public SyncRewriteDataFilesActionOption(Map<String, String> tableProperties) {
-        Preconditions.checkNotNull(CATALOG_DATABASE.key());
-        Preconditions.checkNotNull(CATALOG_TABLE.key());
         Preconditions.checkNotNull(Constants.DLC_SECRET_ID_CONF);
         Preconditions.checkNotNull(Constants.DLC_SECRET_KEY_CONF);
         this.properties = new HashMap<>();
@@ -79,9 +75,6 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
         properties.put(URL_REGION, tableProperties.get(Constants.DLC_REGION_CONF));
         properties.put(AUTH_SECRET_ID, tableProperties.get(Constants.DLC_SECRET_ID_CONF));
         properties.put(AUTH_SECRET_KEY, tableProperties.get(Constants.DLC_SECRET_KEY_CONF));
-        properties.put(URL_DEFAULT_DATABASE, tableProperties.get(FlinkCatalogFactory.DEFAULT_DATABASE));
-        properties.put(REWRITE_DB_NAME, tableProperties.get(CATALOG_DATABASE.key()));
-        properties.put(REWRITE_TABLE_NAME, tableProperties.get(CATALOG_TABLE.key()));
     }
 
     public void option(String name, String value) {
@@ -137,11 +130,11 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
     }
 
     public String rewriteSql(Table table) {
-        String dbName = properties.get(REWRITE_DB_NAME);
-        String tableName = properties.get(REWRITE_TABLE_NAME);
-        Preconditions.checkNotNull(dbName);
-        Preconditions.checkNotNull(tableName);
-        String wholeTableName = String.format("%s.%s", dbName, tableName);
+        // remove table catalog name
+        String fullTableName = table.name();
+        String[] tableIds = fullTableName.split("\\.");
+        String tableName = Stream.of(Arrays.copyOfRange(tableIds, 1, tableIds.length))
+                .collect(Collectors.joining("."));
         properties.put(CompactTableProperties.COMPACT_END_SNAPSHOT_ID, String.valueOf(
                 table.currentSnapshot().snapshotId()));  // todo: optimization of this logic of adding snapshop-id
         String rewriteOptions = String.join(",",
@@ -154,13 +147,13 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
         if (rewriteOptions.isEmpty()) {
             rewriteTableSql = String.format(
                     "CALL `DataLakeCatalog`.`system`.rewrite_data_files (`table` => '%s')",
-                    wholeTableName);
+                    tableName);
         } else {
             rewriteTableSql =
                     String.format(
                             "CALL `DataLakeCatalog`.`system`.rewrite_data_files"
                                     + "(`table` => '%s', options => map(%s))",
-                            wholeTableName, rewriteOptions);
+                            tableName, rewriteOptions);
         }
         return rewriteTableSql;
     }
