@@ -48,7 +48,7 @@ import static org.apache.inlong.agent.constant.CommonConstants.PROXY_KEY_DATA;
 import static org.apache.inlong.agent.constant.CommonConstants.PROXY_SEND_PARTITION_KEY;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_MAX_WAIT;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_META_ENV_LIST;
-import static org.apache.inlong.agent.constant.MetadataConstants.KUBERNETES;
+import static org.apache.inlong.agent.constant.KubernetesConstants.KUBERNETES;
 
 /**
  * File reader entrance

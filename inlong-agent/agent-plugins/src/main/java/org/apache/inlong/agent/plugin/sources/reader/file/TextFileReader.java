@@ -24,8 +24,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +39,9 @@ import java.util.stream.Collectors;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_LINE_END_PATTERN;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_MONITOR_DEFAULT_STATUS;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_MONITOR_STATUS;
+import static org.apache.inlong.agent.constant.MetadataConstants.DATA_FILE_NAME;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_HOST_NAME;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_SOURCE_IP;
 
 /**
  * Text file reader
@@ -46,11 +52,21 @@ public final class TextFileReader extends AbstractFileReader {
 
     private final Map<File, String> lineStringBuffer = new ConcurrentHashMap<>();
 
+    private String hostName = "UNKNOW_HOST";
+    private String ip = "127.0.0.1";
+
     public TextFileReader(FileReaderOperator fileReaderOperator) {
         super.fileReaderOperator = fileReaderOperator;
         if (fileReaderOperator.jobConf.get(JOB_FILE_MONITOR_STATUS, JOB_FILE_MONITOR_DEFAULT_STATUS)
                 .equals(JOB_FILE_MONITOR_DEFAULT_STATUS)) {
             MonitorTextFile.getInstance().monitor(fileReaderOperator, this);
+        }
+        try {
+            InetAddress inetAddress = InetAddress.getLocalHost();
+            this.hostName = inetAddress.getHostName();
+            this.ip = inetAddress.getHostAddress();
+        } catch (UnknownHostException e) {
+            LOGGER.warn("Cannot get local host.", e);
         }
     }
 
@@ -99,6 +115,11 @@ public final class TextFileReader extends AbstractFileReader {
         lines = resultLines.isEmpty() ? lines : resultLines;
         fileReaderOperator.stream = lines.stream();
         fileReaderOperator.position = fileReaderOperator.position + lines.size();
-    }
 
+        // fill metadata
+        fileReaderOperator.metadata = new HashMap<>();
+        fileReaderOperator.metadata.put(METADATA_HOST_NAME, hostName);
+        fileReaderOperator.metadata.put(METADATA_SOURCE_IP, ip);
+        fileReaderOperator.metadata.put(DATA_FILE_NAME, fileReaderOperator.file.getName());
+    }
 }

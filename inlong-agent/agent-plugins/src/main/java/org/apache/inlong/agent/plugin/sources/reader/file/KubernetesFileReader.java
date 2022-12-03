@@ -36,14 +36,14 @@ import java.util.Objects;
 
 import static org.apache.inlong.agent.constant.KubernetesConstants.CONTAINER_ID;
 import static org.apache.inlong.agent.constant.KubernetesConstants.CONTAINER_NAME;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_CONTAINER_ID;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_CONTAINER_NAME;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_NAMESPACE;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_POD_LABEL;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_POD_NAME;
-import static org.apache.inlong.agent.constant.KubernetesConstants.METADATA_POD_UID;
 import static org.apache.inlong.agent.constant.KubernetesConstants.NAMESPACE;
 import static org.apache.inlong.agent.constant.KubernetesConstants.POD_NAME;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_CONTAINER_ID;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_CONTAINER_NAME;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_NAMESPACE;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_POD_LABEL;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_POD_NAME;
+import static org.apache.inlong.agent.constant.MetadataConstants.METADATA_POD_UID;
 
 /**
  * k8s file reader
