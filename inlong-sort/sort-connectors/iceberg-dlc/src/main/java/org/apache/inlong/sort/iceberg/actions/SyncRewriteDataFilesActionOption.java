@@ -22,8 +22,6 @@ import com.qcloud.dlc.common.Constants;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.PropertyUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -37,7 +35,6 @@ import java.util.stream.Stream;
 public class SyncRewriteDataFilesActionOption implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private static final Logger LOG = LoggerFactory.getLogger(SyncRewriteDataFilesAction.class);
 
     private Map<String, String> properties;
 

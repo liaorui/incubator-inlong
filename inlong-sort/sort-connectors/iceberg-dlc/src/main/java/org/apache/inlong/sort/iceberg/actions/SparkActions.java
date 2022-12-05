@@ -40,4 +40,8 @@ public class SparkActions implements FlinkActions {
                 new SyncRewriteDataFilesActionOption(actionProperties),
                 table);
     }
+
+    public Map<String, String> getActionProperties() {
+        return actionProperties;
+    }
 }

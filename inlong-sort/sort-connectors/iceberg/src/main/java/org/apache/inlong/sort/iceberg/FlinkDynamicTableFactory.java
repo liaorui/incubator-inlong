@@ -19,6 +19,7 @@
 
 package org.apache.inlong.sort.iceberg;
 
+import java.sql.SQLException;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
@@ -48,6 +49,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
 import java.util.Map;
 import java.util.Set;
+import org.apache.inlong.sort.iceberg.pool.JdbcConnectionPool;
 
 import static org.apache.inlong.sort.base.Constants.IGNORE_ALL_CHANGELOG;
 import static org.apache.inlong.sort.base.Constants.INLONG_AUDIT;
@@ -71,6 +73,12 @@ import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TYPE_MAP_COMPA
 public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, DynamicTableSourceFactory {
 
     static final String FACTORY_IDENTIFIER = "iceberg-inlong";
+
+    private static final String DLC_JDBC_CLASS = "com.tencent.cloud.dlc.jdbc.DlcDriver";
+    public static final String DLC_SECRET_ID_CONF = "qcloud.dlc.secret-id";
+    public static final String DLC_SECRET_KEY_CONF = "qcloud.dlc.secret-key";
+    public static final String DLC_JDBC_URL = "qcloud.dlc.jdbc.url";
+
 
     private static final ConfigOption<String> CATALOG_NAME =
             ConfigOptions.key("catalog-name")
@@ -109,6 +117,12 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
             .impl(Context.class, "getCatalogTable")
             .orNoop()
             .build();
+
+    public static final ConfigOption<Boolean> WRITE_COMPACT_ENABLE =
+            ConfigOptions.key("write.compact.enable")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether to enable compact small file.");
 
     private final FlinkCatalog catalog;
 
@@ -224,7 +238,9 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         Map<String, String> tableProps = catalogTable.getOptions();
         TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
         ActionsProvider actionsLoader = createActionLoader(context.getClassLoader(), tableProps);
-
+        // Init dlc connector pool
+        // TODO Iceberg how to get connect info
+        initConnectorPool(tableProps);
         boolean multipleSink = Boolean.parseBoolean(
                 tableProps.getOrDefault(SINK_MULTIPLE_ENABLE.key(), SINK_MULTIPLE_ENABLE.defaultValue().toString()));
         if (multipleSink) {
@@ -239,6 +255,21 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
                         objectPath.getObjectName());
             }
             return new IcebergTableSink(tableLoader, tableSchema, catalogTable, null, actionsLoader);
+        }
+    }
+
+    private void initConnectorPool(Map<String, String> tableProps) {
+        try {
+            JdbcConnectionPool.create(
+                    DLC_JDBC_CLASS,
+                    tableProps.get(DLC_SECRET_ID_CONF),
+                    tableProps.get(DLC_SECRET_KEY_CONF),
+                    tableProps.get(DLC_JDBC_URL)
+            );
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
 
@@ -267,6 +298,7 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         options.add(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
         options.add(SINK_MULTIPLE_PK_AUTO_GENERATED);
         options.add(SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK);
+        options.add(WRITE_COMPACT_ENABLE);
         return options;
     }
 

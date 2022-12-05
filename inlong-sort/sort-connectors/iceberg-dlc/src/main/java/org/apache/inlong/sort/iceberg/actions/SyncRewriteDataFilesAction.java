@@ -21,6 +21,8 @@ package org.apache.inlong.sort.iceberg.actions;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.actions.RewriteDataFiles;
 import org.apache.iceberg.expressions.Expression;
+import org.apache.inlong.sort.iceberg.pool.JdbcConnectionPool;
+import org.apache.inlong.sort.iceberg.pool.TaskRunService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,17 +87,28 @@ public class SyncRewriteDataFilesAction implements RewriteDataFiles {
 
     @Override
     public RewriteDataFiles.Result execute() {
+
+        TaskRunService.execute(() -> {
+            executeCompact();
+        });
+        return null;
+    }
+
+    public void executeCompact() {
         if (!shouldExecute()) {
             LOG.info("Skip This compact.");
-            return null;
+            return;
         }
 
-        Connection connection = buildConnection();
-        if (connection == null) {
-            LOG.error("Can't get DLC JDBC Connection");
-            return null;
+        //  Get connection from connection pool
+        Connection connection = null;
+        try {
+            connection = JdbcConnectionPool.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
-
         String rewriteTableSql = options.rewriteSql(table);
         try {
             Statement statement = connection.createStatement();
@@ -121,12 +134,12 @@ public class SyncRewriteDataFilesAction implements RewriteDataFiles {
                 LOG.info("[Result:]there has no output.");
             }
             statement.close();
-            connection.close();
+            JdbcConnectionPool.releaseConnection(connection);
         } catch (SQLException e) {
             LOG.warn("[Result:]Execute rewrite sql({}) err.", rewriteTableSql, e);
-            return null;
+            return;
         }
-        return null;
+        return;
     }
 
     private boolean shouldExecute() {
