@@ -31,6 +31,7 @@ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_META_FILTER
 import static org.apache.inlong.agent.constant.MetadataConstants.DATA_CONTENT;
 import static org.apache.inlong.agent.constant.MetadataConstants.DATA_CONTENT_TIME;
 
+// todo:rename this to MetadataProvider
 /**
  * File reader template
  */
