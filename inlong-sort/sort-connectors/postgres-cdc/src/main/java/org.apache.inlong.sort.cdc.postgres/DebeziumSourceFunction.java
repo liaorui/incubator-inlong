@@ -16,13 +16,22 @@
  * limitations under the License.
  */
 
-package org.apache.inlong.sort.cdc.postgres.debezium;
+package org.apache.inlong.sort.cdc.postgres;
 
 import static org.apache.inlong.sort.base.Constants.INLONG_METRIC_STATE_NAME;
 import static org.apache.inlong.sort.base.Constants.NUM_BYTES_IN;
 import static org.apache.inlong.sort.base.Constants.NUM_RECORDS_IN;
 
 import com.ververica.cdc.debezium.Validator;
+import com.ververica.cdc.debezium.internal.DebeziumChangeConsumer;
+import com.ververica.cdc.debezium.internal.DebeziumOffset;
+import com.ververica.cdc.debezium.internal.DebeziumOffsetSerializer;
+import com.ververica.cdc.debezium.internal.FlinkDatabaseHistory;
+import com.ververica.cdc.debezium.internal.FlinkDatabaseSchemaHistory;
+import com.ververica.cdc.debezium.internal.FlinkOffsetBackingStore;
+import com.ververica.cdc.debezium.internal.Handover;
+import com.ververica.cdc.debezium.internal.SchemaRecord;
+import com.ververica.cdc.debezium.utils.DatabaseHistoryUtil;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
 import io.debezium.embedded.Connect;
@@ -70,16 +79,8 @@ import org.apache.inlong.sort.base.metric.MetricOption.RegisteredMetric;
 import org.apache.inlong.sort.base.metric.MetricState;
 import org.apache.inlong.sort.base.metric.SourceMetricData;
 import org.apache.inlong.sort.base.util.MetricStateUtils;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.DebeziumChangeConsumer;
+import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
 import org.apache.inlong.sort.cdc.postgres.debezium.internal.DebeziumChangeFetcher;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.DebeziumOffset;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.DebeziumOffsetSerializer;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.FlinkDatabaseHistory;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.FlinkDatabaseSchemaHistory;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.FlinkOffsetBackingStore;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.Handover;
-import org.apache.inlong.sort.cdc.postgres.debezium.internal.SchemaRecord;
-import org.apache.inlong.sort.cdc.postgres.debezium.utils.DatabaseHistoryUtil;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

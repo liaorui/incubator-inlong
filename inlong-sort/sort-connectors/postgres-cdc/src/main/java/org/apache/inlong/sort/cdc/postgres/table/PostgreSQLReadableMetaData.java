@@ -137,7 +137,7 @@ public enum PostgreSQLReadableMetaData {
         }
 
         @Override
-        public Object read(SourceRecord record, @Nullable TableChanges.TableChange tableSchema, RowData rowData) {
+        public Object read(SourceRecord record, @Nullable TableChange tableSchema, RowData rowData) {
             // construct debezium json
             Struct messageStruct = (Struct) record.value();
             Struct sourceStruct = messageStruct.getStruct(FieldName.SOURCE);

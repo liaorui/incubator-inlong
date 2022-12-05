@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 import org.apache.inlong.sort.base.filter.RowKindValidator;
 import org.apache.inlong.sort.cdc.postgres.PostgreSQLSource;
 import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumSourceFunction;
+import org.apache.inlong.sort.cdc.postgres.DebeziumSourceFunction;
 import org.apache.inlong.sort.cdc.postgres.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.cdc.postgres.debezium.table.RowDataDebeziumDeserializeSchema;
 
@@ -166,7 +166,6 @@ public class PostgreSQLTableSource implements ScanTableSource, SupportsReadingMe
                         .password(password)
                         .decodingPluginName(pluginName)
                         .slotName(slotName)
-                        .serverTimeZone(serverTimeZone)
                         .debeziumProperties(dbzProperties)
                         .deserializer(deserializer)
                         .inlongMetric(inlongMetric)

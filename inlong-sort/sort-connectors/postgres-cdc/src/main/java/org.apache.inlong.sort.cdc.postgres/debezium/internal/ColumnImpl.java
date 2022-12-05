@@ -20,12 +20,11 @@ package org.apache.inlong.sort.cdc.postgres.debezium.internal;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.util.Strings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import io.debezium.util.Strings;
 
 public final class ColumnImpl implements Column, Comparable<Column> {
 

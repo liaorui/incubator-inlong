@@ -39,7 +39,7 @@ import static org.apache.inlong.sort.base.Constants.SOURCE_MULTIPLE_ENABLE;
  * Factory for creating configured instance of
  * {@link com.ververica.cdc.connectors.postgres.table.PostgreSQLTableSource}.
  */
-public class PostgreSQLTableSourceFactory implements DynamicTableSourceFactory {
+public class PostgreSQLTableFactory implements DynamicTableSourceFactory {
 
     private static final String IDENTIFIER = "postgres-cdc-inlong";
 

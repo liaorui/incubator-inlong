@@ -18,6 +18,9 @@
 
 package org.apache.inlong.sort.cdc.postgres.debezium.internal;
 
+import com.ververica.cdc.debezium.internal.DebeziumOffset;
+import com.ververica.cdc.debezium.internal.DebeziumOffsetSerializer;
+import com.ververica.cdc.debezium.internal.Handover;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
@@ -277,7 +280,7 @@ public class DebeziumChangeFetcher<T> {
         Envelope.Operation op = Envelope.operationFor(record);
         Schema valueSchema;
         if (op == Envelope.Operation.DELETE) {
-            valueSchema = record.valueSchema().field(Envelope.FieldName.BEFORE).schema();
+            valueSchema = record.valueSchema().field(FieldName.BEFORE).schema();
         } else {
             valueSchema = record.valueSchema().field(FieldName.AFTER).schema();
         }
@@ -412,16 +415,16 @@ public class DebeziumChangeFetcher<T> {
     private void updateMessageTimestamp(SourceRecord record) {
         Schema schema = record.valueSchema();
         Struct value = (Struct) record.value();
-        if (schema.field(Envelope.FieldName.SOURCE) == null) {
+        if (schema.field(FieldName.SOURCE) == null) {
             return;
         }
 
-        Struct source = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source.schema().field(Envelope.FieldName.TIMESTAMP) == null) {
+        Struct source = value.getStruct(FieldName.SOURCE);
+        if (source.schema().field(FieldName.TIMESTAMP) == null) {
             return;
         }
 
-        Long tsMs = source.getInt64(Envelope.FieldName.TIMESTAMP);
+        Long tsMs = source.getInt64(FieldName.TIMESTAMP);
         if (tsMs != null) {
             this.messageTimestamp = tsMs;
         }
@@ -435,7 +438,7 @@ public class DebeziumChangeFetcher<T> {
     private boolean isSnapshotRecord(SourceRecord record) {
         Struct value = (Struct) record.value();
         if (value != null) {
-            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct source = value.getStruct(FieldName.SOURCE);
             SnapshotRecord snapshotRecord = SnapshotRecord.fromSource(source);
             // even if it is the last record of snapshot, i.e. SnapshotRecord.LAST
             // we can still recover from checkpoint and continue to read the binlog,

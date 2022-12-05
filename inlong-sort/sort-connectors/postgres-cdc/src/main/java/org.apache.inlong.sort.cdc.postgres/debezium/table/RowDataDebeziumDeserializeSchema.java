@@ -20,6 +20,9 @@ package org.apache.inlong.sort.cdc.postgres.debezium.table;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+import com.ververica.cdc.debezium.table.DeserializationRuntimeConverter;
+import com.ververica.cdc.debezium.table.DeserializationRuntimeConverterFactory;
+import com.ververica.cdc.debezium.utils.TemporalConversions;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
@@ -56,7 +59,6 @@ import org.apache.flink.types.RowKind;
 import org.apache.flink.util.Collector;
 import org.apache.inlong.sort.base.filter.RowKindValidator;
 import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.postgres.debezium.utils.TemporalConversions;
 import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -643,8 +645,10 @@ public final class RowDataDebeziumDeserializeSchema implements DebeziumDeseriali
         } else {
             if (!appendSource) {
                 GenericRowData before = extractBeforeRow(value, valueSchema);
-                before.setRowKind(RowKind.UPDATE_BEFORE);
-                emit(record, before, tableSchema, out);
+                if (before != null) {
+                    before.setRowKind(RowKind.UPDATE_BEFORE);
+                    emit(record, before, tableSchema, out);
+                }
             }
 
             GenericRowData after = extractAfterRow(value, valueSchema);

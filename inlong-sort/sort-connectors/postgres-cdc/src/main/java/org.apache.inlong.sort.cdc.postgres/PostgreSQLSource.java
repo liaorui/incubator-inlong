@@ -23,7 +23,6 @@ import io.debezium.connector.postgresql.PostgresConnector;
 import java.time.Duration;
 import java.util.Properties;
 import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumSourceFunction;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -53,7 +52,6 @@ public class PostgreSQLSource {
         private String password;
         private String[] schemaList;
         private String[] tableList;
-        private String serverTimeZone;
         private Properties dbzProperties;
         private DebeziumDeserializationSchema<T> deserializer;
         private String inlongMetric;
@@ -139,15 +137,6 @@ public class PostgreSQLSource {
          */
         public Builder<T> slotName(String slotName) {
             this.slotName = slotName;
-            return this;
-        }
-
-        /**
-         * The session time zone in database server, e.g. "America/Los_Angeles". It controls how the
-         * TIMESTAMP type in MYSQL converted to STRING
-         */
-        public Builder<T> serverTimeZone(String timeZone) {
-            this.serverTimeZone = timeZone;
             return this;
         }
 

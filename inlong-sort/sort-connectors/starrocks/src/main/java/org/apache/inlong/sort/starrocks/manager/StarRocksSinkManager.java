@@ -22,7 +22,6 @@ import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionProvider;
 import com.starrocks.connector.flink.manager.StarRocksQueryVisitor;
 import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.manager.StarRocksStreamLoadFailedException;
-import com.starrocks.connector.flink.manager.StarRocksStreamLoadVisitor;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkSemantic;
 import java.io.IOException;
@@ -252,7 +251,6 @@ public class StarRocksSinkManager implements Serializable {
     }
 
     public final synchronized void writeRecords(String database, String table, String... records) throws IOException {
-        checkFlushException();
         try {
             if (0 == records.length) {
                 return;
@@ -265,6 +263,7 @@ public class StarRocksSinkManager implements Serializable {
                 bufferEntity.addToBuffer(bts);
             }
             if (StarRocksSinkSemantic.EXACTLY_ONCE.equals(sinkOptions.getSemantic())) {
+                checkFlushException();
                 return;
             }
             if (bufferEntity.getBatchCount() >= sinkOptions.getSinkMaxRows()
@@ -273,6 +272,7 @@ public class StarRocksSinkManager implements Serializable {
                         database, table, bufferEntity.getBatchCount(), bufferEntity.getLabel()));
                 flush(bufferKey, false);
             }
+            checkFlushException();
         } catch (Exception e) {
             throw new IOException("Writing records to StarRocks failed.", e);
         }
@@ -293,7 +293,7 @@ public class StarRocksSinkManager implements Serializable {
     }
 
     private synchronized void flushInternal(String bufferKey, boolean waitUtilDone) throws Exception {
-        checkFlushException();
+        //checkFlushException();
         if (null == bufferKey || bufferMap.isEmpty() || !bufferMap.containsKey(bufferKey)) {
             if (waitUtilDone) {
                 waitAsyncFlushingDone();
@@ -325,7 +325,7 @@ public class StarRocksSinkManager implements Serializable {
 
             offerEOF();
         }
-        checkFlushException();
+        //checkFlushException();
     }
 
     public Map<String, StarRocksSinkBufferEntity> getBufferedBatchMap() {
@@ -414,7 +414,7 @@ public class StarRocksSinkManager implements Serializable {
         // wait for previous flushings
         offer(new StarRocksSinkBufferEntity(null, null, null));
         offer(new StarRocksSinkBufferEntity(null, null, null));
-        checkFlushException();
+        //checkFlushException();
     }
 
     void offer(StarRocksSinkBufferEntity bufferEntity) throws InterruptedException {
@@ -443,13 +443,14 @@ public class StarRocksSinkManager implements Serializable {
         }
     }
 
-    private void checkFlushException() {
+    private void checkFlushException() throws Exception {
         if (flushException != null) {
             StackTraceElement[] stack = Thread.currentThread().getStackTrace();
             for (int i = 0; i < stack.length; i++) {
                 LOG.info(
                         stack[i].getClassName() + "." + stack[i].getMethodName() + " line:" + stack[i].getLineNumber());
             }
+            flush(null, true);
             throw new RuntimeException("Writing records to StarRocks failed.", flushException);
         }
     }
