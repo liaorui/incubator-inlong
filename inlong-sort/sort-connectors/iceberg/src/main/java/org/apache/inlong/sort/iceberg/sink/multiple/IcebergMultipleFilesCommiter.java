@@ -59,7 +59,7 @@ public class IcebergMultipleFilesCommiter extends IcebergProcessFunction<Multipl
         if (multipleCommiters.get(tableId) == null) {
             IcebergSingleFileCommiter commiter = new IcebergSingleFileCommiter(
                     tableId, TableLoader.fromCatalog(catalogLoader, value.getTableId()), overwrite,
-                    null, tableOptions);
+                    actionsProvider, tableOptions);
             commiter.setup(getRuntimeContext(), collector, context);
             commiter.initializeState(functionInitializationContext);
             commiter.open(new Configuration());

@@ -19,9 +19,9 @@
 package org.apache.inlong.sort.iceberg.actions;
 
 import com.qcloud.dlc.common.Constants;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
-import org.apache.iceberg.util.PropertyUtil;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -31,12 +31,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SyncRewriteDataFilesActionOption implements Serializable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SyncRewriteDataFilesActionOption.class);
 
     private static final long serialVersionUID = 1L;
 
     private Map<String, String> properties;
+
+    private Map<String, String> tableProperties;
+
+    private long latestSnapshotId = -1L;
 
     public static final String URL = "url";
 
@@ -61,6 +70,7 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
     public static final String AUTH_SECRET_KEY = "secret_key";
 
     public SyncRewriteDataFilesActionOption(Map<String, String> tableProperties) {
+        this.tableProperties = tableProperties;
         Preconditions.checkNotNull(Constants.DLC_SECRET_ID_CONF);
         Preconditions.checkNotNull(Constants.DLC_SECRET_KEY_CONF);
         this.properties = new HashMap<>();
@@ -123,13 +133,19 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
     }
 
     public String rewriteSql(Table table) {
+        long snapshotId = table.currentSnapshot().snapshotId();
+        if (latestSnapshotId != snapshotId) {
+            latestSnapshotId = snapshotId;
+        } else {
+            return null;
+        }
         // remove table catalog name
         String fullTableName = table.name();
         String[] tableIds = fullTableName.split("\\.");
         String tableName = Stream.of(Arrays.copyOfRange(tableIds, 1, tableIds.length))
                 .collect(Collectors.joining("."));
         properties.put(CompactTableProperties.COMPACT_END_SNAPSHOT_ID, String.valueOf(
-                table.currentSnapshot().snapshotId()));  // todo: optimization of this logic of adding snapshop-id
+                latestSnapshotId));  // todo: optimization of this logic of adding snapshop-id
         String rewriteOptions = String.join(",",
                 CompactTableProperties.ACTION_AUTO_COMPACT_OPTIONS.stream()
                         .filter(properties::containsKey)
@@ -145,14 +161,17 @@ public class SyncRewriteDataFilesActionOption implements Serializable {
             rewriteTableSql =
                     String.format(
                             "CALL `DataLakeCatalog`.`system`.rewrite_data_files"
-                                    + "(`table` => '%s', options => map(%s))",
+                                    + "(`table` => '%s', options => map(%s, 'delete-file-threshold', '1'))",
                             tableName, rewriteOptions);
         }
         return rewriteTableSql;
     }
 
     public int interval() {
-        return PropertyUtil.propertyAsInt(properties,
-                CompactTableProperties.COMPACT_INTERVAL, CompactTableProperties.COMPACT_INTERVAL_DEFAULT);
+        String writeCompactInterval = this.tableProperties.get(FlinkDynamicTableFactory.WRITE_COMPACT_INTERVAL.key());
+        if (StringUtils.isBlank(writeCompactInterval)) {
+            return FlinkDynamicTableFactory.WRITE_COMPACT_INTERVAL.defaultValue();
+        }
+        return Integer.valueOf(writeCompactInterval);
     }
 }

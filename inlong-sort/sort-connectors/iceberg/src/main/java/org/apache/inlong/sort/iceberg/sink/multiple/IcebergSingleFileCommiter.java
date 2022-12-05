@@ -18,6 +18,7 @@
 
 package org.apache.inlong.sort.iceberg.sink.multiple;
 
+import java.util.Objects;
 import org.apache.flink.api.common.state.CheckpointListener;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
