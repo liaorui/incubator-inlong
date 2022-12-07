@@ -84,13 +84,13 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
                     .noDefaultValue()
                     .withDescription("Catalog type, the optional types are: custom, hadoop, hive.");
 
-    private static final ConfigOption<String> CATALOG_DATABASE =
+    public static final ConfigOption<String> CATALOG_DATABASE =
             ConfigOptions.key("catalog-database")
                     .stringType()
                     .defaultValue(FlinkCatalogFactory.DEFAULT_DATABASE_NAME)
                     .withDescription("Database name managed in the iceberg catalog.");
 
-    private static final ConfigOption<String> CATALOG_TABLE =
+    public static final ConfigOption<String> CATALOG_TABLE =
             ConfigOptions.key("catalog-table")
                     .stringType()
                     .noDefaultValue()
