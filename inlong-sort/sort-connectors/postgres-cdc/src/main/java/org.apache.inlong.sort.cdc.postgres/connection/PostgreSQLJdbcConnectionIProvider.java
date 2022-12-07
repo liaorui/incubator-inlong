@@ -32,5 +32,5 @@ public interface PostgreSQLJdbcConnectionIProvider {
     Connection reestablishConnection() throws Exception;
 
     void close();
-    
+
 }

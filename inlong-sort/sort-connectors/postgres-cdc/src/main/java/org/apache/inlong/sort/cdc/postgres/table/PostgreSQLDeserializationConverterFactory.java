@@ -17,14 +17,14 @@
 
 package org.apache.inlong.sort.cdc.postgres.table;
 
-import com.ververica.cdc.debezium.table.DeserializationRuntimeConverter;
-import com.ververica.cdc.debezium.table.DeserializationRuntimeConverterFactory;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.Optional;
 import org.apache.flink.table.types.logical.LogicalType;
+import org.apache.inlong.sort.base.debezium.table.DeserializationRuntimeConverter;
+import org.apache.inlong.sort.base.debezium.table.DeserializationRuntimeConverterFactory;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
@@ -71,22 +71,22 @@ public class PostgreSQLDeserializationConverterFactory {
     private static Optional<DeserializationRuntimeConverter> wrapNumericConverter(
             Optional<DeserializationRuntimeConverter> converterOptional) {
         return converterOptional.map(
-                converter ->
-                        new DeserializationRuntimeConverter() {
-                            private static final long serialVersionUID = 1L;
+                converter -> new DeserializationRuntimeConverter() {
 
-                            @Override
-                            public Object convert(Object dbzObj, Schema schema) throws Exception {
-                                if (VariableScaleDecimal.LOGICAL_NAME.equals(schema.name())) {
-                                    SpecialValueDecimal decimal =
-                                            VariableScaleDecimal.toLogical((Struct) dbzObj);
-                                    return converter.convert(
-                                            decimal.getDecimalValue().orElse(BigDecimal.ZERO),
-                                            schema);
-                                }
-                                return converter.convert(dbzObj, schema);
-                            }
-                        });
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public Object convert(Object dbzObj, Schema schema) throws Exception {
+                        if (VariableScaleDecimal.LOGICAL_NAME.equals(schema.name())) {
+                            SpecialValueDecimal decimal =
+                                    VariableScaleDecimal.toLogical((Struct) dbzObj);
+                            return converter.convert(
+                                    decimal.getDecimalValue().orElse(BigDecimal.ZERO),
+                                    schema);
+                        }
+                        return converter.convert(dbzObj, schema);
+                    }
+                });
     }
 
     private static Optional<DeserializationRuntimeConverter> createBooleanConverter() {

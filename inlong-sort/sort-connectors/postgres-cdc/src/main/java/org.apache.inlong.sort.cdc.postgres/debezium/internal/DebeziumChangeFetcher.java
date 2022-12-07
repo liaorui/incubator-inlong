@@ -42,10 +42,10 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.util.Collector;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.util.RecordUtils;
 import org.apache.inlong.sort.cdc.postgres.connection.PostgreSQLJdbcConnectionOptions;
 import org.apache.inlong.sort.cdc.postgres.connection.PostgreSQLJdbcConnectionProvider;
-import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.postgres.debezium.utils.RecordUtils;
 import org.apache.inlong.sort.cdc.postgres.manager.PostgreSQLQueryVisitor;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -264,7 +264,7 @@ public class DebeziumChangeFetcher<T> {
             }
 
             deserialization.deserialize(record, debeziumCollector, getTableChange(record));
-            //deserialization.deserialize(record, debeziumCollector);
+            // deserialization.deserialize(record, debeziumCollector);
 
             if (!isSnapshotRecord(record)) {
                 LOG.debug("Snapshot phase finishes.");
@@ -280,7 +280,7 @@ public class DebeziumChangeFetcher<T> {
         Envelope.Operation op = Envelope.operationFor(record);
         Schema valueSchema;
         if (op == Envelope.Operation.DELETE) {
-            valueSchema = record.valueSchema().field(FieldName.BEFORE).schema();
+            valueSchema = record.valueSchema().field(Envelope.FieldName.BEFORE).schema();
         } else {
             valueSchema = record.valueSchema().field(FieldName.AFTER).schema();
         }
@@ -415,16 +415,16 @@ public class DebeziumChangeFetcher<T> {
     private void updateMessageTimestamp(SourceRecord record) {
         Schema schema = record.valueSchema();
         Struct value = (Struct) record.value();
-        if (schema.field(FieldName.SOURCE) == null) {
+        if (schema.field(Envelope.FieldName.SOURCE) == null) {
             return;
         }
 
-        Struct source = value.getStruct(FieldName.SOURCE);
-        if (source.schema().field(FieldName.TIMESTAMP) == null) {
+        Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+        if (source.schema().field(Envelope.FieldName.TIMESTAMP) == null) {
             return;
         }
 
-        Long tsMs = source.getInt64(FieldName.TIMESTAMP);
+        Long tsMs = source.getInt64(Envelope.FieldName.TIMESTAMP);
         if (tsMs != null) {
             this.messageTimestamp = tsMs;
         }
@@ -438,7 +438,7 @@ public class DebeziumChangeFetcher<T> {
     private boolean isSnapshotRecord(SourceRecord record) {
         Struct value = (Struct) record.value();
         if (value != null) {
-            Struct source = value.getStruct(FieldName.SOURCE);
+            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
             SnapshotRecord snapshotRecord = SnapshotRecord.fromSource(source);
             // even if it is the last record of snapshot, i.e. SnapshotRecord.LAST
             // we can still recover from checkpoint and continue to read the binlog,

@@ -19,9 +19,9 @@
 package org.apache.inlong.sort.cdc.mysql;
 
 import io.debezium.connector.mysql.MySqlConnector;
-import org.apache.inlong.sort.cdc.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.debezium.internal.DebeziumOffset;
 import org.apache.inlong.sort.cdc.debezium.DebeziumSourceFunction;
-import org.apache.inlong.sort.cdc.debezium.internal.DebeziumOffset;
 import org.apache.inlong.sort.cdc.mysql.table.StartupOptions;
 
 import java.util.HashMap;
@@ -72,6 +72,7 @@ public class MySqlSource {
         private DebeziumDeserializationSchema<T> deserializer;
         private String inlongMetric;
         private String inlongAudit;
+        private boolean migrateAll;
 
         public Builder<T> hostname(String hostname) {
             this.hostname = hostname;
@@ -179,6 +180,11 @@ public class MySqlSource {
             return this;
         }
 
+        public Builder<T> migrateAll(boolean migrateAll) {
+            this.migrateAll = migrateAll;
+            return this;
+        }
+
         /**
          * builder
          */
@@ -273,7 +279,8 @@ public class MySqlSource {
             }
 
             return new DebeziumSourceFunction<>(
-                    deserializer, props, specificOffset, new MySqlValidator(props), inlongMetric, inlongAudit);
+                    deserializer, props, specificOffset, new MySqlValidator(props), inlongMetric, inlongAudit,
+                    migrateAll);
         }
     }
 }

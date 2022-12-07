@@ -30,9 +30,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -110,9 +112,13 @@ public class StarRocksSinkManager implements Serializable {
     private ScheduledFuture<?> scheduledFuture;
 
     private final boolean multipleSink;
-    private final boolean ignoreSingleTableErrors;
     private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
     private transient SinkMetricData metricData;
+
+    /**
+     * If a table writing throws exception, ignore it when receiving data later again
+     */
+    private Set<String> ignoreWriteTables = new HashSet<>();
 
     public void setSinkMetricData(SinkMetricData metricData) {
         this.metricData = metricData;
@@ -121,7 +127,6 @@ public class StarRocksSinkManager implements Serializable {
     public StarRocksSinkManager(StarRocksSinkOptions sinkOptions,
             TableSchema flinkSchema,
             boolean multipleSink,
-            boolean ignoreSingleTableErrors,
             SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
         this.sinkOptions = sinkOptions;
         StarRocksJdbcConnectionOptions jdbcOptions = new StarRocksJdbcConnectionOptions(sinkOptions.getJdbcUrl(),
@@ -131,7 +136,6 @@ public class StarRocksSinkManager implements Serializable {
                 sinkOptions.getTableName());
 
         this.multipleSink = multipleSink;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
 
         init(flinkSchema);
@@ -142,14 +146,12 @@ public class StarRocksSinkManager implements Serializable {
             StarRocksJdbcConnectionProvider jdbcConnProvider,
             StarRocksQueryVisitor starrocksQueryVisitor,
             boolean multipleSink,
-            boolean ignoreSingleTableErrors,
             SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
         this.sinkOptions = sinkOptions;
         this.jdbcConnProvider = jdbcConnProvider;
         this.starrocksQueryVisitor = starrocksQueryVisitor;
 
         this.multipleSink = multipleSink;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
 
         init(flinkSchema);
@@ -251,6 +253,7 @@ public class StarRocksSinkManager implements Serializable {
     }
 
     public final synchronized void writeRecords(String database, String table, String... records) throws IOException {
+        checkFlushException();
         try {
             if (0 == records.length) {
                 return;
@@ -263,7 +266,6 @@ public class StarRocksSinkManager implements Serializable {
                 bufferEntity.addToBuffer(bts);
             }
             if (StarRocksSinkSemantic.EXACTLY_ONCE.equals(sinkOptions.getSemantic())) {
-                checkFlushException();
                 return;
             }
             if (bufferEntity.getBatchCount() >= sinkOptions.getSinkMaxRows()
@@ -272,7 +274,6 @@ public class StarRocksSinkManager implements Serializable {
                         database, table, bufferEntity.getBatchCount(), bufferEntity.getLabel()));
                 flush(bufferKey, false);
             }
-            checkFlushException();
         } catch (Exception e) {
             throw new IOException("Writing records to StarRocks failed.", e);
         }
@@ -293,7 +294,7 @@ public class StarRocksSinkManager implements Serializable {
     }
 
     private synchronized void flushInternal(String bufferKey, boolean waitUtilDone) throws Exception {
-        //checkFlushException();
+        checkFlushException();
         if (null == bufferKey || bufferMap.isEmpty() || !bufferMap.containsKey(bufferKey)) {
             if (waitUtilDone) {
                 waitAsyncFlushingDone();
@@ -325,7 +326,7 @@ public class StarRocksSinkManager implements Serializable {
 
             offerEOF();
         }
-        //checkFlushException();
+        checkFlushException();
     }
 
     public Map<String, StarRocksSinkBufferEntity> getBufferedBatchMap() {
@@ -356,6 +357,16 @@ public class StarRocksSinkManager implements Serializable {
             return false;
         }
         stopScheduler();
+
+        String tableIdentifier = flushData.getDatabase() + "." + flushData.getTable();
+
+        if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy && ignoreWriteTables.contains(
+                tableIdentifier)) {
+            LOG.warn(String.format("Stop writing to db[%s] table[%s] because of former errors and stop_partial policy",
+                    flushData.getDatabase(), flushData.getTable()));
+            return true;
+        }
+
         LOG.info(String.format("Async stream load: db[%s] table[%s] rows[%d] bytes[%d] label[%s].",
                 flushData.getDatabase(), flushData.getTable(), flushData.getBatchCount(), flushData.getBatchSize(),
                 flushData.getLabel()));
@@ -391,6 +402,8 @@ public class StarRocksSinkManager implements Serializable {
                     if (schemaUpdatePolicy == null
                             || schemaUpdatePolicy == SchemaUpdateExceptionPolicy.THROW_WITH_STOP) {
                         throw e;
+                    } else if (schemaUpdatePolicy == SchemaUpdateExceptionPolicy.STOP_PARTIAL) {
+                        ignoreWriteTables.add(tableIdentifier);
                     }
                 }
                 if (e instanceof StarRocksStreamLoadFailedException
@@ -414,7 +427,7 @@ public class StarRocksSinkManager implements Serializable {
         // wait for previous flushings
         offer(new StarRocksSinkBufferEntity(null, null, null));
         offer(new StarRocksSinkBufferEntity(null, null, null));
-        //checkFlushException();
+        checkFlushException();
     }
 
     void offer(StarRocksSinkBufferEntity bufferEntity) throws InterruptedException {
@@ -443,14 +456,13 @@ public class StarRocksSinkManager implements Serializable {
         }
     }
 
-    private void checkFlushException() throws Exception {
+    private void checkFlushException() {
         if (flushException != null) {
             StackTraceElement[] stack = Thread.currentThread().getStackTrace();
             for (int i = 0; i < stack.length; i++) {
                 LOG.info(
                         stack[i].getClassName() + "." + stack[i].getMethodName() + " line:" + stack[i].getLineNumber());
             }
-            flush(null, true);
             throw new RuntimeException("Writing records to StarRocks failed.", flushException);
         }
     }
