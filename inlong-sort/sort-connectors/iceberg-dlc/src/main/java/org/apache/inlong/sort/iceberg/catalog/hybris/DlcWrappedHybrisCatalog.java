@@ -98,7 +98,8 @@ public class DlcWrappedHybrisCatalog extends BaseMetastoreCatalog implements Sup
             CosNConfigKeys.COSN_REGION_PREV_KEY,
             CosNConfigKeys.COSN_CREDENTIALS_PROVIDER,
             "fs.lakefs.impl",
-            "fs.cosn.impl"
+            "fs.cosn.impl",
+            "fs.cosn.posix_bucket.fs.impl"
     ).collect(Collectors.toSet());
 
     private static final Logger LOG = LoggerFactory.getLogger(DlcWrappedHybrisCatalog.class);
