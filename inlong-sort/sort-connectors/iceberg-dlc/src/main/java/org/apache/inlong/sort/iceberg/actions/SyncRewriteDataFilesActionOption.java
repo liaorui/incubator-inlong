@@ -22,7 +22,6 @@ import com.qcloud.dlc.common.Constants;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.util.PropertyUtil;
-import org.apache.inlong.sort.iceberg.FlinkCatalogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +33,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_DATABASE;
-import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.CATALOG_TABLE;
 
 public class SyncRewriteDataFilesActionOption implements Serializable {
 

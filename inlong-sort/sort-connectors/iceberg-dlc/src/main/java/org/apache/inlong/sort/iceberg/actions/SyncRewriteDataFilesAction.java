@@ -19,7 +19,6 @@
 package org.apache.inlong.sort.iceberg.actions;
 
 import org.apache.iceberg.Table;
-import org.apache.iceberg.actions.Action;
 import org.apache.iceberg.actions.RewriteDataFiles;
 import org.apache.iceberg.expressions.Expression;
 import org.slf4j.Logger;
