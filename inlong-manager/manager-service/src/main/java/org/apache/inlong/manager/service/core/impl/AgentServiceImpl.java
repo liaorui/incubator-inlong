@@ -423,7 +423,7 @@ public class AgentServiceImpl implements AgentService {
         if (sourceEntity.getInlongClusterNodeTag() == null) {
             return true;
         }
-        if (clusterNodeEntity == null) {
+        if (clusterNodeEntity == null || clusterNodeEntity.getNodeTags() == null) {
             return false;
         }
 
