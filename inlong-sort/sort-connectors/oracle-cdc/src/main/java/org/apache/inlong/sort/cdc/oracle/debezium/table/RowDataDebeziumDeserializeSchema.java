@@ -56,9 +56,13 @@ import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.RowKind;
 import org.apache.flink.util.Collector;
-import org.apache.inlong.sort.cdc.oracle.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.oracle.debezium.utils.RecordUtils;
-import org.apache.inlong.sort.cdc.oracle.debezium.utils.TemporalConversions;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.debezium.table.AppendMetadataCollector;
+import org.apache.inlong.sort.base.debezium.table.DeserializationRuntimeConverter;
+import org.apache.inlong.sort.base.debezium.table.DeserializationRuntimeConverterFactory;
+import org.apache.inlong.sort.base.debezium.table.MetadataConverter;
+import org.apache.inlong.sort.base.util.RecordUtils;
+import org.apache.inlong.sort.base.util.TemporalConversions;
 import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -73,7 +77,8 @@ import org.slf4j.LoggerFactory;
  * RowData}.
  */
 public final class RowDataDebeziumDeserializeSchema
-        implements DebeziumDeserializationSchema<RowData> {
+        implements
+            DebeziumDeserializationSchema<RowData> {
 
     private static final Logger LOG = LoggerFactory.getLogger(RowDataDebeziumDeserializeSchema.class);
 
@@ -343,7 +348,7 @@ public final class RowDataDebeziumDeserializeSchema
 
             @Override
             public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                return convert(dbzObj,schema);
+                return convert(dbzObj, schema);
             }
         };
     }
@@ -376,7 +381,7 @@ public final class RowDataDebeziumDeserializeSchema
 
             @Override
             public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                return convert(dbzObj,schema);
+                return convert(dbzObj, schema);
             }
         };
     }
@@ -399,7 +404,7 @@ public final class RowDataDebeziumDeserializeSchema
 
             @Override
             public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                return convert(dbzObj,schema);
+                return convert(dbzObj, schema);
             }
         };
     }
@@ -426,7 +431,7 @@ public final class RowDataDebeziumDeserializeSchema
 
             @Override
             public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                return convert(dbzObj,schema);
+                return convert(dbzObj, schema);
             }
         };
     }
@@ -465,7 +470,7 @@ public final class RowDataDebeziumDeserializeSchema
 
             @Override
             public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                return convert(dbzObj,schema);
+                return convert(dbzObj, schema);
             }
         };
     }
@@ -543,7 +548,7 @@ public final class RowDataDebeziumDeserializeSchema
 
                     @Override
                     public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                        return convert(dbzObj,schema);
+                        return convert(dbzObj, schema);
                     }
                 };
             case BOOLEAN:
@@ -560,7 +565,7 @@ public final class RowDataDebeziumDeserializeSchema
 
                     @Override
                     public Object convert(Object dbzObj, Schema schema, TableChange tableSchema) throws Exception {
-                        return convert(dbzObj,schema);
+                        return convert(dbzObj, schema);
                     }
                 };
             case SMALLINT:
@@ -624,11 +629,10 @@ public final class RowDataDebeziumDeserializeSchema
                 rowType.getFields().stream()
                         .map(RowType.RowField::getType)
                         .map(
-                                logicType ->
-                                        createConverter(
-                                                logicType,
-                                                serverTimeZone,
-                                                userDefinedConverterFactory))
+                                logicType -> createConverter(
+                                        logicType,
+                                        serverTimeZone,
+                                        userDefinedConverterFactory))
                         .toArray(DeserializationRuntimeConverter[]::new);
         final String[] fieldNames = rowType.getFieldNames().toArray(new String[0]);
 
@@ -718,7 +722,7 @@ public final class RowDataDebeziumDeserializeSchema
                     // struct type convert normal type
                     if (fieldValue instanceof Struct) {
                         Column column = tableSchema.getTable().columnWithName(fieldName);
-                        LogicalType logicType = RecordUtils.convertLogicType(column, (Struct)fieldValue);
+                        LogicalType logicType = RecordUtils.convertLogicType(column, (Struct) fieldValue);
                         DeserializationRuntimeConverter fieldConverter = createConverter(
                                 logicType,
                                 serverTimeZone,
@@ -787,7 +791,7 @@ public final class RowDataDebeziumDeserializeSchema
 
     @Override
     public void deserialize(SourceRecord record, Collector<RowData> out,
-                            TableChange tableSchema)
+            TableChange tableSchema)
             throws Exception {
         Envelope.Operation op = Envelope.operationFor(record);
         Struct value = (Struct) record.value();
@@ -832,8 +836,7 @@ public final class RowDataDebeziumDeserializeSchema
     }
 
     private void emit(SourceRecord inRecord, RowData physicalRow,
-                      TableChange tableChange, Collector<RowData> collector
-    ) {
+            TableChange tableChange, Collector<RowData> collector) {
         if (appendSource) {
             physicalRow.setRowKind(RowKind.INSERT);
         }

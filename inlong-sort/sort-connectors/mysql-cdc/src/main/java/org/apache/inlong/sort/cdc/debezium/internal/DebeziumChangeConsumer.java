@@ -23,6 +23,8 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import org.apache.flink.annotation.Internal;
+import org.apache.inlong.sort.base.debezium.internal.DebeziumOffset;
+import org.apache.inlong.sort.base.debezium.internal.Handover;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -34,7 +36,9 @@ import java.util.Map;
 /** Consume debezium change events. */
 @Internal
 public class DebeziumChangeConsumer
-        implements DebeziumEngine.ChangeConsumer<ChangeEvent<SourceRecord, SourceRecord>> {
+        implements
+            DebeziumEngine.ChangeConsumer<ChangeEvent<SourceRecord, SourceRecord>> {
+
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
     public static final String LAST_COMMIT_LSN_KEY = "lsn_commit";
     private static final Logger LOG = LoggerFactory.getLogger(DebeziumChangeConsumer.class);

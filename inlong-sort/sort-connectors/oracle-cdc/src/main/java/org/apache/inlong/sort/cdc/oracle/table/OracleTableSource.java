@@ -39,9 +39,9 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.RowKind;
-import org.apache.inlong.sort.cdc.oracle.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.cdc.oracle.debezium.DebeziumSourceFunction;
-import org.apache.inlong.sort.cdc.oracle.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.cdc.oracle.debezium.table.RowDataDebeziumDeserializeSchema;
 import org.apache.inlong.sort.cdc.oracle.OracleSource;
 
@@ -158,11 +158,10 @@ public class OracleTableSource implements ScanTableSource, SupportsReadingMetada
 
         return metadataKeys.stream()
                 .map(
-                        key ->
-                                Stream.of(OracleReadableMetaData.values())
-                                        .filter(m -> m.getKey().equals(key))
-                                        .findFirst()
-                                        .orElseThrow(IllegalStateException::new))
+                        key -> Stream.of(OracleReadableMetaData.values())
+                                .filter(m -> m.getKey().equals(key))
+                                .findFirst()
+                                .orElseThrow(IllegalStateException::new))
                 .map(OracleReadableMetaData::getConverter)
                 .toArray(MetadataConverter[]::new);
     }

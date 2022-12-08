@@ -22,6 +22,7 @@ import io.debezium.relational.history.TableChanges.TableChange;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.util.Collector;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
 import org.apache.kafka.connect.source.SourceRecord;
 
 /**
@@ -29,6 +30,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * {@link SourceRecord} into String.
  */
 public class StringDebeziumDeserializationSchema implements DebeziumDeserializationSchema<String> {
+
     private static final long serialVersionUID = -3168848963265670603L;
 
     @Override
@@ -38,7 +40,7 @@ public class StringDebeziumDeserializationSchema implements DebeziumDeserializat
 
     @Override
     public void deserialize(SourceRecord record, Collector<String> out, TableChange tableChange)
-        throws Exception {
+            throws Exception {
 
     }
 

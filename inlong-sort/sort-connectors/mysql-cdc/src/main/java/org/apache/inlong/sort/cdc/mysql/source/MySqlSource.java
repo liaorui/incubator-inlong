@@ -35,9 +35,9 @@ import org.apache.flink.connector.base.source.reader.synchronization.FutureCompl
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.FlinkRuntimeException;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
 import org.apache.inlong.sort.base.metric.MetricOption;
 import org.apache.inlong.sort.base.metric.MetricOption.RegisteredMetric;
-import org.apache.inlong.sort.cdc.debezium.DebeziumDeserializationSchema;
 import org.apache.inlong.sort.cdc.mysql.MySqlValidator;
 import org.apache.inlong.sort.cdc.mysql.debezium.DebeziumUtils;
 import org.apache.inlong.sort.cdc.mysql.source.assigners.MySqlBinlogSplitAssigner;
@@ -97,7 +97,9 @@ import static org.apache.inlong.sort.cdc.mysql.debezium.DebeziumUtils.openJdbcCo
  */
 @Internal
 public class MySqlSource<T>
-        implements Source<T, MySqlSplit, PendingSplitsState>, ResultTypeQueryable<T> {
+        implements
+            Source<T, MySqlSplit, PendingSplitsState>,
+            ResultTypeQueryable<T> {
 
     private static final long serialVersionUID = 1L;
 
@@ -153,11 +155,10 @@ public class MySqlSource<T>
         FutureCompletingBlockingQueue<RecordsWithSplitIds<SourceRecord>> elementsQueue =
                 new FutureCompletingBlockingQueue<>();
         Supplier<MySqlSplitReader> splitReaderSupplier =
-                () ->
-                        new MySqlSplitReader(
-                                sourceConfig,
-                                readerContext.getIndexOfSubtask(),
-                                mySqlSourceReaderContext);
+                () -> new MySqlSplitReader(
+                        sourceConfig,
+                        readerContext.getIndexOfSubtask(),
+                        mySqlSourceReaderContext);
         return new MySqlSourceReader<>(
                 elementsQueue,
                 splitReaderSupplier,

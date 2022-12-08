@@ -18,6 +18,9 @@
 
 package org.apache.inlong.sort.cdc.postgres.debezium.internal;
 
+import com.ververica.cdc.debezium.internal.DebeziumOffset;
+import com.ververica.cdc.debezium.internal.DebeziumOffsetSerializer;
+import com.ververica.cdc.debezium.internal.Handover;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
@@ -39,10 +42,10 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.util.Collector;
+import org.apache.inlong.sort.base.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.base.util.RecordUtils;
 import org.apache.inlong.sort.cdc.postgres.connection.PostgreSQLJdbcConnectionOptions;
 import org.apache.inlong.sort.cdc.postgres.connection.PostgreSQLJdbcConnectionProvider;
-import org.apache.inlong.sort.cdc.postgres.debezium.DebeziumDeserializationSchema;
-import org.apache.inlong.sort.cdc.postgres.debezium.utils.RecordUtils;
 import org.apache.inlong.sort.cdc.postgres.manager.PostgreSQLQueryVisitor;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -261,7 +264,7 @@ public class DebeziumChangeFetcher<T> {
             }
 
             deserialization.deserialize(record, debeziumCollector, getTableChange(record));
-            //deserialization.deserialize(record, debeziumCollector);
+            // deserialization.deserialize(record, debeziumCollector);
 
             if (!isSnapshotRecord(record)) {
                 LOG.debug("Snapshot phase finishes.");

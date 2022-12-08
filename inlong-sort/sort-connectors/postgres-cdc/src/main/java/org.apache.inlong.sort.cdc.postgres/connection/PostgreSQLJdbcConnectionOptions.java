@@ -29,7 +29,7 @@ import org.apache.flink.util.Preconditions;
  */
 @PublicEvolving
 public class PostgreSQLJdbcConnectionOptions implements Serializable {
-    
+
     private static final long serialVersionUID = 1L;
 
     protected final String url;

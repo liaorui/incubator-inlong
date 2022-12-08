@@ -22,7 +22,6 @@ import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionProvider;
 import com.starrocks.connector.flink.manager.StarRocksQueryVisitor;
 import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.manager.StarRocksStreamLoadFailedException;
-import com.starrocks.connector.flink.manager.StarRocksStreamLoadVisitor;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkSemantic;
 import java.io.IOException;
@@ -31,9 +30,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -111,9 +112,13 @@ public class StarRocksSinkManager implements Serializable {
     private ScheduledFuture<?> scheduledFuture;
 
     private final boolean multipleSink;
-    private final boolean ignoreSingleTableErrors;
     private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
     private transient SinkMetricData metricData;
+
+    /**
+     * If a table writing throws exception, ignore it when receiving data later again
+     */
+    private Set<String> ignoreWriteTables = new HashSet<>();
 
     public void setSinkMetricData(SinkMetricData metricData) {
         this.metricData = metricData;
@@ -122,7 +127,6 @@ public class StarRocksSinkManager implements Serializable {
     public StarRocksSinkManager(StarRocksSinkOptions sinkOptions,
             TableSchema flinkSchema,
             boolean multipleSink,
-            boolean ignoreSingleTableErrors,
             SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
         this.sinkOptions = sinkOptions;
         StarRocksJdbcConnectionOptions jdbcOptions = new StarRocksJdbcConnectionOptions(sinkOptions.getJdbcUrl(),
@@ -132,7 +136,6 @@ public class StarRocksSinkManager implements Serializable {
                 sinkOptions.getTableName());
 
         this.multipleSink = multipleSink;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
 
         init(flinkSchema);
@@ -143,14 +146,12 @@ public class StarRocksSinkManager implements Serializable {
             StarRocksJdbcConnectionProvider jdbcConnProvider,
             StarRocksQueryVisitor starrocksQueryVisitor,
             boolean multipleSink,
-            boolean ignoreSingleTableErrors,
             SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
         this.sinkOptions = sinkOptions;
         this.jdbcConnProvider = jdbcConnProvider;
         this.starrocksQueryVisitor = starrocksQueryVisitor;
 
         this.multipleSink = multipleSink;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
 
         init(flinkSchema);
@@ -356,6 +357,16 @@ public class StarRocksSinkManager implements Serializable {
             return false;
         }
         stopScheduler();
+
+        String tableIdentifier = flushData.getDatabase() + "." + flushData.getTable();
+
+        if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy && ignoreWriteTables.contains(
+                tableIdentifier)) {
+            LOG.warn(String.format("Stop writing to db[%s] table[%s] because of former errors and stop_partial policy",
+                    flushData.getDatabase(), flushData.getTable()));
+            return true;
+        }
+
         LOG.info(String.format("Async stream load: db[%s] table[%s] rows[%d] bytes[%d] label[%s].",
                 flushData.getDatabase(), flushData.getTable(), flushData.getBatchCount(), flushData.getBatchSize(),
                 flushData.getLabel()));
@@ -391,6 +402,8 @@ public class StarRocksSinkManager implements Serializable {
                     if (schemaUpdatePolicy == null
                             || schemaUpdatePolicy == SchemaUpdateExceptionPolicy.THROW_WITH_STOP) {
                         throw e;
+                    } else if (schemaUpdatePolicy == SchemaUpdateExceptionPolicy.STOP_PARTIAL) {
+                        ignoreWriteTables.add(tableIdentifier);
                     }
                 }
                 if (e instanceof StarRocksStreamLoadFailedException
