@@ -22,6 +22,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTypeName;
+import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.transformation.ConstantParam;
 import org.apache.inlong.sort.protocol.transformation.Function;
 import org.apache.inlong.sort.protocol.transformation.FunctionParam;
@@ -42,7 +43,7 @@ public class SplitIndexFunction implements Function, Serializable {
     private static final long serialVersionUID = 460250096378706646L;
 
     @JsonProperty("field")
-    private FunctionParam field;
+    private FieldInfo field;
     @JsonProperty("separator")
     private StringConstantParam separator;
     @JsonProperty("index")
@@ -55,7 +56,7 @@ public class SplitIndexFunction implements Function, Serializable {
      * @param separator the delimiting expression
      * @param index which value to take after delimitted
      */
-    public SplitIndexFunction(@JsonProperty("field") FunctionParam field,
+    public SplitIndexFunction(@JsonProperty("field") FieldInfo field,
             @JsonProperty("separator") StringConstantParam separator,
             @JsonProperty("index") ConstantParam index) {
         this.field = Preconditions.checkNotNull(field, "field is null");

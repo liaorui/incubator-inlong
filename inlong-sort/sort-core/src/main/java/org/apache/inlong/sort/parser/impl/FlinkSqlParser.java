@@ -24,7 +24,6 @@ import org.apache.inlong.sort.configuration.Constants;
 import org.apache.inlong.sort.formats.base.TableFormatUtils;
 import org.apache.inlong.sort.formats.common.ArrayFormatInfo;
 import org.apache.inlong.sort.formats.common.FormatInfo;
-import org.apache.inlong.sort.formats.common.FunctionFormatInfo;
 import org.apache.inlong.sort.formats.common.MapFormatInfo;
 import org.apache.inlong.sort.formats.common.RowFormatInfo;
 import org.apache.inlong.sort.function.EncryptFunction;
@@ -663,13 +662,9 @@ public class FlinkSqlParser implements Parser {
                             .append(targetType).append(") AS ").append(field.format()).append(",");
                 }
             } else {
-                if (field.getFormatInfo() instanceof FunctionFormatInfo) {
-                    sb.append("\n    ").append(inputField.format()).append(" AS ").append(field.format()).append(",");
-                } else {
-                    String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
-                    sb.append("\n    CAST(").append(inputField.format()).append(" as ")
-                            .append(targetType).append(") AS ").append(field.format()).append(",");
-                }
+                String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
+                sb.append("\n    CAST(").append(inputField.format()).append(" as ")
+                        .append(targetType).append(") AS ").append(field.format()).append(",");
             }
         }
         sb.deleteCharAt(sb.length() - 1);
