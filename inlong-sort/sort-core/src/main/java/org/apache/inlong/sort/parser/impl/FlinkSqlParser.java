@@ -918,8 +918,9 @@ public class FlinkSqlParser implements Parser {
      * @param primaryKey The primary key of table
      * @return Primary key format in sql
      */
-    private String genPrimaryKey(String primaryKey) {
-        if (StringUtils.isNotBlank(primaryKey)) {
+    private String genPrimaryKey(String primaryKey, String filterField) {
+        if (StringUtils.isNotBlank(primaryKey)
+        && !primaryKey.contains(filterField)) {
             primaryKey = String.format("    PRIMARY KEY (%s) NOT ENFORCED,\n",
                     StringUtils.join(formatFields(primaryKey.split(",")), ","));
         } else {
