@@ -53,8 +53,6 @@ import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.inlong.sort.base.Constants.IGNORE_ALL_CHANGELOG;
 import static org.apache.inlong.sort.base.Constants.INLONG_AUDIT;
@@ -77,14 +75,7 @@ import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TYPE_MAP_COMPA
  */
 public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, DynamicTableSourceFactory {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkDynamicTableFactory.class);
-
     static final String FACTORY_IDENTIFIER = "iceberg-inlong";
-
-    private static final String DLC_JDBC_CLASS = "com.tencent.cloud.dlc.jdbc.DlcDriver";
-    public static final String DLC_SECRET_ID_CONF = "qcloud.dlc.secret-id";
-    public static final String DLC_SECRET_KEY_CONF = "qcloud.dlc.secret-key";
-    public static final String DLC_JDBC_URL = "qcloud.dlc.jdbc.url";
 
     public static final String URL = "url";
 
@@ -152,7 +143,7 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
     public static final ConfigOption<Integer> WRITE_COMPACT_INTERVAL =
             ConfigOptions.key("write.compact.snapshot.interval")
                     .intType()
-                    .defaultValue(5)
+                    .defaultValue(20)
                     .withDescription("compact snapshot interval.");
 
     private final FlinkCatalog catalog;
