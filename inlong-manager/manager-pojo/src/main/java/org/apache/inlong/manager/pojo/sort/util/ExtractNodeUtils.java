@@ -235,7 +235,7 @@ public class ExtractNodeUtils {
             properties.put("migrate-all", "true");
         }
         if (StringUtils.isEmpty(primaryKey)) {
-            incrementalSnapshotEnabled = false;
+            //incrementalSnapshotEnabled = false;
             properties.put("scan.incremental.snapshot.enabled", "false");
         }
         return new MySqlExtractNode(binlogSource.getSourceName(),
