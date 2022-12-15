@@ -218,7 +218,7 @@ public class DynamicSchemaHandleOperator extends AbstractStreamOperator<RecordWi
                         tableId.name(), tableId.namespace(), catalog.name());
             } catch (Exception e) {
                 // default strategy for auto create table fail, just ignore this table datas.
-                LOG.warn("Table({}) create fail, add it to blackList!");
+                LOG.warn("Table({}) create fail, add it to blackList!", tableId.name());
                 blacklist.add(tableId);
                 return;
             }
