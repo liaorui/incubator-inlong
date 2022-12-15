@@ -106,7 +106,7 @@ public final class MonitorTextFile {
         @Override
         public void run() {
             try {
-                Thread.currentThread().setName("Monitor()");
+                Thread.currentThread().setName(String.format("Monitor(%s)", path));
                 TimeUnit.SECONDS.sleep(WAIT_TIME);
                 LOGGER.info("start {} monitor", fileReaderOperator.file.getAbsolutePath());
                 while (!fileReaderOperator.finished) {
