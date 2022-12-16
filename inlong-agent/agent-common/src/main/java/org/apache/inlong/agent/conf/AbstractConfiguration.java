@@ -151,6 +151,7 @@ public abstract class AbstractConfiguration {
             }
         }
     }
+
     /**
      * get int from config
      *
@@ -283,7 +284,6 @@ public abstract class AbstractConfiguration {
     Map<String, JsonPrimitive> getConfigStorage() {
         return configStorage;
     }
-
 
     public URL getConfigLocation(String fileName) {
         return classLoader.getResource(fileName);
