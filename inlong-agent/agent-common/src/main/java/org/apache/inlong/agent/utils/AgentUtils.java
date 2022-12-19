@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.file.Files;
-import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -42,8 +41,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.inlong.agent.constant.AgentConstants.AGENT_ENABLE_OOM_EXIT;
 import static org.apache.inlong.agent.constant.AgentConstants.AGENT_LOCAL_IP;
@@ -52,6 +49,7 @@ import static org.apache.inlong.agent.constant.AgentConstants.AGENT_LOCAL_UUID_O
 import static org.apache.inlong.agent.constant.AgentConstants.CUSTOM_FIXED_IP;
 import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_AGENT_LOCAL_UUID_OPEN;
 import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_ENABLE_OOM_EXIT;
+import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_LOCAL_HOST;
 import static org.apache.inlong.agent.constant.AgentConstants.DEFAULT_LOCAL_IP;
 
 /**
@@ -71,8 +69,6 @@ public class AgentUtils {
     public static final String HOUR_LOW_CASE = "h";
     public static final String MINUTE = "m";
     private static final Logger LOGGER = LoggerFactory.getLogger(AgentUtils.class);
-    private static final String HEX_PREFIX = "0x";
-    private static final String HIDDEN_DIR = "/**/";
 
     /**
      * Get MD5 of file.
@@ -142,6 +138,20 @@ public class AgentUtils {
             LOGGER.error("error while get local ip", ex);
         }
         return ip;
+    }
+    
+    /**
+     * Get local host
+     */
+    public static String getLocalHost() {
+        String host = DEFAULT_LOCAL_HOST;
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            host = socket.getLocalAddress().getHostName();
+        } catch (Exception ex) {
+            LOGGER.error("error while get local host", ex);
+        }
+        return host;
     }
 
     /**
@@ -227,48 +237,6 @@ public class AgentUtils {
     public static String formatCurrentTimeWithoutOffset(String formatter) {
         ZonedDateTime zoned = ZonedDateTime.now().plusDays(0).plusHours(0).plusMinutes(0);
         return DateTimeFormatter.ofPattern(formatter).withLocale(Locale.getDefault()).format(zoned);
-    }
-
-    /**
-     * Whether all class of path name are matched
-     *
-     * @param pathStr path string
-     * @param patternStr regex pattern
-     * @return true if all match
-     */
-    public static boolean regexMatch(String pathStr, String patternStr) {
-        // /tmp/dir1/**/test.xml
-        if (patternStr.contains(HIDDEN_DIR)) {
-            return matchHiddenDir(pathStr, patternStr);
-        }
-
-
-        boolean result = true;
-        String[] pathNames = StringUtils.split(pathStr, File.separator);
-        String[] patternNames = StringUtils.split(patternStr, File.separator);
-        for (int i = 0; i < pathNames.length && i < patternNames.length; i++) {
-            if (!pathNames[i].equals(patternNames[i])) {
-                Matcher matcher = Pattern.compile(patternNames[i]).matcher(pathNames[i]);
-                if (!matcher.matches()) {
-                    result = false;
-                    break;
-                }
-            }
-        }
-        LOGGER.info("path: {}, pattern: {}, result: {}", pathNames, patternNames, result);
-        return result;
-    }
-
-    private static boolean matchHiddenDir(String pathStr, String patternStr) {
-        String[] patternNames = StringUtils.split(patternStr, File.separator);
-        String filePattern = patternNames[patternNames.length - 1];
-
-        String[] pathNames = StringUtils.split(pathStr, File.separator);
-        String fileName = pathNames[pathNames.length - 1];
-        Matcher matcher = Pattern.compile(filePattern).matcher(fileName);
-
-        String[] patternPathNames = patternStr.split("[**]");
-        return pathStr.contains(patternPathNames[0]) && matcher.matches();
     }
 
     /**
@@ -420,5 +388,4 @@ public class AgentUtils {
     public static boolean enableOOMExit() {
         return AgentConfiguration.getAgentConf().getBoolean(AGENT_ENABLE_OOM_EXIT, DEFAULT_ENABLE_OOM_EXIT);
     }
-
 }

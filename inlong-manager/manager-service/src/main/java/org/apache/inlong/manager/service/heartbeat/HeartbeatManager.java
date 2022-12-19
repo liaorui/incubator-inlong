@@ -123,12 +123,12 @@ public class HeartbeatManager implements AbstractHeartbeatManager {
             } else {
                 heartbeatMsg.setProtocolType(protocolType);
             }
-            if (lastHeartbeat == null) {
+            if (heartbeatConfigModified(lastHeartbeat, heartbeat)) {
                 InlongClusterNodeEntity clusterNode = getClusterNode(clusterInfo, heartbeatMsg);
                 if (clusterNode == null) {
                     handlerNum += insertClusterNode(clusterInfo, heartbeatMsg, clusterInfo.getCreator());
                 } else {
-                    handlerNum += updateClusterNode(clusterNode);
+                    handlerNum += updateClusterNode(clusterNode, heartbeatMsg);
                 }
             }
         }
@@ -201,6 +201,7 @@ public class HeartbeatManager implements AbstractHeartbeatManager {
         clusterNode.setIp(heartbeat.getIp());
         clusterNode.setPort(Integer.valueOf(heartbeat.getPort()));
         clusterNode.setProtocolType(heartbeat.getProtocolType());
+        clusterNode.setNodeTags(heartbeat.getNodeTag());
         clusterNode.setStatus(ClusterStatus.NORMAL.getStatus());
         clusterNode.setCreator(creator);
         clusterNode.setModifier(creator);
@@ -208,8 +209,9 @@ public class HeartbeatManager implements AbstractHeartbeatManager {
         return clusterNodeMapper.insertOnDuplicateKeyUpdate(clusterNode);
     }
 
-    private int updateClusterNode(InlongClusterNodeEntity clusterNode) {
+    private int updateClusterNode(InlongClusterNodeEntity clusterNode, HeartbeatMsg heartbeat) {
         clusterNode.setStatus(ClusterStatus.NORMAL.getStatus());
+        clusterNode.setNodeTags(heartbeat.getNodeTag());
         return clusterNodeMapper.updateById(clusterNode);
     }
 
@@ -248,5 +250,20 @@ public class HeartbeatManager implements AbstractHeartbeatManager {
 
         log.debug("success to fetch cluster for heartbeat: {}", componentHeartbeat);
         return clusterInfo;
+    }
+
+    /**
+     * Check whether the configuration information carried in the heartbeat has been updated
+     *
+     * @param oldHB last heartbeat msg
+     * @param newHB current heartbeat msg
+     * @return
+     */
+    private static boolean heartbeatConfigModified(HeartbeatMsg oldHB, HeartbeatMsg newHB) {
+        // todo: only support dynamic renew node tag. Support clusterName/port/ip... later
+        if (oldHB == null) {
+            return true;
+        }
+        return oldHB.getNodeTag() != newHB.getNodeTag();
     }
 }

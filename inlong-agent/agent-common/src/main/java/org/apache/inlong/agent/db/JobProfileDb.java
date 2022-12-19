@@ -29,6 +29,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.inlong.agent.constant.JobConstants.JOB_ID;
 
@@ -46,7 +49,10 @@ public class JobProfileDb {
 
     /**
      * get all restart jobs from db
+     *
+     * @Deprecated Use {@link JobProfileDb#getJobsByState(Set)}
      */
+    @Deprecated
     public List<JobProfile> getRestartJobs() {
         List<JobProfile> jobsByState = getJobsByState(StateSearchKey.ACCEPTED);
         jobsByState.addAll(getJobsByState(StateSearchKey.RUNNING));
@@ -189,7 +195,9 @@ public class JobProfileDb {
      *
      * @param stateSearchKey state search key.
      * @return list of job profile.
+     * @Deprecated Use {@link JobProfileDb#getJobsByState(Set)}
      */
+    @Deprecated
     public List<JobProfile> getJobsByState(StateSearchKey stateSearchKey) {
         List<KeyValueEntity> entityList = db.searchWithKeyPrefix(stateSearchKey, JobConstants.JOB_ID_PREFIX);
         List<JobProfile> profileList = new ArrayList<>();
@@ -197,6 +205,29 @@ public class JobProfileDb {
             profileList.add(entity.getAsJobProfile());
         }
         return profileList;
+    }
+
+    /**
+     * get list of job profiles by some state.
+     *
+     * @param stateSearchKeys state search keys.
+     * @return list of job profile.
+     */
+    public List<JobProfile> getJobsByState(Set<StateSearchKey> stateSearchKeys) {
+        return stateSearchKeys.stream()
+                .flatMap(stateSearchKey ->
+                     db.searchWithKeyPrefix(stateSearchKey, JobConstants.JOB_ID_PREFIX).stream()
+                ).map(KeyValueEntity::getAsJobProfile)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * get all jobs.
+     *
+     * @return list of job profile.
+     */
+    public List<JobProfile> getAllJobs() {
+        return getJobsByState(Stream.of(StateSearchKey.values()).collect(Collectors.toSet()));
     }
 
     /**

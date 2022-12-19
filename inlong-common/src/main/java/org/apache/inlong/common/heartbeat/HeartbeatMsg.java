@@ -76,6 +76,11 @@ public class HeartbeatMsg {
     private String clusterTag;
 
     /**
+     * Tag of node, separated by commas(,)
+     */
+    private String nodeTag;
+
+    /**
      * Name of responsible person, separated by commas(,)
      */
     private String inCharges = "admin";

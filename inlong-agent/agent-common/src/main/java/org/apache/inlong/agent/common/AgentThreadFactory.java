@@ -42,7 +42,8 @@ public class AgentThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
-        Thread t = new Thread(r, threadType + "-running-thread-" + mThreadNum.getAndIncrement());
+        String name = r instanceof NamedRunnable ? ((NamedRunnable) r).getName() : "-running-thread-";
+        Thread t = new Thread(r, threadType + name + mThreadNum.getAndIncrement());
         if (AgentUtils.enableOOMExit()) {
             t.setUncaughtExceptionHandler(ThreadUtils::threadThrowableHandler);
         }

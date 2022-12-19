@@ -44,6 +44,7 @@ public interface Trigger {
      */
     void destroy();
 
+    // todo:fetch TaskProfile
     /**
      * fetch job profile from trigger
      *

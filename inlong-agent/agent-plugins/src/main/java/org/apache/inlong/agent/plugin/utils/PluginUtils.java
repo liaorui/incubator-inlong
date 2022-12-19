@@ -92,36 +92,28 @@ public class PluginUtils {
      * scan and return files based on job dir conf
      */
     public static Collection<File> findSuitFiles(JobProfile jobConf) {
-        List<String> dirPatterns = Stream.of(jobConf.get(JOB_DIR_FILTER_PATTERNS).split(",")).collect(Collectors.toList());
+        Set<String> dirPatterns = Stream.of(
+                jobConf.get(JOB_DIR_FILTER_PATTERNS).split(",")).collect(Collectors.toSet());
+        Set<String> blackList = Stream.of(
+                jobConf.get(JOB_DIR_FILTER_BLACKLIST, "").split(","))
+                .filter(black -> !StringUtils.isBlank(black))
+                .collect(Collectors.toSet());
         LOGGER.info("start to find files with dir pattern {}", dirPatterns);
-        List<PathPattern> patterns = dirPatterns.stream().map(dirPattern -> {
-                Set<String> blackList = Stream.of(
-                            jobConf.get(JOB_DIR_FILTER_BLACKLIST, "").split(","))
-                        .filter(black -> !StringUtils.isBlank(black))
-                        .collect(Collectors.toSet());
-                return jobConf.hasKey(JOB_FILE_TIME_OFFSET)
-                        ? new PathPattern(dirPattern, jobConf.get(JOB_FILE_TIME_OFFSET), blackList)
-                        : new PathPattern(dirPattern, blackList);
-            }).collect(Collectors.toList());
 
-        updateRetryTime(jobConf, patterns);
+        Set<PathPattern> pathPatterns =
+                PathPattern.buildPathPattern(dirPatterns, jobConf.get(JOB_FILE_TIME_OFFSET, null), blackList);
+        updateRetryTime(jobConf, pathPatterns);
         int maxFileNum = jobConf.getInt(FILE_MAX_NUM, DEFAULT_FILE_MAX_NUM);
         LOGGER.info("dir pattern {}, max file num {}", dirPatterns, maxFileNum);
         Collection<File> allFiles = new ArrayList<>();
-        patterns.forEach(pattern -> {
-            try {
-                pattern.walkAllSuitableFiles(allFiles, maxFileNum);
-            } catch (IOException ex) {
-                LOGGER.warn("cannot get all files from {}", pattern, ex);
-            }
-        });
+        pathPatterns.forEach(pathPattern -> allFiles.addAll(pathPattern.walkSuitableFiles(maxFileNum)));
         return allFiles;
     }
 
     /**
      * if the job is retry job, the date is determined
      */
-    public static void updateRetryTime(JobProfile jobConf, List<PathPattern> patterns) {
+    public static void updateRetryTime(JobProfile jobConf, Collection<PathPattern> patterns) {
         if (jobConf.hasKey(JOB_RETRY_TIME)) {
             LOGGER.info("job {} is retry job with specific time, update file time to {}"
                     + "", jobConf.toJsonStr(), jobConf.get(JOB_RETRY_TIME));
@@ -130,13 +122,14 @@ public class PluginUtils {
     }
 
     /**
-     * convert TriggerProfile to JobProfile
+     * convert a file of trigger dir to a subtask JobProfile of TriggerProfile
      */
     public static JobProfile copyJobProfile(TriggerProfile triggerProfile, String dataTime,
             File pendingFile) {
         JobProfile copiedProfile = TriggerProfile.parseJsonStr(triggerProfile.toJsonStr());
         String md5 = AgentUtils.getFileMd5(pendingFile);
         copiedProfile.set(pendingFile.getAbsolutePath() + ".md5", md5);
+        copiedProfile.set(JobConstants.JOB_TRIGGER, null);  // del trigger id
         copiedProfile.set(JobConstants.JOB_DIR_FILTER_PATTERNS, pendingFile.getAbsolutePath());
         // the time suit for file name is just the data time
         copiedProfile.set(JobConstants.JOB_DATA_TIME, dataTime);
