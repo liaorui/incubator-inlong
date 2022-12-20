@@ -24,7 +24,6 @@ import org.apache.inlong.sort.configuration.Constants;
 import org.apache.inlong.sort.formats.base.TableFormatUtils;
 import org.apache.inlong.sort.formats.common.ArrayFormatInfo;
 import org.apache.inlong.sort.formats.common.FormatInfo;
-import org.apache.inlong.sort.formats.common.FunctionFormatInfo;
 import org.apache.inlong.sort.formats.common.MapFormatInfo;
 import org.apache.inlong.sort.formats.common.RowFormatInfo;
 import org.apache.inlong.sort.function.EncryptFunction;
@@ -44,6 +43,7 @@ import org.apache.inlong.sort.protocol.enums.FilterStrategy;
 import org.apache.inlong.sort.protocol.node.ExtractNode;
 import org.apache.inlong.sort.protocol.node.LoadNode;
 import org.apache.inlong.sort.protocol.node.Node;
+import org.apache.inlong.sort.protocol.node.extract.MongoExtractNode;
 import org.apache.inlong.sort.protocol.node.load.HbaseLoadNode;
 import org.apache.inlong.sort.protocol.node.transform.DistinctNode;
 import org.apache.inlong.sort.protocol.node.transform.TransformNode;
@@ -663,13 +663,9 @@ public class FlinkSqlParser implements Parser {
                             .append(targetType).append(") AS ").append(field.format()).append(",");
                 }
             } else {
-                if (field.getFormatInfo() instanceof FunctionFormatInfo) {
-                    sb.append("\n    ").append(inputField.format()).append(" AS ").append(field.format()).append(",");
-                } else {
-                    String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
-                    sb.append("\n    CAST(").append(inputField.format()).append(" as ")
-                            .append(targetType).append(") AS ").append(field.format()).append(",");
-                }
+                String targetType = TableFormatUtils.deriveLogicalType(field.getFormatInfo()).asSummaryString();
+                sb.append("\n    CAST(").append(inputField.format()).append(" as ")
+                        .append(targetType).append(") AS ").append(field.format()).append(",");
             }
         }
         sb.deleteCharAt(sb.length() - 1);
@@ -754,8 +750,9 @@ public class FlinkSqlParser implements Parser {
         }
         StringBuilder sb = new StringBuilder("CREATE TABLE `");
         sb.append(node.genTableName()).append("`(\n");
-        sb.append(genPrimaryKey(node.getPrimaryKey()));
-        sb.append(parseFields(node.getFields(), node));
+        String filterField = getFilterField(node);
+        sb.append(genPrimaryKey(node.getPrimaryKey(), filterField));
+        sb.append(parseFields(node.getFields(), node, filterField));
         if (node instanceof ExtractNode) {
             ExtractNode extractNode = (ExtractNode) node;
             if (extractNode.getWatermarkField() != null) {
@@ -769,6 +766,15 @@ public class FlinkSqlParser implements Parser {
         }
         sb.append(parseOptions(node.tableOptions()));
         return sb.toString();
+    }
+
+    private String getFilterField(Node node) {
+        if (node instanceof MongoExtractNode
+        && null != node.getProperties().get("source.multiple.enable")
+        && node.getProperties().get("source.multiple.enable").equals("true")) {
+                return node.getPrimaryKey();
+        }
+        return null;
     }
 
     /**
@@ -871,9 +877,12 @@ public class FlinkSqlParser implements Parser {
      * @param node The abstract of extract, transform, load
      * @return Field formats in select sql
      */
-    private String parseFields(List<FieldInfo> fields, Node node) {
+    private String parseFields(List<FieldInfo> fields, Node node, String filterField) {
         StringBuilder sb = new StringBuilder();
         for (FieldInfo field : fields) {
+            if (field.getName().equals(filterField)) {
+                continue;
+            }
             sb.append("    `").append(field.getName()).append("` ");
             if (field instanceof MetaFieldInfo) {
                 if (!(node instanceof Metadata)) {
@@ -904,8 +913,9 @@ public class FlinkSqlParser implements Parser {
      * @param primaryKey The primary key of table
      * @return Primary key format in sql
      */
-    private String genPrimaryKey(String primaryKey) {
-        if (StringUtils.isNotBlank(primaryKey)) {
+    private String genPrimaryKey(String primaryKey, String filterField) {
+        if (StringUtils.isNotBlank(primaryKey)
+        && !primaryKey.contains(filterField)) {
             primaryKey = String.format("    PRIMARY KEY (%s) NOT ENFORCED,\n",
                     StringUtils.join(formatFields(primaryKey.split(",")), ","));
         } else {

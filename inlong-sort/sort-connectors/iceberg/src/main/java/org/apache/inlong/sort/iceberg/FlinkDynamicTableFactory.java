@@ -19,6 +19,11 @@
 
 package org.apache.inlong.sort.iceberg;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
@@ -72,6 +77,25 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
 
     static final String FACTORY_IDENTIFIER = "iceberg-inlong";
 
+    public static final String URL = "url";
+
+    public static final String URL_REGION = "region";
+    public static final String URL_REGION_DEFAULT = "ap-beijing";
+
+    public static final String URL_DEFAULT_DATABASE = "database_name";
+    public static final String URL_DEFAULT_DATABASE_DEFAULT = "default";
+
+    public static final String URL_ENDPOINT = "endpoint";
+    public static final String URL_ENDPOINT_DEFAULT = "dlc.tencentcloudapi.com";
+
+    public static final String URL_TASK_TYPE = "task_type";
+    public static final String URL_TASK_TYPE_DEFAULT = "SparkSQLTask";
+
+    public static final String URL_DATA_SOURCE = "datasource_connection_name";
+    public static final String URL_DATA_SOURCE_DEFAULT = "DataLakeCatalog";
+
+    public static final String URL_DATA_RESOURCE_NAME = "data_engine_name";
+
     private static final ConfigOption<String> CATALOG_NAME =
             ConfigOptions.key("catalog-name")
                     .stringType()
@@ -109,6 +133,18 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
             .impl(Context.class, "getCatalogTable")
             .orNoop()
             .build();
+
+    public static final ConfigOption<Boolean> WRITE_COMPACT_ENABLE =
+            ConfigOptions.key("write.compact.enable")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether to enable compact small file.");
+
+    public static final ConfigOption<Integer> WRITE_COMPACT_INTERVAL =
+            ConfigOptions.key("write.compact.snapshot.interval")
+                    .intType()
+                    .defaultValue(20)
+                    .withDescription("compact snapshot interval.");
 
     private final FlinkCatalog catalog;
 
@@ -222,9 +258,8 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         ObjectPath objectPath = context.getObjectIdentifier().toObjectPath();
         CatalogTable catalogTable = loadCatalogTable(context);
         Map<String, String> tableProps = catalogTable.getOptions();
-        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
+       TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
         ActionsProvider actionsLoader = createActionLoader(context.getClassLoader(), tableProps);
-
         boolean multipleSink = Boolean.parseBoolean(
                 tableProps.getOrDefault(SINK_MULTIPLE_ENABLE.key(), SINK_MULTIPLE_ENABLE.defaultValue().toString()));
         if (multipleSink) {
@@ -240,6 +275,42 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
             }
             return new IcebergTableSink(tableLoader, tableSchema, catalogTable, null, actionsLoader);
         }
+    }
+
+    public String url(Map<String, String> properties) {
+        String jdbcPrefix = "jdbc:dlc:";
+        String endpoint;
+        Map<String, String> urlParams = new HashMap<>();
+        if (properties.get(URL) != null) {
+            String url = properties.get(URL);
+            int splitPoint = url.indexOf("?") == -1 ? url.length() : url.indexOf("?");
+            endpoint = url.substring(jdbcPrefix.length(), splitPoint);
+            Stream.of(url.substring(splitPoint + 1).split("&"))
+                    .forEach(kv -> {
+                        String[] param = kv.split("=");
+                        if (param.length == 2) {
+                            urlParams.put(param[0], param[1]);
+                        }
+                    });
+            Optional.ofNullable(properties.get("write.compact.resource.name"))
+                    .ifPresent(v -> urlParams.put(URL_DATA_RESOURCE_NAME, v));
+        } else {
+            endpoint = properties.getOrDefault(URL_ENDPOINT, URL_ENDPOINT_DEFAULT);
+            urlParams.put(URL_TASK_TYPE, properties.getOrDefault(URL_TASK_TYPE, URL_TASK_TYPE_DEFAULT));
+            urlParams.put(URL_DEFAULT_DATABASE,
+                    properties.getOrDefault(URL_DEFAULT_DATABASE, URL_DEFAULT_DATABASE_DEFAULT));
+            urlParams.put(URL_DATA_SOURCE, properties.getOrDefault(URL_DATA_SOURCE, URL_DATA_SOURCE_DEFAULT));
+            urlParams.put(URL_REGION, properties.getOrDefault(URL_REGION, URL_REGION_DEFAULT));
+            urlParams.put(URL_DATA_RESOURCE_NAME,
+                    properties.getOrDefault(
+                            "write.compact.resource.name",
+                            "default"));
+
+        }
+        List<String> urlParamsList =
+                urlParams.entrySet().stream().map(kv -> kv.getKey() + "=" + kv.getValue()).collect(Collectors.toList());
+        return jdbcPrefix + endpoint + "?" + String.join("&", urlParamsList);
+
     }
 
     @Override
@@ -267,6 +338,8 @@ public class FlinkDynamicTableFactory implements DynamicTableSinkFactory, Dynami
         options.add(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
         options.add(SINK_MULTIPLE_PK_AUTO_GENERATED);
         options.add(SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK);
+        options.add(WRITE_COMPACT_ENABLE);
+        options.add(WRITE_COMPACT_INTERVAL);
         return options;
     }
 

@@ -26,6 +26,7 @@ import lombok.EqualsAndHashCode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonTypeName;
+import org.apache.inlong.sort.protocol.FieldInfo;
 import org.apache.inlong.sort.protocol.transformation.CascadeFunction;
 import org.apache.inlong.sort.protocol.transformation.ConstantParam;
 import org.apache.inlong.sort.protocol.transformation.FunctionParam;
@@ -42,7 +43,7 @@ public class EncryptFunction implements CascadeFunction, Serializable {
     private static final long serialVersionUID = -2701547146694616429L;
 
     @JsonProperty("field")
-    private FunctionParam field;
+    private FieldInfo field;
     @JsonProperty("key")
     private StringConstantParam key;
     @JsonProperty("encrypt")
@@ -56,7 +57,7 @@ public class EncryptFunction implements CascadeFunction, Serializable {
      * @param encrypt encryption algorithm
      */
     @JsonCreator
-    public EncryptFunction(@JsonProperty("field") FunctionParam field,
+    public EncryptFunction(@JsonProperty("field") FieldInfo field,
             @JsonProperty("key") StringConstantParam key,
             @JsonProperty("encrypt") StringConstantParam encrypt) {
         this.field = Preconditions.checkNotNull(field, "field is null");

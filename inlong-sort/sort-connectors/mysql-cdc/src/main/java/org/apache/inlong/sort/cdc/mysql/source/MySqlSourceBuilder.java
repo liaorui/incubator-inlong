@@ -19,7 +19,7 @@
 package org.apache.inlong.sort.cdc.mysql.source;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.inlong.sort.cdc.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.cdc.base.debezium.DebeziumDeserializationSchema;
 import org.apache.inlong.sort.cdc.mysql.source.config.MySqlSourceConfigFactory;
 import org.apache.inlong.sort.cdc.mysql.table.StartupOptions;
 
@@ -51,6 +51,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 @PublicEvolving
 public class MySqlSourceBuilder<T> {
+
     private final MySqlSourceConfigFactory configFactory = new MySqlSourceConfigFactory();
     private DebeziumDeserializationSchema<T> deserializer;
 

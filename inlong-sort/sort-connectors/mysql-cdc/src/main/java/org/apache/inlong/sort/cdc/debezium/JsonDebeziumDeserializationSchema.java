@@ -22,6 +22,7 @@ import io.debezium.relational.history.TableChanges.TableChange;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.util.Collector;
+import org.apache.inlong.sort.cdc.base.debezium.DebeziumDeserializationSchema;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -76,7 +77,7 @@ public class JsonDebeziumDeserializationSchema implements DebeziumDeserializatio
 
     @Override
     public void deserialize(SourceRecord record, Collector<String> out, TableChange tableChange)
-        throws Exception {
+            throws Exception {
 
     }
 

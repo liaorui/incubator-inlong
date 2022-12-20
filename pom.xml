@@ -217,7 +217,7 @@
         <flink.connector.doris.version>1.0.3</flink.connector.doris.version>
         <flink.connector.redis>1.1.0</flink.connector.redis>
         <qcloud.flink.cos.fs.hadoop.version>1.10.0-0.1.10</qcloud.flink.cos.fs.hadoop.version>
-        <qcloud.chdfs.version>2.5</qcloud.chdfs.version>
+        <qcloud.chdfs.version>2.8</qcloud.chdfs.version>
 
         <curator.version>2.12.0</curator.version>
 

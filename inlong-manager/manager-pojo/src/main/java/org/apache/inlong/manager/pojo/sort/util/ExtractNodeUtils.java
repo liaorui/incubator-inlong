@@ -231,12 +231,7 @@ public class ExtractNodeUtils {
         Map<String, String> properties = parseProperties(binlogSource.getProperties());
         if (binlogSource.isAllMigration()) {
             // Unique properties when migrate all tables in database
-            incrementalSnapshotEnabled = false;
             properties.put("migrate-all", "true");
-        }
-        if (StringUtils.isEmpty(primaryKey)) {
-            incrementalSnapshotEnabled = false;
-            properties.put("scan.incremental.snapshot.enabled", "false");
         }
         return new MySqlExtractNode(binlogSource.getSourceName(),
                 binlogSource.getSourceName(),

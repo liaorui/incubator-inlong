@@ -22,7 +22,7 @@ import io.debezium.data.Envelope;
 import io.debezium.relational.history.TableChanges.TableChange;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.util.Collector;
-import org.apache.inlong.sort.cdc.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.cdc.base.debezium.DebeziumDeserializationSchema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
  * to seek binlog to the specific timestamp.
  */
 public class SeekBinlogToTimestampFilter<T> implements DebeziumDeserializationSchema<T> {
+
     protected static final Logger LOG = LoggerFactory.getLogger(SeekBinlogToTimestampFilter.class);
     private static final long serialVersionUID = -4450118969976653497L;
     private final long startupTimestampMillis;

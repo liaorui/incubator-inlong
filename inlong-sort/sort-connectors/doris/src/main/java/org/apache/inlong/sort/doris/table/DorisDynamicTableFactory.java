@@ -141,9 +141,9 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
     private static final ConfigOption<Integer> SINK_BUFFER_FLUSH_MAX_ROWS = ConfigOptions
             .key("sink.batch.size")
             .intType()
-            .defaultValue(100)
+            .defaultValue(1024)
             .withDescription("the flush max size (includes all append, upsert and delete records), over this number"
-                    + " of records, will flush data. The default value is 100.");
+                    + " of records, will flush data. The default value is 1024.");
     private static final ConfigOption<Integer> SINK_MAX_RETRIES = ConfigOptions
             .key("sink.max-retries")
             .intType()
@@ -300,7 +300,7 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
                 multipleSink, sinkMultipleFormat, databasePattern, tablePattern);
         String inlongMetric = helper.getOptions().getOptional(INLONG_METRIC).orElse(INLONG_METRIC.defaultValue());
         String auditHostAndPorts = helper.getOptions().getOptional(INLONG_AUDIT).orElse(INLONG_AUDIT.defaultValue());
-        Integer parallelism = helper.getOptions().getOptional(FactoryUtil.SINK_PARALLELISM).orElse(1);
+        Integer parallelism = helper.getOptions().getOptional(FactoryUtil.SINK_PARALLELISM).orElse(null);
         // create and return dynamic table sink
         return new DorisDynamicTableSink(
                 getDorisOptions(helper.getOptions()),
