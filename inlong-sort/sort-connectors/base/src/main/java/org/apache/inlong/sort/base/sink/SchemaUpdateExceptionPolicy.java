@@ -29,9 +29,11 @@ package org.apache.inlong.sort.base.sink;
  * </pre>
  */
 public enum SchemaUpdateExceptionPolicy {
+
     TRY_IT_BEST("Try it best to handle schema update, if can not handle it, just ignore it."),
     LOG_WITH_IGNORE("Ignore schema update and log it."),
     ALERT_WITH_IGNORE("Ignore schema update and alert it."),
+    STOP_PARTIAL("Only stop abnormal sink table, other tables writes normally."),
     THROW_WITH_STOP("Throw exception to stop flink job when meet schema update.");
 
     private String description;

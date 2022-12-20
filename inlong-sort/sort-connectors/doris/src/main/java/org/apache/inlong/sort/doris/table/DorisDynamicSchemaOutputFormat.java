@@ -230,11 +230,14 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     }
 
     private boolean enableBatchDelete() {
+        if (multipleSink) {
+            return executionOptions.getEnableDelete();
+        }
         try {
             Schema schema = RestService.getSchema(options, readOptions, LOG);
             return executionOptions.getEnableDelete() || UNIQUE_KEYS_TYPE.equals(schema.getKeysType());
         } catch (DorisException e) {
-            throw new RuntimeException("Failed fetch doris table schema: " + options.getTableIdentifier(), e);
+            throw new RuntimeException("Failed fetch doris single table schema: " + options.getTableIdentifier(), e);
         }
     }
 
@@ -252,6 +255,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             this.fieldGetters = new RowData.FieldGetter[logicalTypes.length];
             for (int i = 0; i < logicalTypes.length; i++) {
                 fieldGetters[i] = RowData.createFieldGetter(logicalTypes[i], i);
+                if (logicalTypes[i].toString().equalsIgnoreCase("DATE")) {
+                    int finalI = i;
+                    fieldGetters[i] = row -> DorisParseUtils.epochToDate(row.getInt(finalI));
+                }
             }
         }
 

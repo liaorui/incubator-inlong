@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PostgreSQLDataType {
+
     TINYINT,
     INT,
     LARGEINT,
@@ -51,6 +52,12 @@ public enum PostgreSQLDataType {
         }
     }
 
+    /**
+     * convert string type to PostgreSQLDataType instance
+     *
+     * @param typeString
+     * @return
+     */
     public static PostgreSQLDataType fromString(String typeString) {
         if (typeString == null) {
             return UNKNOWN;

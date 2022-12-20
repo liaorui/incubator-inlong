@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-org.apache.inlong.sort.cdc.postgres.table.PostgreSQLTableSourceFactory
+org.apache.inlong.sort.cdc.postgres.table.PostgreSQLTableFactory
