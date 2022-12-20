@@ -55,7 +55,6 @@ import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_TRIGGER_TYP
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_MAX_WAIT;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_FILE_TIME_OFFSET;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_ID;
-import static org.apache.inlong.agent.constant.JobConstants.JOB_INSTANCE_ID;
 import static org.apache.inlong.agent.constant.JobConstants.JOB_READ_WAIT_TIMEOUT;
 import static org.awaitility.Awaitility.await;
 
@@ -161,7 +160,6 @@ public class TestFileAgent {
         triggerProfile.set(JOB_FILE_MAX_WAIT, "-1");
         triggerProfile.set(JOB_FILE_TRIGGER_TYPE, FileTriggerType.FULL);
         triggerProfile.set(JOB_ID, "2");
-        triggerProfile.set(JOB_INSTANCE_ID, "job_2_1");
         TriggerManager triggerManager = agent.getManager().getTriggerManager();
         triggerManager.submitTrigger(triggerProfile);
         await().atMost(10, TimeUnit.SECONDS).until(() -> {
