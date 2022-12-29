@@ -19,25 +19,21 @@ package org.apache.inlong.agent.plugin.trigger;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
-import org.apache.inlong.agent.conf.JobProfile;
 import org.apache.inlong.agent.conf.TriggerProfile;
 import org.apache.inlong.agent.constant.JobConstants;
-import org.apache.inlong.agent.plugin.AgentBaseTestsHelper;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -49,26 +45,10 @@ import static org.awaitility.Awaitility.await;
 public class TestWatchDirTrigger {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestWatchDirTrigger.class);
-    private static Path testRootDir;
     private static DirectoryTrigger trigger;
-    private static AgentBaseTestsHelper helper;
 
     @ClassRule
     public static final TemporaryFolder WATCH_FOLDER = new TemporaryFolder();
-
-    @BeforeClass
-    public static void setup() throws Exception {
-        helper = new AgentBaseTestsHelper(TestWatchDirTrigger.class.getName()).setupAgentHome();
-        testRootDir = helper.getTestRootDir();
-        LOGGER.info("test root dir is {}", testRootDir);
-    }
-
-    @AfterClass
-    public static void teardown() throws Exception {
-        LOGGER.info("start to teardown test case");
-        trigger.destroy();
-        helper.teardownAgentHome();
-    }
 
     @Before
     public void setupEach() throws Exception {
@@ -95,9 +75,9 @@ public class TestWatchDirTrigger {
     @Test
     public void testWatchEntity() throws Exception {
         PathPattern a1 = new PathPattern("1",
-                Collections.singleton(helper.getParentPath().toString()), Sets.newHashSet());
+                Collections.singleton(WATCH_FOLDER.getRoot().toString()), Sets.newHashSet());
         PathPattern a2 = new PathPattern("1",
-                Collections.singleton(helper.getParentPath().toString()), Sets.newHashSet());
+                Collections.singleton(WATCH_FOLDER.getRoot().toString()), Sets.newHashSet());
         HashMap<PathPattern, Integer> map = new HashMap<>();
         map.put(a1, 10);
         Integer result = map.remove(a2);
@@ -121,9 +101,9 @@ public class TestWatchDirTrigger {
         File file2 = new File(tmp.getAbsolutePath() + File.separator + "2.log");
         file2.createNewFile();
         await().atMost(10, TimeUnit.SECONDS).until(() -> trigger.getFetchedJob().size() == 1);
-        Collection<JobProfile> jobs = trigger.getFetchedJob();
+        Collection<Map<String, String>> jobs = trigger.getFetchedJob();
         Set<String> jobPaths = jobs.stream()
-                .map(job -> job.get(JobConstants.JOB_DIR_FILTER_PATTERNS, null))
+                .map(job -> job.get(JobConstants.JOB_DIR_FILTER_PATTERNS))
                 .collect(Collectors.toSet());
         Assert.assertTrue(jobPaths.contains(file1.getAbsolutePath()));
     }
@@ -181,9 +161,9 @@ public class TestWatchDirTrigger {
         file5.createNewFile();
 
         await().atMost(10, TimeUnit.SECONDS).until(() -> trigger.getFetchedJob().size() == 3);
-        Collection<JobProfile> jobs = trigger.getFetchedJob();
+        Collection<Map<String, String>> jobs = trigger.getFetchedJob();
         Set<String> jobPaths = jobs.stream()
-                .map(job -> job.get(JobConstants.JOB_DIR_FILTER_PATTERNS, null))
+                .map(job -> job.get(JobConstants.JOB_DIR_FILTER_PATTERNS))
                 .collect(Collectors.toSet());
         Assert.assertTrue(jobPaths.contains(file1.getAbsolutePath()));
         Assert.assertTrue(jobPaths.contains(file4.getAbsolutePath()));

@@ -46,6 +46,7 @@ public class JobConstants extends CommonConstants {
 
     //File job
     public static final String JOB_TRIGGER = "job.fileJob.trigger";
+    public static final String JOB_DIR_FILTER_PATTERN = "job.fileJob.dir.pattern"; // deprecated
     public static final String JOB_DIR_FILTER_PATTERNS = "job.fileJob.dir.patterns";
     public static final String JOB_DIR_FILTER_BLACKLIST = "job.fileJob.dir.blackList";
     public static final String JOB_FILE_TIME_OFFSET = "job.fileJob.timeOffset";
@@ -155,6 +156,9 @@ public class JobConstants extends CommonConstants {
     // job time reading file
     public static final String JOB_DATA_TIME = "job.dataTime";
 
+    // job of the number of seconds to wait before starting the task
+    public static final String JOB_TASK_BEGIN_WAIT_SECONDS = "job.taskWaitSeconds";
+
     /**
      * when job is retried, the retry time should be provided
      */
@@ -175,7 +179,7 @@ public class JobConstants extends CommonConstants {
      */
     public static final int SYNC_SEND_OPEN = 1;
 
-    public static final String INTERVAL_MILLISECONDS = "500";
+    public static final String INTERVAL_MILLISECONDS = "1000";
 
     /**
      * monitor switch, 1 true and 0 false

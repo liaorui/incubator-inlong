@@ -17,8 +17,8 @@
 
 package org.apache.inlong.agent.plugin.sources.reader.file;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.inlong.agent.common.AgentThreadFactory;
-import org.apache.inlong.agent.common.NamedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,33 +70,30 @@ public final class MonitorTextFile {
         return monitorTextFile;
     }
 
-    public void monitor(FileReaderOperator fileReaderOperator, TextFileReader textFileReader) {
-        EXECUTOR_SERVICE.execute(new MonitorEventRunnable(fileReaderOperator, textFileReader));
+    public void monitor(FileReaderOperator fileReaderOperator) {
+        EXECUTOR_SERVICE.execute(new MonitorEventRunnable(fileReaderOperator));
+    }
+
+    @VisibleForTesting
+    public int monitorNum() {
+        return EXECUTOR_SERVICE.getActiveCount();
     }
 
     /**
      * Runnable for monitor the file event
      */
-    private static class MonitorEventRunnable implements NamedRunnable {
+    private static class MonitorEventRunnable implements Runnable {
 
-        private static final int WAIT_TIME = 30;
         private final FileReaderOperator fileReaderOperator;
-        private final TextFileReader textFileReader;
         private final Long interval;
         private final long startTime = System.currentTimeMillis();
-        private long lastFlushTime = System.currentTimeMillis();
         private String path;
 
-        // the last modify time of the file
-        private BasicFileAttributes attributesBefore;
-
-        public MonitorEventRunnable(FileReaderOperator readerOperator, TextFileReader textFileReader) {
+        public MonitorEventRunnable(FileReaderOperator readerOperator) {
             this.fileReaderOperator = readerOperator;
-            this.textFileReader = textFileReader;
             this.interval = Long.parseLong(
                     readerOperator.jobConf.get(JOB_FILE_MONITOR_INTERVAL, INTERVAL_MILLISECONDS));
             try {
-                this.attributesBefore = Files.readAttributes(readerOperator.file.toPath(), BasicFileAttributes.class);
                 this.path = readerOperator.file.getCanonicalPath();
             } catch (IOException e) {
                 LOGGER.error("get {} last modify time error:", readerOperator.file.getName(), e);
@@ -106,9 +103,9 @@ public final class MonitorTextFile {
         @Override
         public void run() {
             try {
-                Thread.currentThread().setName(String.format("Monitor(%s)", path));
-                TimeUnit.SECONDS.sleep(WAIT_TIME);
-                LOGGER.info("start {} monitor", fileReaderOperator.file.getAbsolutePath());
+                AgentThreadFactory.nameThread(path);
+                LOGGER.info("Job {} start monitor {}",
+                        fileReaderOperator.instanceId, fileReaderOperator.file.getAbsolutePath());
                 while (!fileReaderOperator.finished) {
                     long expireTime = Long.parseLong(
                             fileReaderOperator.jobConf.get(JOB_FILE_MONITOR_EXPIRE, JOB_FILE_MONITOR_DEFAULT_EXPIRE));
@@ -117,17 +114,14 @@ public final class MonitorTextFile {
                             && currentTime - this.startTime > expireTime) {
                         break;
                     }
-                    listen();
+                    if (fileReaderOperator.inited) {
+                        listen();
+                    }
                     TimeUnit.MILLISECONDS.sleep(interval);
                 }
             } catch (Exception e) {
                 LOGGER.error(String.format("monitor %s error", fileReaderOperator.file.getName()), e);
             }
-        }
-
-        @Override
-        public String getName() {
-            return path;
         }
 
         private void listen() throws IOException {
@@ -149,31 +143,10 @@ public final class MonitorTextFile {
                 fileReaderOperator.position = 0;
                 path = currentPath;
             }
-            if (attributesBefore.lastModifiedTime().compareTo(attributesAfter.lastModifiedTime()) < 0) {
-                // not triggered during data sending
-                getFileData();
-                attributesBefore = attributesAfter;
-                return;
-            }
-            lastFlushData();
-        }
 
-        private void lastFlushData() throws IOException {
-            long currentTime = System.currentTimeMillis();
-            if (interval * 100 > currentTime - lastFlushTime) {
-                return;
+            if (!fileReaderOperator.hasDataRemaining()) {
+                fileReaderOperator.fetchData();
             }
-            getFileData();
-        }
-
-        private void getFileData() throws IOException {
-            if (fileReaderOperator.iterator != null && fileReaderOperator.iterator.hasNext()) {
-                return;
-            }
-            this.textFileReader.getData();
-            this.textFileReader.mergeData(this.fileReaderOperator);
-            this.fileReaderOperator.iterator = fileReaderOperator.stream.iterator();
-            this.lastFlushTime = System.currentTimeMillis();
         }
     }
 }
