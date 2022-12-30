@@ -87,6 +87,10 @@ public class FieldRelationUtils {
                 return createFieldRelations(fieldList, constantFieldMap);
             case JOINER:
                 return createJoinerFieldRelations(fieldList, constantFieldMap);
+            case LOOKUP_JOINER:
+            case TEMPORAL_JOINER:
+            case INTERVAL_JOINER:
+                return createJoinerFieldRelations(fieldList, constantFieldMap);
             default:
                 throw new UnsupportedOperationException(
                         String.format("Unsupported transformType=%s", transformType));

@@ -17,16 +17,14 @@
 
 package org.apache.inlong.sort.cdc.mongodb.debezium.internal;
 
-import static org.apache.inlong.sort.cdc.mongodb.debezium.utils.DatabaseHistoryUtil.registerHistory;
-import static org.apache.inlong.sort.cdc.mongodb.debezium.utils.DatabaseHistoryUtil.removeHistory;
-import static org.apache.inlong.sort.cdc.mongodb.debezium.utils.DatabaseHistoryUtil.retrieveHistory;
-
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryException;
 import io.debezium.relational.history.DatabaseHistoryListener;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
+import org.apache.inlong.sort.cdc.mongodb.debezium.utils.DatabaseHistoryUtil;
+
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -65,7 +63,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
      * Gets the registered HistoryRecords under the given instance name.
      */
     private ConcurrentLinkedQueue<SchemaRecord> getRegisteredHistoryRecord(String instanceName) {
-        Collection<SchemaRecord> historyRecords = retrieveHistory(instanceName);
+        Collection<SchemaRecord> historyRecords = DatabaseHistoryUtil.retrieveHistory(instanceName);
         return new ConcurrentLinkedQueue<>(historyRecords);
     }
 
@@ -81,13 +79,13 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
 
         // register the schema changes into state
         // every change should be visible to the source function
-        registerHistory(instanceName, schemaRecords);
+        DatabaseHistoryUtil.registerHistory(instanceName, schemaRecords);
     }
 
     @Override
     public void stop() {
         super.stop();
-        removeHistory(instanceName);
+        DatabaseHistoryUtil.removeHistory(instanceName);
     }
 
     @Override

@@ -94,6 +94,9 @@ public class PostgresLoadNode extends LoadNode implements InlongMetric, Serializ
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
+        if (getProperties() != null && !getProperties().isEmpty()) {
+            options.putAll(getProperties());
+        }
         options.put(PostgresConstant.CONNECTOR, PostgresConstant.JDBC_INLONG);
         options.put("dialect-impl", "org.apache.inlong.sort.jdbc.dialect.PostgresDialect");
         options.put(PostgresConstant.URL, url);

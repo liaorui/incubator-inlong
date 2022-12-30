@@ -20,6 +20,7 @@ package org.apache.inlong.sort.iceberg.sink;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -169,6 +170,7 @@ public class FlinkSink {
         private MultipleSinkOption multipleSinkOption = null;
         private DirtyOptions dirtyOptions;
         private @Nullable DirtySink<Object> dirtySink;
+        private ReadableConfig tableOptions;
 
         private Builder() {
         }
@@ -271,6 +273,11 @@ public class FlinkSink {
          */
         public FlinkSink.Builder action(ActionsProvider actionProvider) {
             this.actionProvider = actionProvider;
+            return this;
+        }
+
+        public FlinkSink.Builder tableOptions(ReadableConfig tableOptions) {
+            this.tableOptions = tableOptions;
             return this;
         }
 
@@ -469,7 +476,7 @@ public class FlinkSink {
         private SingleOutputStreamOperator<Void> appendCommitter(SingleOutputStreamOperator<WriteResult> writerStream) {
             IcebergProcessOperator<WriteResult, Void> filesCommitter = new IcebergProcessOperator<>(
                     new IcebergSingleFileCommiter(
-                            TableIdentifier.of(table.name()), tableLoader, overwrite, actionProvider));
+                            TableIdentifier.of(table.name()), tableLoader, overwrite, actionProvider, tableOptions));
             SingleOutputStreamOperator<Void> committerStream = writerStream
                     .transform(operatorName(ICEBERG_FILES_COMMITTER_NAME), Types.VOID, filesCommitter)
                     .setParallelism(1)
@@ -483,7 +490,8 @@ public class FlinkSink {
         private SingleOutputStreamOperator<Void> appendMultipleCommitter(
                 SingleOutputStreamOperator<MultipleWriteResult> writerStream) {
             IcebergProcessOperator<MultipleWriteResult, Void> multipleFilesCommiter =
-                    new IcebergProcessOperator<>(new IcebergMultipleFilesCommiter(catalogLoader, overwrite));
+                    new IcebergProcessOperator<>(new IcebergMultipleFilesCommiter(catalogLoader, overwrite,
+                            actionProvider, tableOptions));
             SingleOutputStreamOperator<Void> committerStream = writerStream
                     .transform(operatorName(ICEBERG_MULTIPLE_FILES_COMMITTER_NAME), Types.VOID, multipleFilesCommiter)
                     .setParallelism(1)

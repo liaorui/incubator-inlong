@@ -268,6 +268,7 @@ public class DynamicSchemaHandleOperator extends AbstractStreamOperator<RecordWi
             ImmutableMap.Builder<String, String> properties = ImmutableMap.builder();
             properties.put("format-version", "2");
             properties.put("write.upsert.enabled", "true");
+            properties.put("write.metadata.metrics.default", "full");
             // for hive visible
             properties.put("engine.hive.enabled", "true");
             try {
@@ -277,6 +278,11 @@ public class DynamicSchemaHandleOperator extends AbstractStreamOperator<RecordWi
             } catch (AlreadyExistsException e) {
                 LOG.warn("Table({}) already exist in Database({}) in Catalog({})!",
                         tableId.name(), tableId.namespace(), catalog.name());
+            } catch (Exception e) {
+                // default strategy for auto create table fail, just ignore this table datas.
+                LOG.warn("Table({}) create fail, add it to blackList!", tableId.name());
+                blacklist.add(tableId);
+                return;
             }
         }
         handleSchemaInfoEvent(tableId, catalog.loadTable(tableId).schema());

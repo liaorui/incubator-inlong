@@ -146,7 +146,7 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
     private static final ConfigOption<Integer> SINK_BUFFER_FLUSH_MAX_ROWS = ConfigOptions
             .key("sink.batch.size")
             .intType()
-            .defaultValue(100)
+            .defaultValue(1024)
             .withDescription("the flush max size (includes all append, upsert and delete records), over this number"
                     + " of records, will flush data. The default value is 100.");
     private static final ConfigOption<Integer> SINK_MAX_RETRIES = ConfigOptions

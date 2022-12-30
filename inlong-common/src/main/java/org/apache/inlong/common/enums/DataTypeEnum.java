@@ -30,8 +30,7 @@ public enum DataTypeEnum {
     CANAL("canal"),
     DEBEZIUM_JSON("debezium_json"),
     RAW("raw"),
-
-    ;
+    PROTOBUF("protobuf");
 
     private final String type;
 

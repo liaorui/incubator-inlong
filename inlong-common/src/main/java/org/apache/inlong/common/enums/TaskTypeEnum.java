@@ -38,7 +38,11 @@ public enum TaskTypeEnum {
     HUDI(13),
 
     // only used for unit test
-    MOCK(201)
+    MOCK(201),
+    CKAFKA(212),
+    MYSQL(213),
+    TDSQL_KAFKA(101),
+    TIDB(102),
 
     ;
 
@@ -74,6 +78,16 @@ public enum TaskTypeEnum {
                 return TUBEMQ;
             case 12:
                 return MQTT;
+            case 11:
+                return REDIS;
+            case 212:
+                return CKAFKA;
+            case 213:
+                return MYSQL;
+            case 101:
+                return TDSQL_KAFKA;
+            case 102:
+                return TIDB;
             case 13:
                 return HUDI;
             case 201:

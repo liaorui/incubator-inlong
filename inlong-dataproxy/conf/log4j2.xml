@@ -23,7 +23,7 @@
         <property name="log_pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} -%5p ${PID:-} [%15.15t] %-30.30C{1.}:%L %mask %n</property>
         <property name="every_file_date">1</property>
         <property name="every_file_size">1G</property>
-        <property name="output_log_level">DEBUG</property>
+        <property name="output_log_level">INFO</property>
         <property name="rolling_max">50</property>
         <property name="info_fileName">${basePath}/info.log</property>
         <property name="info_filePattern">${basePath}/info-%d{yyyy-MM-dd}-%i.log.gz</property>
