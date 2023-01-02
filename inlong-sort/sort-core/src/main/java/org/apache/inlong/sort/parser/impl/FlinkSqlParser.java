@@ -195,8 +195,8 @@ public class FlinkSqlParser implements Parser {
             }
             properties.put(Constants.METRICS_LABELS.key(),
                     Stream.of(Constants.GROUP_ID + "=" + groupInfo.getGroupId(),
-                                    Constants.STREAM_ID + "=" + streamInfo.getStreamId(),
-                                    Constants.NODE_ID + "=" + node.getId())
+                            Constants.STREAM_ID + "=" + streamInfo.getStreamId(),
+                            Constants.NODE_ID + "=" + node.getId())
                             .collect(Collectors.joining("&")));
             // METRICS_AUDIT_PROXY_HOSTS depends on INLONG_GROUP_STREAM_NODE
             if (StringUtils.isNotEmpty(groupInfo.getProperties().get(Constants.METRICS_AUDIT_PROXY_HOSTS.key()))) {
@@ -770,9 +770,9 @@ public class FlinkSqlParser implements Parser {
 
     private String getFilterField(Node node) {
         if (node instanceof MongoExtractNode
-        && null != node.getProperties().get("source.multiple.enable")
-        && node.getProperties().get("source.multiple.enable").equals("true")) {
-                return node.getPrimaryKey();
+                && null != node.getProperties().get("source.multiple.enable")
+                && node.getProperties().get("source.multiple.enable").equals("true")) {
+            return node.getPrimaryKey();
         }
         return null;
     }
@@ -915,7 +915,7 @@ public class FlinkSqlParser implements Parser {
      */
     private String genPrimaryKey(String primaryKey, String filterField) {
         if (StringUtils.isNotBlank(primaryKey)
-        && !primaryKey.contains(filterField)) {
+                && !primaryKey.equals(filterField)) {
             primaryKey = String.format("    PRIMARY KEY (%s) NOT ENFORCED,\n",
                     StringUtils.join(formatFields(primaryKey.split(",")), ","));
         } else {
