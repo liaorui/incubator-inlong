@@ -915,7 +915,7 @@ public class FlinkSqlParser implements Parser {
      */
     private String genPrimaryKey(String primaryKey, String filterField) {
         if (StringUtils.isNotBlank(primaryKey)
-                && !primaryKey.contains(filterField)) {
+                && !primaryKey.equals(filterField)) {
             primaryKey = String.format("    PRIMARY KEY (%s) NOT ENFORCED,\n",
                     StringUtils.join(formatFields(primaryKey.split(",")), ","));
         } else {
