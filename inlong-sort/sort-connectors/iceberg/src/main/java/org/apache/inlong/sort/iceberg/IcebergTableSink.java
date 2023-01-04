@@ -31,6 +31,7 @@ import org.apache.flink.table.connector.sink.abilities.SupportsOverwrite;
 import org.apache.flink.table.connector.sink.abilities.SupportsPartitioning;
 import org.apache.flink.types.RowKind;
 import org.apache.flink.util.Preconditions;
+import org.apache.iceberg.DistributionMode;
 import org.apache.iceberg.actions.ActionsProvider;
 import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
@@ -53,6 +54,7 @@ import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_PK_AUTO_GENERA
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_SCHEMA_UPDATE_POLICY;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TABLE_PATTERN;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK;
+import static org.apache.inlong.sort.iceberg.FlinkDynamicTableFactory.WRITE_DISTRIBUTION_MODE;
 
 /**
  * Copy from iceberg-flink:iceberg-flink-1.13:0.13.2
@@ -123,6 +125,7 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
                             .build())
                     .action(actionsProvider)
                     .tableOptions(tableOptions)
+                    .distributionMode(DistributionMode.fromName(tableOptions.get(WRITE_DISTRIBUTION_MODE)))
                     .append();
         } else {
             return (DataStreamSinkProvider) dataStream -> FlinkSink.forRowData(dataStream)
@@ -134,6 +137,7 @@ public class IcebergTableSink implements DynamicTableSink, SupportsPartitioning,
                     .metric(tableOptions.get(INLONG_METRIC), tableOptions.get(INLONG_AUDIT))
                     .action(actionsProvider)
                     .tableOptions(tableOptions)
+                    .distributionMode(DistributionMode.fromName(tableOptions.get(WRITE_DISTRIBUTION_MODE)))
                     .append();
         }
     }
