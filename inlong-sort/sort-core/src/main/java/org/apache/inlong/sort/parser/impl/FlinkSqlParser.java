@@ -79,6 +79,7 @@ public class FlinkSqlParser implements Parser {
 
     private static final Logger log = LoggerFactory.getLogger(FlinkSqlParser.class);
 
+    public static final String SOURCE_MULTIPLE_ENABLE_KEY = "source.multiple.enable";
     private final TableEnvironment tableEnv;
     private final GroupInfo groupInfo;
     private final Set<String> hasParsedSet = new HashSet<>();
@@ -750,9 +751,9 @@ public class FlinkSqlParser implements Parser {
         }
         StringBuilder sb = new StringBuilder("CREATE TABLE `");
         sb.append(node.genTableName()).append("`(\n");
-        String filterField = getFilterField(node);
-        sb.append(genPrimaryKey(node.getPrimaryKey(), filterField));
-        sb.append(parseFields(node.getFields(), node, filterField));
+        String filterPrimaryKey = getFilterPrimaryKey(node);
+        sb.append(genPrimaryKey(node.getPrimaryKey(), filterPrimaryKey));
+        sb.append(parseFields(node.getFields(), node, filterPrimaryKey));
         if (node instanceof ExtractNode) {
             ExtractNode extractNode = (ExtractNode) node;
             if (extractNode.getWatermarkField() != null) {
@@ -768,11 +769,15 @@ public class FlinkSqlParser implements Parser {
         return sb.toString();
     }
 
-    private String getFilterField(Node node) {
-        if (node instanceof MongoExtractNode
-                && null != node.getProperties().get("source.multiple.enable")
-                && node.getProperties().get("source.multiple.enable").equals("true")) {
-            return node.getPrimaryKey();
+    /**
+     * Get filter PrimaryKey for Mongo when multi-sink mode
+     */
+    private String getFilterPrimaryKey(Node node) {
+        if (node instanceof MongoExtractNode) {
+            if (null != node.getProperties().get(SOURCE_MULTIPLE_ENABLE_KEY)
+                    && node.getProperties().get(SOURCE_MULTIPLE_ENABLE_KEY).equals("true")) {
+                return node.getPrimaryKey();
+            }
         }
         return null;
     }
@@ -875,12 +880,13 @@ public class FlinkSqlParser implements Parser {
      *
      * @param fields The fields defined in node
      * @param node The abstract of extract, transform, load
+     * @param filterPrimaryKey filter PrimaryKey, use for mongo
      * @return Field formats in select sql
      */
-    private String parseFields(List<FieldInfo> fields, Node node, String filterField) {
+    private String parseFields(List<FieldInfo> fields, Node node, String filterPrimaryKey) {
         StringBuilder sb = new StringBuilder();
         for (FieldInfo field : fields) {
-            if (field.getName().equals(filterField)) {
+            if (StringUtils.isNotBlank(filterPrimaryKey) && field.getName().equals(filterPrimaryKey)) {
                 continue;
             }
             sb.append("    `").append(field.getName()).append("` ");
@@ -911,11 +917,13 @@ public class FlinkSqlParser implements Parser {
      * Generate primary key format in sql
      *
      * @param primaryKey The primary key of table
+     * @param filterPrimaryKey filter PrimaryKey, use for mongo
      * @return Primary key format in sql
      */
-    private String genPrimaryKey(String primaryKey, String filterField) {
-        if (StringUtils.isNotBlank(primaryKey)
-                && !primaryKey.equals(filterField)) {
+    private String genPrimaryKey(String primaryKey, String filterPrimaryKey) {
+        boolean checkPrimaryKeyFlag = StringUtils.isNotBlank(primaryKey)
+                && (StringUtils.isBlank(filterPrimaryKey) || !primaryKey.equals(filterPrimaryKey));
+        if (checkPrimaryKeyFlag) {
             primaryKey = String.format("    PRIMARY KEY (%s) NOT ENFORCED,\n",
                     StringUtils.join(formatFields(primaryKey.split(",")), ","));
         } else {
