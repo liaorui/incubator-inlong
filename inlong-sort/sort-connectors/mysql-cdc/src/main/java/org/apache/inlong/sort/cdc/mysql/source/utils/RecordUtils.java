@@ -89,7 +89,8 @@ public class RecordUtils {
             List<SourceRecord> sourceRecords,
             SchemaNameAdjuster nameAdjuster) {
         List<SourceRecord> normalizedRecords = new ArrayList<>();
-        Map<Struct, SourceRecord> snapshotRecords = new HashMap<>();
+        Map<Struct, SourceRecord> snapshotRecordsWithKey = new HashMap<>();
+        List<SourceRecord> snapshotRecordsWithoutKey = new ArrayList<>();
         List<SourceRecord> binlogRecords = new ArrayList<>();
         if (!sourceRecords.isEmpty()) {
 
@@ -104,7 +105,11 @@ public class RecordUtils {
             for (; i < sourceRecords.size(); i++) {
                 SourceRecord sourceRecord = sourceRecords.get(i);
                 if (!isHighWatermarkEvent(sourceRecord)) {
-                    snapshotRecords.put((Struct) sourceRecord.key(), sourceRecord);
+                    if (sourceRecord.key() == null) {
+                        snapshotRecordsWithoutKey.add(sourceRecord);
+                    } else {
+                        snapshotRecordsWithKey.put((Struct) sourceRecord.key(), sourceRecord);
+                    }
                 } else {
                     highWatermark = sourceRecord;
                     i++;
@@ -131,8 +136,11 @@ public class RecordUtils {
                     String.format(
                             "The last record should be high watermark signal event, but is %s",
                             highWatermark));
+
             normalizedRecords =
-                    upsertBinlog(lowWatermark, highWatermark, snapshotRecords, binlogRecords);
+                    upsertBinlog(lowWatermark, highWatermark, snapshotRecordsWithKey,
+                            binlogRecords, snapshotRecordsWithoutKey);
+
         }
         return normalizedRecords;
     }
@@ -140,8 +148,9 @@ public class RecordUtils {
     private static List<SourceRecord> upsertBinlog(
             SourceRecord lowWatermarkEvent,
             SourceRecord highWatermarkEvent,
-            Map<Struct, SourceRecord> snapshotRecords,
-            List<SourceRecord> binlogRecords) {
+            Map<Struct, SourceRecord> snapshotRecordsWithKey,
+            List<SourceRecord> binlogRecords,
+            List<SourceRecord> snapshotRecordsWithoutKey) {
         // upsert binlog events to snapshot events of split
         if (!binlogRecords.isEmpty()) {
             for (SourceRecord binlog : binlogRecords) {
@@ -170,10 +179,10 @@ public class RecordUtils {
                                             binlog.key(),
                                             binlog.valueSchema(),
                                             envelope.read(after, source, fetchTs));
-                            snapshotRecords.put(key, record);
+                            snapshotRecordsWithKey.put(key, record);
                             break;
                         case DELETE:
-                            snapshotRecords.remove(key);
+                            snapshotRecordsWithKey.remove(key);
                             break;
                         case READ:
                             throw new IllegalStateException(
@@ -189,7 +198,13 @@ public class RecordUtils {
 
         final List<SourceRecord> normalizedRecords = new ArrayList<>();
         normalizedRecords.add(lowWatermarkEvent);
-        normalizedRecords.addAll(formatMessageTimestamp(snapshotRecords.values()));
+        if (!snapshotRecordsWithoutKey.isEmpty()) {
+            // for table without key, there is no need for binlog upsert
+            // because highWatermark equals to lowWatermark
+            normalizedRecords.addAll(formatMessageTimestamp(snapshotRecordsWithoutKey));
+        } else {
+            normalizedRecords.addAll(formatMessageTimestamp(snapshotRecordsWithKey.values()));
+        }
         normalizedRecords.add(highWatermarkEvent);
 
         return normalizedRecords;
