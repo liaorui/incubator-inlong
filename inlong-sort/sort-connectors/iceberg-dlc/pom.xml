@@ -132,7 +132,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-flink-runtime-1.13</artifactId>
+            <artifactId>iceberg-flink-runtime-1.14</artifactId>
         </dependency>
     </dependencies>
 
