@@ -50,7 +50,6 @@ import org.apache.iceberg.flink.FlinkSchemaUtil;
 import org.apache.iceberg.flink.FlinkWriteConf;
 import org.apache.iceberg.flink.FlinkWriteOptions;
 import org.apache.iceberg.flink.TableLoader;
-import org.apache.iceberg.flink.sink.FlinkSink.Builder;
 import org.apache.iceberg.flink.sink.TaskWriterFactory;
 import org.apache.iceberg.flink.util.FlinkCompatibilityUtil;
 import org.apache.iceberg.io.WriteResult;
@@ -275,7 +274,6 @@ public class FlinkSink {
 
         public Builder overwrite(boolean newOverwrite) {
             this.overwrite = newOverwrite;
-//            return this;
             writeOptions.put(FlinkWriteOptions.OVERWRITE_MODE.key(), Boolean.toString(newOverwrite));
             return this;
         }
@@ -332,10 +330,6 @@ public class FlinkSink {
          * @return {@link Builder} to connect the iceberg table.
          */
         public Builder distributionMode(DistributionMode mode) {
-//            Preconditions.checkArgument(!DistributionMode.RANGE.equals(mode),
-//                    "Flink does not support 'range' write distribution mode now.");
-//            this.distributionMode = mode;
-//            return this;
             Preconditions.checkArgument(
                     !DistributionMode.RANGE.equals(mode),
                     "Flink does not support 'range' write distribution mode now.");
@@ -368,7 +362,6 @@ public class FlinkSink {
          */
         public Builder upsert(boolean enabled) {
             this.upsert = enabled;
-//            return this;
             writeOptions.put(FlinkWriteOptions.WRITE_UPSERT_ENABLED.key(), Boolean.toString(enabled));
             return this;
         }
@@ -439,10 +432,6 @@ public class FlinkSink {
 
             // Convert the requested flink table schema to flink row type.
             RowType flinkRowType = toFlinkRowType(table.schema(), tableSchema);
-
-            // Distribute the records from input data stream based on the write.distribution-mode.
-//            DataStream<RowData> distributeStream = distributeDataStream(
-//                    rowDataInput, table.properties(), table.spec(), table.schema(), flinkRowType);
 
             // Distribute the records from input data stream based on the write.distribution-mode and
             // equality fields.
