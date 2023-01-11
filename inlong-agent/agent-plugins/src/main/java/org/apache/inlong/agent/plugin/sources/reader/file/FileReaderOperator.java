@@ -89,7 +89,7 @@ public class FileReaderOperator extends AbstractReader {
 
     public File file;
     public int position = 0;
-    private int bytePosition = 0;
+    public int bytePosition = 0;
     private long readEndpoint = Long.MAX_VALUE;
     public String md5;
     public Map<String, String> metadata;
