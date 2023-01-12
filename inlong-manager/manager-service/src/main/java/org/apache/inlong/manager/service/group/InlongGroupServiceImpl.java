@@ -223,7 +223,7 @@ public class InlongGroupServiceImpl implements InlongGroupService {
             });
         }
         LOGGER.info("test size={}", briefInfos.size());
-        for (InlongGroupBriefInfo briefInfo : briefInfos){
+        for (InlongGroupBriefInfo briefInfo : briefInfos) {
             LOGGER.info("test groupId={}, status={}", briefInfo.getInlongGroupId(), briefInfo.getStatus());
         }
         PageResult<InlongGroupBriefInfo> pageResult = new PageResult<>(briefInfos,
