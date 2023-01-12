@@ -226,10 +226,4 @@ public class InlongClusterController {
     public Response<Boolean> deleteNode(@PathVariable Integer id) {
         return Response.success(clusterService.deleteNode(id, LoginUserUtils.getLoginUser().getName()));
     }
-
-    @PostMapping("/cluster/testConnection")
-    @ApiOperation(value = "Test connection for inlong cluster")
-    public Response<Boolean> testConnection(@RequestBody ClusterRequest request) {
-        return Response.success(clusterService.testConnection(request));
-    }
 }
