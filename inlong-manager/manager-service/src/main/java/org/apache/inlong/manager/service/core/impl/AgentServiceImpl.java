@@ -537,10 +537,10 @@ public class AgentServiceImpl implements AgentService {
         }
 
         Map<String, String> extParams = GSON.fromJson(clusterNodeEntity.getExtParams(), Map.class);
-        Set<String> clusterNodeLabels = !extParams.containsKey(AgentConstants.AGENT_GROUP_KEY) ? new HashSet<>()
+        Set<String> clusterNodeGroups = !extParams.containsKey(AgentConstants.AGENT_GROUP_KEY) ? new HashSet<>()
                 : Sets.newHashSet(extParams.get(AgentConstants.AGENT_GROUP_KEY).split(InlongConstants.COMMA));
         Set<String> sourceLabels = Stream.of(
                 sourceEntity.getInlongClusterNodeGroup().split(InlongConstants.COMMA)).collect(Collectors.toSet());
-        return sourceLabels.stream().anyMatch(sourceLabel -> clusterNodeLabels.contains(sourceLabel));
+        return sourceLabels.stream().anyMatch(sourceLabel -> clusterNodeGroups.contains(sourceLabel));
     }
 }

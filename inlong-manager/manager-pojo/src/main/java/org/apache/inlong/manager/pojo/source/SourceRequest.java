@@ -73,7 +73,7 @@ public class SourceRequest {
     @ApiModelProperty("Inlong cluster name")
     private String inlongClusterName;
 
-    @ApiModelProperty("Inlong cluster node label for filtering stream source collect task")
+    @ApiModelProperty("Inlong cluster node group for filtering stream source collect task")
     private String inlongClusterNodeGroup;
 
     @ApiModelProperty("Data node name")
