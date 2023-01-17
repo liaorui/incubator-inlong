@@ -25,7 +25,6 @@ import com.google.common.base.Strings;
 import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionOptions;
 import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionProvider;
 import com.starrocks.connector.flink.manager.StarRocksQueryVisitor;
-import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.row.sink.StarRocksIRowTransformer;
 import com.starrocks.connector.flink.row.sink.StarRocksISerializer;
 import com.starrocks.connector.flink.row.sink.StarRocksSerializerFactory;
@@ -33,7 +32,7 @@ import com.starrocks.connector.flink.row.sink.StarRocksSinkOP;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkRowDataWithMeta;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkSemantic;
-import com.starrocks.shade.com.alibaba.fastjson.JSON;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.alter.Alter;
 import net.sf.jsqlparser.statement.truncate.Truncate;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeHint;
@@ -66,6 +64,7 @@ import org.apache.inlong.sort.base.metric.MetricState;
 import org.apache.inlong.sort.base.metric.SinkMetricData;
 import org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy;
 import org.apache.inlong.sort.base.util.MetricStateUtils;
+import org.apache.inlong.sort.starrocks.manager.SinkBufferEntity;
 import org.apache.inlong.sort.starrocks.manager.StarRocksSinkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +73,8 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
 
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(StarRocksDynamicSinkFunction.class);
-
+    private static final String FORMAT_CSV_VALUE = "csv";
+    private static final String FORMAT_KEY = "format";
     private StarRocksSinkManager sinkManager;
     private StarRocksIRowTransformer<T> rowTransformer;
     private StarRocksSinkOptions sinkOptions;
@@ -87,7 +87,7 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
     /**
      * state only works with `StarRocksSinkSemantic.EXACTLY_ONCE`
      */
-    private transient ListState<Map<String, StarRocksSinkBufferEntity>> checkpointedState;
+    private transient ListState<Map<String, SinkBufferEntity>> checkpointedState;
 
     private final boolean multipleSink;
     private final String sinkMultipleFormat;
@@ -242,33 +242,33 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
             if (updateBeforeNode != null) {
                 updateBeforeList = jsonDynamicSchemaFormat.jsonNode2Map(updateBeforeNode);
             }
+            List<Map<String, String>> records = new ArrayList<>();
             for (int i = 0; i < physicalDataList.size(); i++) {
                 for (RowKind rowKind : rowKinds) {
-                    String record = null;
+                    Map<String, String> record = null;
                     switch (rowKind) {
                         case INSERT:
                         case UPDATE_AFTER:
-                            physicalDataList.get(i).put("__op", String.valueOf(StarRocksSinkOP.UPSERT.ordinal()));
-                            record = JSON.toJSONString(physicalDataList.get(i));
+                            record = physicalDataList.get(i);
+                            record.put("__op", String.valueOf(StarRocksSinkOP.UPSERT.ordinal()));
                             break;
                         case DELETE:
-                            physicalDataList.get(i).put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
-                            record = JSON.toJSONString(physicalDataList.get(i));
+                            record = physicalDataList.get(i);
+                            record.put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
                             break;
                         case UPDATE_BEFORE:
                             if (updateBeforeList != null && updateBeforeList.size() > i) {
-                                updateBeforeList.get(i).put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
-                                record = JSON.toJSONString(updateBeforeList.get(i));
+                                record = updateBeforeList.get(i);
+                                record.put("__op", String.valueOf(StarRocksSinkOP.DELETE.ordinal()));
                             }
                             break;
                         default:
                             throw new RuntimeException("Unrecognized row kind:" + rowKind);
                     }
-                    if (StringUtils.isNotBlank(record)) {
-                        sinkManager.writeRecords(databaseName, tableName, record);
-                    }
+                    records.add(record);
                 }
             }
+            sinkManager.writeRecords(databaseName, tableName, records);
         } else {
             String record = serializer.serialize(rowTransformer.transform(value, sinkOptions.supportUpsertDelete()));
             sinkManager.writeRecords(sinkOptions.getDatabaseName(), sinkOptions.getTableName(), record);
@@ -293,9 +293,9 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
         if (!StarRocksSinkSemantic.EXACTLY_ONCE.equals(sinkOptions.getSemantic())) {
             return;
         }
-        ListStateDescriptor<Map<String, StarRocksSinkBufferEntity>> descriptor = new ListStateDescriptor<>(
-                "buffered-rows", TypeInformation.of(new TypeHint<Map<String, StarRocksSinkBufferEntity>>() {
-        }));
+        ListStateDescriptor<Map<String, SinkBufferEntity>> descriptor = new ListStateDescriptor<>("buffered-rows",
+                TypeInformation.of(new TypeHint<Map<String, SinkBufferEntity>>() {
+                }));
         checkpointedState = context.getOperatorStateStore().getListState(descriptor);
     }
 
@@ -333,7 +333,7 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
 
     private void flushPreviousState() throws Exception {
         // flush the batch saved at the previous checkpoint
-        for (Map<String, StarRocksSinkBufferEntity> state : checkpointedState.get()) {
+        for (Map<String, SinkBufferEntity> state : checkpointedState.get()) {
             sinkManager.setBufferedBatchMap(state);
             sinkManager.flush(null, true);
         }
