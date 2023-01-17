@@ -134,9 +134,6 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
     @Override
     public Map<String, String> tableOptions() {
         Map<String, String> options = super.tableOptions();
-        if (getProperties() != null && !getProperties().isEmpty()) {
-            options.putAll(getProperties());
-        }
         options.put(StarRocksConstant.CONNECTOR, "starrocks-inlong");
         options.put(StarRocksConstant.JDBC_URL, jdbcUrl);
         options.put(StarRocksConstant.LOAD_URL, loadUrl);
@@ -153,8 +150,10 @@ public class StarRocksLoadNode extends LoadNode implements InlongMetric, Seriali
         } else {
             options.put(StarRocksConstant.SINK_MULTIPLE_ENABLE, "false");
         }
-        options.put(StarRocksConstant.FORMAT, "json");
-        options.put(StarRocksConstant.STRIP_OUTER_ARRAY, "true");
+        if (!options.containsKey(StarRocksConstant.FORMAT)) {
+            options.put(StarRocksConstant.FORMAT, "json");
+            options.put(StarRocksConstant.STRIP_OUTER_ARRAY, "true");
+        }
         return options;
     }
 

@@ -128,7 +128,9 @@ public class DorisStreamLoad implements Serializable {
                     put.setHeader(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                 }
             }
-            put.setHeader("format", "json");
+            if (!put.containsHeader("format")) {
+                put.setHeader("format", "json");
+            }
             put.setHeader("strip_outer_array", "true");
             StringEntity entity = new StringEntity(value, "UTF-8");
             put.setEntity(entity);
