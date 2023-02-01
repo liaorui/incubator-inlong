@@ -1,13 +1,12 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,12 +18,9 @@
 package org.apache.inlong.sort.cdc.mongodb;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.kafka.connect.source.MongoSourceConfig;
 import com.mongodb.kafka.connect.source.MongoSourceConfig.ErrorTolerance;
-import com.mongodb.kafka.connect.source.MongoSourceConfig.OutputFormat;
 import com.ververica.cdc.connectors.mongodb.internal.MongoDBConnectorSourceConnector;
-import com.ververica.cdc.debezium.DebeziumDeserializationSchema;
 import com.ververica.cdc.debezium.Validator;
 import io.debezium.heartbeat.Heartbeat;
 import org.apache.commons.lang3.StringUtils;
@@ -36,11 +32,21 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Properties;
+import org.apache.inlong.sort.cdc.mongodb.debezium.DebeziumDeserializationSchema;
 
+import static com.ververica.cdc.connectors.mongodb.MongoDBSource.FULL_DOCUMENT_UPDATE_LOOKUP;
+import static com.ververica.cdc.connectors.mongodb.MongoDBSource.OUTPUT_FORMAT_SCHEMA;
 import static com.ververica.cdc.connectors.mongodb.internal.MongoDBConnectorSourceTask.COLLECTION_INCLUDE_LIST;
 import static com.ververica.cdc.connectors.mongodb.internal.MongoDBConnectorSourceTask.DATABASE_INCLUDE_LIST;
+import static com.ververica.cdc.connectors.mongodb.internal.MongoDBEnvelope.HEARTBEAT_TOPIC_NAME;
+import static com.ververica.cdc.connectors.mongodb.internal.MongoDBEnvelope.MONGODB_SCHEME;
+import static com.ververica.cdc.connectors.mongodb.internal.MongoDBEnvelope.OUTPUT_SCHEMA;
+import static com.ververica.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.BATCH_SIZE;
+import static com.ververica.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.COPY_EXISTING;
+import static com.ververica.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.HEARTBEAT_INTERVAL_MILLIS;
+import static com.ververica.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.POLL_AWAIT_TIME_MILLIS;
+import static com.ververica.cdc.connectors.mongodb.source.config.MongoDBSourceOptions.POLL_MAX_BATCH_SIZE;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -51,61 +57,61 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @PublicEvolving
 public class MongoDBSource {
 
-    public static final String MONGODB_SCHEME = "mongodb";
-
+    // public static final String MONGODB_SCHEME = "mongodb";
+    //
     public static final String ERROR_TOLERANCE_NONE = ErrorTolerance.NONE.value();
-
-    public static final String ERROR_TOLERANCE_ALL = ErrorTolerance.ALL.value();
-
-    public static final String FULL_DOCUMENT_UPDATE_LOOKUP = FullDocument.UPDATE_LOOKUP.getValue();
-
+    //
+    // public static final String ERROR_TOLERANCE_ALL = ErrorTolerance.ALL.value();
+    //
+    // public static final String FULL_DOCUMENT_UPDATE_LOOKUP = FullDocument.UPDATE_LOOKUP.getValue();
+    //
     public static final int POLL_MAX_BATCH_SIZE_DEFAULT = 1000;
-
+    //
     public static final int POLL_AWAIT_TIME_MILLIS_DEFAULT = 1500;
+    //
+    // public static final String HEARTBEAT_TOPIC_NAME_DEFAULT = "__mongodb_heartbeats";
 
-    public static final String HEARTBEAT_TOPIC_NAME_DEFAULT = "__mongodb_heartbeats";
+    // public static final String OUTPUT_FORMAT_SCHEMA =
+    // OutputFormat.SCHEMA.name().toLowerCase(Locale.ROOT);
 
-    public static final String OUTPUT_FORMAT_SCHEMA =
-            OutputFormat.SCHEMA.name().toLowerCase(Locale.ROOT);
-
-    // Add "source" field to adapt to debezium SourceRecord
-    public static final String OUTPUT_SCHEMA_VALUE_DEFAULT =
-            "{"
-                    + "  \"name\": \"ChangeStream\","
-                    + "  \"type\": \"record\","
-                    + "  \"fields\": ["
-                    + "    { \"name\": \"_id\", \"type\": \"string\" },"
-                    + "    { \"name\": \"operationType\", \"type\": [\"string\", \"null\"] },"
-                    + "    { \"name\": \"fullDocument\", \"type\": [\"string\", \"null\"] },"
-                    + "    { \"name\": \"source\","
-                    + "      \"type\": [{\"name\": \"source\", \"type\": \"record\", \"fields\": ["
-                    + "                {\"name\": \"ts_ms\", \"type\": \"long\"},"
-                    + "                {\"name\": \"snapshot\", \"type\": [\"string\", \"null\"] } ]"
-                    + "               }, \"null\" ] },"
-                    + "    { \"name\": \"ns\","
-                    + "      \"type\": [{\"name\": \"ns\", \"type\": \"record\", \"fields\": ["
-                    + "                {\"name\": \"db\", \"type\": \"string\"},"
-                    + "                {\"name\": \"coll\", \"type\": [\"string\", \"null\"] } ]"
-                    + "               }, \"null\" ] },"
-                    + "    { \"name\": \"to\","
-                    + "      \"type\": [{\"name\": \"to\", \"type\": \"record\",  \"fields\": ["
-                    + "                {\"name\": \"db\", \"type\": \"string\"},"
-                    + "                {\"name\": \"coll\", \"type\": [\"string\", \"null\"] } ]"
-                    + "               }, \"null\" ] },"
-                    + "    { \"name\": \"documentKey\", \"type\": [\"string\", \"null\"] },"
-                    + "    { \"name\": \"updateDescription\","
-                    + "      \"type\": [{\"name\": \"updateDescription\",  \"type\": \"record\", \"fields\": ["
-                    + "                 {\"name\": \"updatedFields\", \"type\": [\"string\", \"null\"]},"
-                    + "                 {\"name\": \"removedFields\","
-                    + "                  \"type\": [{\"type\": \"array\", \"items\": \"string\"}, \"null\"]"
-                    + "                  }] }, \"null\"] },"
-                    + "    { \"name\": \"clusterTime\", \"type\": [\"string\", \"null\"] },"
-                    + "    { \"name\": \"txnNumber\", \"type\": [\"long\", \"null\"]},"
-                    + "    { \"name\": \"lsid\", \"type\": [{\"name\": \"lsid\", \"type\": \"record\","
-                    + "               \"fields\": [ {\"name\": \"id\", \"type\": \"string\"},"
-                    + "                             {\"name\": \"uid\", \"type\": \"string\"}] }, \"null\"] }"
-                    + "  ]"
-                    + "}";
+    // // Add "source" field to adapt to debezium SourceRecord
+    // public static final String OUTPUT_SCHEMA_VALUE_DEFAULT =
+    // "{"
+    // + " \"name\": \"ChangeStream\","
+    // + " \"type\": \"record\","
+    // + " \"fields\": ["
+    // + " { \"name\": \"_id\", \"type\": \"string\" },"
+    // + " { \"name\": \"operationType\", \"type\": [\"string\", \"null\"] },"
+    // + " { \"name\": \"fullDocument\", \"type\": [\"string\", \"null\"] },"
+    // + " { \"name\": \"source\","
+    // + " \"type\": [{\"name\": \"source\", \"type\": \"record\", \"fields\": ["
+    // + " {\"name\": \"ts_ms\", \"type\": \"long\"},"
+    // + " {\"name\": \"snapshot\", \"type\": [\"string\", \"null\"] } ]"
+    // + " }, \"null\" ] },"
+    // + " { \"name\": \"ns\","
+    // + " \"type\": [{\"name\": \"ns\", \"type\": \"record\", \"fields\": ["
+    // + " {\"name\": \"db\", \"type\": \"string\"},"
+    // + " {\"name\": \"coll\", \"type\": [\"string\", \"null\"] } ]"
+    // + " }, \"null\" ] },"
+    // + " { \"name\": \"to\","
+    // + " \"type\": [{\"name\": \"to\", \"type\": \"record\", \"fields\": ["
+    // + " {\"name\": \"db\", \"type\": \"string\"},"
+    // + " {\"name\": \"coll\", \"type\": [\"string\", \"null\"] } ]"
+    // + " }, \"null\" ] },"
+    // + " { \"name\": \"documentKey\", \"type\": [\"string\", \"null\"] },"
+    // + " { \"name\": \"updateDescription\","
+    // + " \"type\": [{\"name\": \"updateDescription\", \"type\": \"record\", \"fields\": ["
+    // + " {\"name\": \"updatedFields\", \"type\": [\"string\", \"null\"]},"
+    // + " {\"name\": \"removedFields\","
+    // + " \"type\": [{\"type\": \"array\", \"items\": \"string\"}, \"null\"]"
+    // + " }] }, \"null\"] },"
+    // + " { \"name\": \"clusterTime\", \"type\": [\"string\", \"null\"] },"
+    // + " { \"name\": \"txnNumber\", \"type\": [\"long\", \"null\"]},"
+    // + " { \"name\": \"lsid\", \"type\": [{\"name\": \"lsid\", \"type\": \"record\","
+    // + " \"fields\": [ {\"name\": \"id\", \"type\": \"string\"},"
+    // + " {\"name\": \"uid\", \"type\": \"string\"}] }, \"null\"] }"
+    // + " ]"
+    // + "}";
 
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -128,19 +134,21 @@ public class MongoDBSource {
         private List<String> databaseList;
         private List<String> collectionList;
         private String connectionOptions;
-        private Integer batchSize;
-        private Integer pollAwaitTimeMillis = POLL_AWAIT_TIME_MILLIS_DEFAULT;
-        private Integer pollMaxBatchSize = POLL_MAX_BATCH_SIZE_DEFAULT;
-        private Boolean copyExisting = true;
+        private Integer batchSize = BATCH_SIZE.defaultValue();
+        private Integer pollAwaitTimeMillis = POLL_AWAIT_TIME_MILLIS.defaultValue();
+        private Integer pollMaxBatchSize = POLL_MAX_BATCH_SIZE.defaultValue();
+        private Boolean updateLookup = true;
+        private Boolean copyExisting = COPY_EXISTING.defaultValue();
         private Integer copyExistingMaxThreads;
         private Integer copyExistingQueueSize;
         private String copyExistingPipeline;
+        private Integer heartbeatIntervalMillis = HEARTBEAT_INTERVAL_MILLIS.defaultValue();
+        private DebeziumDeserializationSchema<T> deserializer;
         private Boolean errorsLogEnable;
         private String errorsTolerance;
-        private Integer heartbeatIntervalMillis;
-        private DebeziumDeserializationSchema<T> deserializer;
         private String inlongMetric;
         private String inlongAudit;
+        private boolean migrateAll;
 
         /** The comma-separated list of hostname and port pairs of mongodb servers. */
         public Builder<T> hosts(String hosts) {
@@ -328,6 +336,11 @@ public class MongoDBSource {
             return this;
         }
 
+        public Builder<T> migrateAll(Boolean migrateAll) {
+            this.migrateAll = migrateAll;
+            return this;
+        }
+
         /** Build connection uri. */
         @VisibleForTesting
         public ConnectionString buildConnectionUri() {
@@ -383,7 +396,7 @@ public class MongoDBSource {
                     MongoSourceConfig.OUTPUT_SCHEMA_INFER_VALUE_CONFIG,
                     String.valueOf(Boolean.FALSE));
             props.setProperty(
-                    MongoSourceConfig.OUTPUT_SCHEMA_VALUE_CONFIG, OUTPUT_SCHEMA_VALUE_DEFAULT);
+                    MongoSourceConfig.OUTPUT_SCHEMA_VALUE_CONFIG, OUTPUT_SCHEMA);
 
             if (batchSize != null) {
                 props.setProperty(MongoSourceConfig.BATCH_SIZE_CONFIG, String.valueOf(batchSize));
@@ -440,14 +453,15 @@ public class MongoDBSource {
             }
 
             props.setProperty(
-                    MongoSourceConfig.HEARTBEAT_TOPIC_NAME_CONFIG, HEARTBEAT_TOPIC_NAME_DEFAULT);
+                    MongoSourceConfig.HEARTBEAT_TOPIC_NAME_CONFIG, HEARTBEAT_TOPIC_NAME);
 
             // Let DebeziumChangeFetcher recognize heartbeat record
             props.setProperty(
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX.name(), HEARTBEAT_TOPIC_NAME_DEFAULT);
+                    Heartbeat.HEARTBEAT_TOPICS_PREFIX.name(), HEARTBEAT_TOPIC_NAME);
 
             return new DebeziumSourceFunction<>(
-                    deserializer, props, null, Validator.getDefaultValidator(), inlongMetric, inlongAudit);
+                    deserializer, props, null, Validator.getDefaultValidator(),
+                    inlongMetric, inlongAudit, migrateAll);
         }
     }
 }
