@@ -226,18 +226,20 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
         // save `sink.properties.columns` parameter from options
         this.columns = (String) props.get(COLUMNS_KEY);
-        // add column key when fieldNames is not empty
-        if (!props.containsKey(COLUMNS_KEY) && fieldNames != null && fieldNames.length > 0) {
-            String columns = Arrays.stream(fieldNames).map(item -> String.format("`%s`", item.trim().replace("`", "")))
-                    .collect(Collectors.joining(","));
-            props.put(COLUMNS_KEY, columns);
-        }
+        if (!multipleSink) {
+            // add column key when fieldNames is not empty
+            if (!props.containsKey(COLUMNS_KEY) && fieldNames != null && fieldNames.length > 0) {
+                String columns = Arrays.stream(fieldNames).map(item -> String.format("`%s`", item.trim().replace("`", "")))
+                        .collect(Collectors.joining(","));
+                props.put(COLUMNS_KEY, columns);
+            }
 
-        // if enable batch delete, the columns must add tag '__DORIS_DELETE_SIGN__'
-        String columns = (String) props.get(COLUMNS_KEY);
-        if (columns != null && !columns.contains(DORIS_DELETE_SIGN) && enableBatchDelete()) {
-            columns = String.format("%s,%s", columns, DORIS_DELETE_SIGN);
-            props.put(COLUMNS_KEY, columns);
+            // if enable batch delete, the columns must add tag '__DORIS_DELETE_SIGN__'
+            String columns = (String) props.get(COLUMNS_KEY);
+            if (columns != null && !columns.contains(DORIS_DELETE_SIGN) && enableBatchDelete()) {
+                columns = String.format("%s,%s", columns, DORIS_DELETE_SIGN);
+                props.put(COLUMNS_KEY, columns);
+            }
         }
     }
 
@@ -709,39 +711,35 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         } catch (Exception e) {
             LOG.error(String.format("Flush table: %s error", tableIdentifier), e);
             // Makesure it is a dirty data
-            if (respContent != null && StringUtils.isNotBlank(respContent.getErrorURL())) {
-                flushExceptionMap.put(tableIdentifier, e);
-                errorNum.getAndAdd(values.size());
+            flushExceptionMap.put(tableIdentifier, e);
+            errorNum.getAndAdd(values.size());
 
-                if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
-                    throw new RuntimeException(
-                            String.format("Writing records to streamload of tableIdentifier:%s failed, the value: %s.",
-                                    tableIdentifier, loadValue),
-                            e);
-                }
-                if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
-                    errorTables.add(tableIdentifier);
-                    LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
-                            + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
-                            tableIdentifier);
-                    return;
-                }
-                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
-                    // archive dirty data when 'sink.multiple.schema-update.policy' is 'LOG_WITH_IGNORE'
-                    for (Object value : values) {
-                        try {
-                            handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
-                                    DirtyType.BATCH_LOAD_ERROR, e);
-                        } catch (IOException ex) {
-                            if (!dirtyOptions.ignoreSideOutputErrors()) {
-                                throw new RuntimeException(ex);
-                            }
-                            LOG.warn("Dirty sink failed", ex);
+            if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
+                throw new RuntimeException(
+                        String.format("Writing records to streamload of tableIdentifier:%s failed, the value: %s.",
+                                tableIdentifier, loadValue),
+                        e);
+            }
+            if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
+                errorTables.add(tableIdentifier);
+                LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
+                        + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                        tableIdentifier);
+                return;
+            }
+            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                // archive dirty data when 'sink.multiple.schema-update.policy' is 'LOG_WITH_IGNORE'
+                for (Object value : values) {
+                    try {
+                        handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
+                                DirtyType.BATCH_LOAD_ERROR, e);
+                    } catch (IOException ex) {
+                        if (!dirtyOptions.ignoreSideOutputErrors()) {
+                            throw new RuntimeException(ex);
                         }
+                        LOG.warn("Dirty sink failed", ex);
                     }
                 }
-            } else {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -791,6 +789,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
             return csvData.toString();
         } else {
+
             return OBJECT_MAPPER.writeValueAsString(values);
         }
     }

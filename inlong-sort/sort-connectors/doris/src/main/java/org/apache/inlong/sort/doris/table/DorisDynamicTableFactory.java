@@ -303,7 +303,8 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
         String tablePattern = helper.getOptions().getOptional(SINK_MULTIPLE_TABLE_PATTERN).orElse(null);
         boolean multipleSink = helper.getOptions().get(SINK_MULTIPLE_ENABLE);
         boolean ignoreSingleTableErrors = helper.getOptions().get(SINK_MULTIPLE_IGNORE_SINGLE_TABLE_ERRORS);
-        SchemaUpdateExceptionPolicy schemaUpdatePolicy = helper.getOptions().get(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
+        SchemaUpdateExceptionPolicy schemaUpdatePolicy = helper.getOptions()
+                .getOptional(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY).orElse(SchemaUpdateExceptionPolicy.THROW_WITH_STOP);
         String sinkMultipleFormat = helper.getOptions().getOptional(SINK_MULTIPLE_FORMAT).orElse(null);
         validateSinkMultiple(physicalSchema.toPhysicalRowDataType(),
                 multipleSink, sinkMultipleFormat, databasePattern, tablePattern);
