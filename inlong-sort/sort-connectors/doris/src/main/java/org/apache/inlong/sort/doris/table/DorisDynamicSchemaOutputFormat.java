@@ -139,7 +139,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private final String databasePattern;
     private final String tablePattern;
     private final String dynamicSchemaFormat;
-    private final boolean ignoreSingleTableErrors;
     private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
     private long batchBytes = 0L;
     private int size;
@@ -171,7 +170,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             String dynamicSchemaFormat,
             String databasePattern,
             String tablePattern,
-            boolean ignoreSingleTableErrors,
             SchemaUpdateExceptionPolicy schemaUpdatePolicy,
             String inlongMetric,
             String auditHostAndPorts,
@@ -190,7 +188,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         this.dynamicSchemaFormat = dynamicSchemaFormat;
         this.databasePattern = databasePattern;
         this.tablePattern = tablePattern;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
         this.dirtyOptions = dirtyOptions;
         this.dirtySink = dirtySink;
@@ -323,7 +320,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         if (!multipleSink || ex == null) {
             return false;
         }
-        if (!ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
+        if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
             throw new RuntimeException("Writing records to streamload failed, tableIdentifier=" + tableIdentifier, ex);
         }
         return true;
@@ -716,17 +713,17 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 flushExceptionMap.put(tableIdentifier, e);
                 errorNum.getAndAdd(values.size());
 
-                if (!ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
+                if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
                     throw new RuntimeException(
                             String.format("Writing records to streamload of tableIdentifier:%s failed, the value: %s.",
                                     tableIdentifier, loadValue),
                             e);
                 }
-                if (ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
+                if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                     errorTables.add(tableIdentifier);
-                    LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future"
-                            + " because the option 'sink.multiple.ignore-single-table-errors' is 'true' "
-                            + "or 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'", tableIdentifier);
+                    LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
+                                    + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                            tableIdentifier);
                     return;
                 }
                 if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
@@ -1007,7 +1004,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                     dynamicSchemaFormat,
                     databasePattern,
                     tablePattern,
-                    ignoreSingleTableErrors,
                     schemaUpdatePolicy,
                     inlongMetric,
                     auditHostAndPorts,
