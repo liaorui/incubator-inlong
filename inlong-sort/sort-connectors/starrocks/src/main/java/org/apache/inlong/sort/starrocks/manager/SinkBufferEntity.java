@@ -26,7 +26,7 @@ public class SinkBufferEntity extends StarRocksSinkBufferEntity {
 
     private String dirtyLogTag;
     private String dirtyLabel;
-    private String dirtyInditify;
+    private String dirtyIdentify;
     private String columns;
 
     public SinkBufferEntity(String database, String table, String labelPrefix) {
@@ -57,12 +57,12 @@ public class SinkBufferEntity extends StarRocksSinkBufferEntity {
         this.dirtyLabel = dirtyLabel;
     }
 
-    public String getDirtyInditify() {
-        return dirtyInditify;
+    public String getDirtyIdentify() {
+        return dirtyIdentify;
     }
 
-    public void setDirtyInditify(String dirtyInditify) {
-        this.dirtyInditify = dirtyInditify;
+    public void setDirtyIdentify(String dirtyIdentify) {
+        this.dirtyIdentify = dirtyIdentify;
     }
 
     @Override

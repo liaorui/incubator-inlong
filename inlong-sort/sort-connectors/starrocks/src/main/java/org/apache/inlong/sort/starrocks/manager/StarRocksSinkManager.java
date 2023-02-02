@@ -274,7 +274,7 @@ public class StarRocksSinkManager implements Serializable {
             String table,
             List<Map<String, String>> records,
             String dirtyLogTag,
-            String dirtyInditify,
+            String dirtyIdentify,
             String dirtyLabel)
             throws IOException {
         checkFlushException();
@@ -289,7 +289,7 @@ public class StarRocksSinkManager implements Serializable {
             String columns = StringUtils.join(head.keySet(), ",");
             bufferEntity.setColumns(columns);
             bufferEntity.setDirtyLogTag(dirtyLogTag);
-            bufferEntity.setDirtyInditify(dirtyInditify);
+            bufferEntity.setDirtyIdentify(dirtyIdentify);
             bufferEntity.setDirtyLabel(dirtyLabel);
 
             String columnSeparator = StarRocksDelimiterParser.parse(
@@ -330,7 +330,7 @@ public class StarRocksSinkManager implements Serializable {
             SinkBufferEntity bufferEntity = bufferMap.computeIfAbsent(bufferKey,
                     k -> new SinkBufferEntity(database, table, sinkOptions.getLabelPrefix()));
             bufferEntity.setDirtyLogTag(dirtySinkHelper.getDirtyOptions().getLogTag());
-            bufferEntity.setDirtyInditify(dirtySinkHelper.getDirtyOptions().getIdentifier());
+            bufferEntity.setDirtyIdentify(dirtySinkHelper.getDirtyOptions().getIdentifier());
             bufferEntity.setDirtyLabel(dirtySinkHelper.getDirtyOptions().getLabels());
 
             for (String record : records) {
@@ -540,7 +540,7 @@ public class StarRocksSinkManager implements Serializable {
                         DirtyType.BATCH_LOAD_ERROR,
                         flushData.getDirtyLabel(),
                         flushData.getDirtyLogTag(),
-                        flushData.getDirtyInditify(),
+                        flushData.getDirtyIdentify(),
                         e);
             }
         } else if (StarRocksSinkOptions.StreamLoadFormat.JSON.equals(sinkOptions.getStreamLoadFormat())) {
@@ -550,7 +550,7 @@ public class StarRocksSinkManager implements Serializable {
                         DirtyType.BATCH_LOAD_ERROR,
                         flushData.getDirtyLabel(),
                         flushData.getDirtyLogTag(),
-                        flushData.getDirtyInditify(),
+                        flushData.getDirtyIdentify(),
                         e);
             }
         }
