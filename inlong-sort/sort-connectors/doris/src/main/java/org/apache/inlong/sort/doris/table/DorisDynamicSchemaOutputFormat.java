@@ -98,6 +98,11 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String COLUMNS_KEY = "columns";
     private static final String DORIS_DELETE_SIGN = "__DORIS_DELETE_SIGN__";
+    private static final String DIRTY_LOG_TAG = "__DIRTY_LOG_TAG__";
+    private static final String DIRTY_LABEL = "__DIRTY_LABEL__";
+    private static final String DIRTY_IDENTIFIER = "__DIRTY_IDENTIFIER__";
+    private static final String DATABASE = "__DATABASE__";
+    private static final String TABLE = "__TABLE__";
     /**
      * Mark the record for delete
      */
@@ -470,9 +475,24 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     @SuppressWarnings({"unchecked"})
     private void addRow(RowKind rowKind, JsonNode rootNode, JsonNode physicalNode, JsonNode updateBeforeNode,
             Map<String, String> physicalData, Map<String, String> updateBeforeData) throws IOException {
-        String tableIdentifier = StringUtils.join(
-                jsonDynamicSchemaFormat.parse(rootNode, databasePattern), ".",
-                jsonDynamicSchemaFormat.parse(rootNode, tablePattern));
+        String database = jsonDynamicSchemaFormat.parse(rootNode, databasePattern);
+        String table = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
+        String tableIdentifier = StringUtils.join(database, ".", table);
+        String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLogTag());
+        String dirtyIndentifier = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getIdentifier());
+        String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLabels());
+        physicalData.put(DIRTY_LOG_TAG, dirtyLogTag);
+        physicalData.put(DIRTY_IDENTIFIER, dirtyIndentifier);
+        physicalData.put(DIRTY_LABEL, dirtyLabel);
+        physicalData.put(DATABASE, database);
+        physicalData.put(TABLE, table);
+        if (updateBeforeData != null) {
+            updateBeforeData.put(DIRTY_LOG_TAG, dirtyLogTag);
+            updateBeforeData.put(DIRTY_IDENTIFIER, dirtyIndentifier);
+            updateBeforeData.put(DIRTY_LABEL, dirtyLabel);
+            updateBeforeData.put(DATABASE, database);
+            updateBeforeData.put(TABLE, table);
+        }
         switch (rowKind) {
             case INSERT:
             case UPDATE_AFTER:
@@ -530,7 +550,11 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             if (dirtyType == DirtyType.DESERIALIZE_ERROR) {
                 LOG.error("database and table can't be identified, will use default ${database}${table}");
             } else {
-                handleMultipleDirtyData(dirtyData, dirtyType, e);
+                try {
+                    handleMultipleDirtyData(dirtyData, dirtyType, e);
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
+                }
                 return;
             }
         }
@@ -555,29 +579,30 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         metricData.invokeDirty(1, dirtyData.toString().getBytes(StandardCharsets.UTF_8).length);
     }
 
-    private void handleMultipleDirtyData(Object dirtyData, DirtyType dirtyType, Exception e) {
-        JsonNode rootNode;
-        if (dirtyData instanceof JsonNode) {
-            rootNode = (JsonNode) dirtyData;
-        } else if (dirtyData instanceof RowData) {
-            try {
-                rootNode = jsonDynamicSchemaFormat.deserialize(((RowData) dirtyData).getBinary(0));
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
+    private void handleMultipleDirtyData(Object dirtyData, DirtyType dirtyType, Exception e)
+            throws JsonProcessingException {
+        Map<String, String> rawData;
+        if (dirtyData instanceof Map) {
+            rawData = (Map) dirtyData;
         } else {
-            throw new RuntimeException(String.format("Unsupported data type: %s", dirtyData));
+            rawData = OBJECT_MAPPER.readValue(OBJECT_MAPPER.writeValueAsString(dirtyData), Map.class);
         }
+        String label = rawData.remove(DIRTY_LABEL);
+        String logTag = rawData.remove(DIRTY_LOG_TAG);
+        String identifier = rawData.remove(DIRTY_IDENTIFIER);
+        String database = rawData.remove(DATABASE);
+        String table = rawData.remove(TABLE);
+        String content = OBJECT_MAPPER.writeValueAsString(rawData);
 
         if (dirtySink != null) {
             DirtyData.Builder<Object> builder = DirtyData.builder();
             try {
-                builder.setData(dirtyData)
+                builder.setData(OBJECT_MAPPER.readTree(content))
                         .setDirtyType(dirtyType)
-                        .setLabels(jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLabels()))
-                        .setLogTag(jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLogTag()))
+                        .setLabels(label)
+                        .setLogTag(logTag)
                         .setDirtyMessage(e.getMessage())
-                        .setIdentifier(jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getIdentifier()));
+                        .setIdentifier(identifier);
                 dirtySink.invoke(builder.build());
             } catch (Exception ex) {
                 if (!dirtyOptions.ignoreSideOutputErrors()) {
@@ -587,10 +612,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
         }
         try {
-            metricData.outputDirtyMetricsWithEstimate(
-                    jsonDynamicSchemaFormat.parse(rootNode, databasePattern),
-                    jsonDynamicSchemaFormat.parse(rootNode, tablePattern), 1,
-                    ((RowData) dirtyData).getBinary(0).length);
+            metricData.outputDirtyMetricsWithEstimate(database, table, 1, content.getBytes(StandardCharsets.UTF_8).length);
         } catch (Exception ex) {
             metricData.invokeDirty(1, dirtyData.toString().getBytes(StandardCharsets.UTF_8).length);
         }
