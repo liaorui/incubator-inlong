@@ -722,7 +722,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                     errorTables.add(tableIdentifier);
                     LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
-                                    + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                            + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
                             tableIdentifier);
                     return;
                 }
@@ -791,11 +791,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
             return csvData.toString();
         } else {
-            // header columns doesn't need when json format
-            // Dynamic set COLUMNS_KEY for tableIdentifier every time for multiple sink scenario
-            if (multipleSink) {
-                executionOptions.getStreamLoadProp().put(COLUMNS_KEY, columnsMap.get(tableIdentifier));
-            }
             return OBJECT_MAPPER.writeValueAsString(values);
         }
     }
