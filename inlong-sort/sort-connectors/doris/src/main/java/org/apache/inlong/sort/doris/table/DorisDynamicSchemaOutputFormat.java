@@ -229,8 +229,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         if (!multipleSink) {
             // add column key when fieldNames is not empty
             if (!props.containsKey(COLUMNS_KEY) && fieldNames != null && fieldNames.length > 0) {
-                String columns = Arrays.stream(fieldNames).map(item -> String.format("`%s`", item.trim().replace("`", "")))
-                        .collect(Collectors.joining(","));
+                String columns =
+                        Arrays.stream(fieldNames).map(item -> String.format("`%s`", item.trim().replace("`", "")))
+                                .collect(Collectors.joining(","));
                 props.put(COLUMNS_KEY, columns);
             }
 
@@ -552,13 +553,16 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
     private void handleMultipleDirtyData(Object dirtyData, DirtyType dirtyType, Exception e) {
         JsonNode rootNode;
-        try {
-            rootNode = jsonDynamicSchemaFormat.deserialize(((RowData) dirtyData).getBinary(0));
-        } catch (Exception ex) {
-            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
-                handleDirtyData(dirtyData, DirtyType.DESERIALIZE_ERROR, e);
+        if (dirtyData instanceof JsonNode) {
+            rootNode = (JsonNode) dirtyData;
+        } else if (dirtyData instanceof RowData) {
+            try {
+                rootNode = jsonDynamicSchemaFormat.deserialize(((RowData) dirtyData).getBinary(0));
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
-            return;
+        } else {
+            throw new RuntimeException(String.format("Unsupported data type: %s", dirtyData));
         }
 
         if (dirtySink != null) {
