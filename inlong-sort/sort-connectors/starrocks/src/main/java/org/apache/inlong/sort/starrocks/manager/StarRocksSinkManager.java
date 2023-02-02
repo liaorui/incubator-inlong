@@ -482,13 +482,13 @@ public class StarRocksSinkManager implements Serializable {
                 }
                 LOGGER.warn("Failed to flush batch data to StarRocks, retry times = {}", i, e);
                 if (i >= sinkOptions.getSinkMaxRetries()) {
-                    handleDirtyData(flushData, e);
-
                     if (schemaUpdatePolicy == null
-                            || schemaUpdatePolicy == SchemaUpdateExceptionPolicy.THROW_WITH_STOP) {
+                            || SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
                         throw e;
-                    } else if (schemaUpdatePolicy == SchemaUpdateExceptionPolicy.STOP_PARTIAL) {
+                    } else if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                         ignoreWriteTables.add(tableIdentifier);
+                    } else if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                        handleDirtyData(flushData, e);
                     }
                 }
                 if (e instanceof StarRocksStreamLoadFailedException
