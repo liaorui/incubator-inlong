@@ -19,6 +19,7 @@ package org.apache.inlong.sort.base.format;
 
 import java.sql.Timestamp;
 import java.time.ZoneId;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
@@ -68,6 +69,7 @@ import static org.apache.flink.formats.common.TimeFormats.SQL_TIME_FORMAT;
 
 /** Tool class used to convert from {@link JsonNode} to {@link RowData}. * */
 @Internal
+@Slf4j
 public class JsonToRowDataConverters implements Serializable {
 
     private static final long serialVersionUID = 1L;

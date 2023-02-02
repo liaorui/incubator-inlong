@@ -24,16 +24,18 @@ import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
+import org.apache.flink.table.connector.source.SourceProvider;
 import org.apache.flink.table.connector.source.abilities.SupportsReadingMetadata;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.RowKind;
 import org.apache.inlong.sort.cdc.mongodb.DebeziumSourceFunction;
-import org.apache.inlong.sort.cdc.mongodb.MongoDBSource;
+import org.apache.inlong.sort.cdc.mongodb.source.MongoDBSourceBuilder;
 import org.apache.inlong.sort.cdc.mongodb.debezium.DebeziumDeserializationSchema;
 import org.apache.inlong.sort.cdc.mongodb.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.cdc.mongodb.debezium.table.MongoDBConnectorDeserializationSchema;
+import org.apache.inlong.sort.cdc.mongodb.source.MongoDBSource;
 import org.apache.inlong.sort.cdc.mongodb.table.filter.RowKindValidator;
 
 import javax.annotation.Nullable;
@@ -48,7 +50,7 @@ import java.util.stream.Stream;
 
 import static com.mongodb.MongoNamespace.checkCollectionNameValidity;
 import static com.mongodb.MongoNamespace.checkDatabaseNameValidity;
-import static com.ververica.cdc.connectors.mongodb.utils.CollectionDiscoveryUtils.containsRegexMetaCharacters;
+import static com.ververica.cdc.connectors.mongodb.source.utils.CollectionDiscoveryUtils.containsRegexMetaCharacters;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
@@ -70,10 +72,14 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
     private final String copyExistingPipeline;
     private final Integer copyExistingMaxThreads;
     private final Integer copyExistingQueueSize;
+    private final Integer batchSize;
     private final Integer pollMaxBatchSize;
     private final Integer pollAwaitTimeMillis;
     private final Integer heartbeatIntervalMillis;
     private final ZoneId localTimeZone;
+    private final boolean enableParallelRead;
+    private final Integer splitMetaGroupSize;
+    private final Integer splitSizeMB;
 
     private final String inlongMetric;
     private final String inlongAudit;
@@ -104,10 +110,14 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
             @Nullable String copyExistingPipeline,
             @Nullable Integer copyExistingMaxThreads,
             @Nullable Integer copyExistingQueueSize,
+            @Nullable Integer batchSize,
             @Nullable Integer pollMaxBatchSize,
             @Nullable Integer pollAwaitTimeMillis,
             @Nullable Integer heartbeatIntervalMillis,
             ZoneId localTimeZone,
+            boolean enableParallelRead,
+            @Nullable Integer splitMetaGroupSize,
+            @Nullable Integer splitSizeMB,
             String inlongMetric,
             String inlongAudit,
             String rowFilter,
@@ -125,12 +135,16 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
         this.copyExistingPipeline = copyExistingPipeline;
         this.copyExistingMaxThreads = copyExistingMaxThreads;
         this.copyExistingQueueSize = copyExistingQueueSize;
+        this.batchSize = batchSize;
         this.pollMaxBatchSize = pollMaxBatchSize;
         this.pollAwaitTimeMillis = pollAwaitTimeMillis;
         this.heartbeatIntervalMillis = heartbeatIntervalMillis;
         this.localTimeZone = localTimeZone;
         this.producedDataType = physicalSchema.toPhysicalRowDataType();
         this.metadataKeys = Collections.emptyList();
+        this.enableParallelRead = enableParallelRead;
+        this.splitMetaGroupSize = splitMetaGroupSize;
+        this.splitSizeMB = splitSizeMB;
         this.inlongMetric = inlongMetric;
         this.inlongAudit = inlongAudit;
         this.rowValidator = rowFilter;
@@ -161,47 +175,77 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                 new MongoDBConnectorDeserializationSchema(
                         physicalDataType, metadataConverters, typeInfo,
                         localTimeZone, new RowKindValidator(rowValidator), sourceMultipleEnable);
-        MongoDBSource.Builder<RowData> builder =
-                MongoDBSource.<RowData>builder().hosts(hosts).deserializer(deserializer);
 
+        String databaseList = null;
+        String collectionList = null;
         if (StringUtils.isNotEmpty(database) && StringUtils.isNotEmpty(collection)) {
             // explicitly specified database and collection.
             if (!containsRegexMetaCharacters(database)
                     && !containsRegexMetaCharacters(collection)) {
                 checkDatabaseNameValidity(database);
                 checkCollectionNameValidity(collection);
-                builder.databaseList(database);
-                builder.collectionList(database + "." + collection);
+                databaseList = database;
+                collectionList = database + "." + collection;
             } else {
-                builder.databaseList(database);
-                builder.collectionList(collection);
+                databaseList = database;
+                collectionList = collection;
             }
         } else if (StringUtils.isNotEmpty(database)) {
-            builder.databaseList(database);
+            databaseList = database;
         } else if (StringUtils.isNotEmpty(collection)) {
-            builder.collectionList(collection);
+            collectionList = collection;
         } else {
             // Watching all changes on the cluster by default, we do nothing here
         }
 
-        Optional.ofNullable(username).ifPresent(builder::username);
-        Optional.ofNullable(password).ifPresent(builder::password);
-        Optional.ofNullable(connectionOptions).ifPresent(builder::connectionOptions);
-        Optional.ofNullable(errorsLogEnable).ifPresent(builder::errorsLogEnable);
-        Optional.ofNullable(errorsTolerance).ifPresent(builder::errorsTolerance);
-        Optional.ofNullable(copyExisting).ifPresent(builder::copyExisting);
-        Optional.ofNullable(copyExistingPipeline).ifPresent(builder::copyExistingPipeline);
-        Optional.ofNullable(copyExistingMaxThreads).ifPresent(builder::copyExistingMaxThreads);
-        Optional.ofNullable(copyExistingQueueSize).ifPresent(builder::copyExistingQueueSize);
-        Optional.ofNullable(pollMaxBatchSize).ifPresent(builder::pollMaxBatchSize);
-        Optional.ofNullable(pollAwaitTimeMillis).ifPresent(builder::pollAwaitTimeMillis);
-        Optional.ofNullable(heartbeatIntervalMillis).ifPresent(builder::heartbeatIntervalMillis);
-        Optional.ofNullable(inlongMetric).ifPresent(builder::inlongMetric);
-        Optional.ofNullable(inlongAudit).ifPresent(builder::inlongAudit);
-        Optional.ofNullable(sourceMultipleEnable).ifPresent(builder::migrateAll);
-        DebeziumSourceFunction<RowData> sourceFunction = builder.build();
+        if (enableParallelRead) {
+            MongoDBSourceBuilder<RowData> builder =
+                    MongoDBSource.<RowData>builder().hosts(hosts).deserializer(deserializer);
 
-        return SourceFunctionProvider.of(sourceFunction, false);
+            Optional.ofNullable(databaseList).ifPresent(builder::databaseList);
+            Optional.ofNullable(collectionList).ifPresent(builder::collectionList);
+            Optional.ofNullable(username).ifPresent(builder::username);
+            Optional.ofNullable(password).ifPresent(builder::password);
+            Optional.ofNullable(connectionOptions).ifPresent(builder::connectionOptions);
+            Optional.ofNullable(copyExisting).ifPresent(builder::copyExisting);
+            Optional.ofNullable(batchSize).ifPresent(builder::batchSize);
+            Optional.ofNullable(pollMaxBatchSize).ifPresent(builder::pollMaxBatchSize);
+            Optional.ofNullable(pollAwaitTimeMillis).ifPresent(builder::pollAwaitTimeMillis);
+            Optional.ofNullable(heartbeatIntervalMillis)
+                    .ifPresent(builder::heartbeatIntervalMillis);
+            Optional.ofNullable(splitMetaGroupSize).ifPresent(builder::splitMetaGroupSize);
+            Optional.ofNullable(splitSizeMB).ifPresent(builder::splitSizeMB);
+            Optional.ofNullable(inlongMetric).ifPresent(builder::inlongMetric);
+            Optional.ofNullable(inlongAudit).ifPresent(builder::inlongAudit);
+
+            return SourceProvider.of(builder.build());
+        } else {
+            org.apache.inlong.sort.cdc.mongodb.MongoDBSource.Builder<RowData> builder =
+                    org.apache.inlong.sort.cdc.mongodb.MongoDBSource.<RowData>builder().hosts(hosts)
+                            .deserializer(deserializer);
+
+            Optional.ofNullable(databaseList).ifPresent(builder::databaseList);
+            Optional.ofNullable(collectionList).ifPresent(builder::collectionList);
+            Optional.ofNullable(username).ifPresent(builder::username);
+            Optional.ofNullable(password).ifPresent(builder::password);
+            Optional.ofNullable(connectionOptions).ifPresent(builder::connectionOptions);
+            Optional.ofNullable(errorsLogEnable).ifPresent(builder::errorsLogEnable);
+            Optional.ofNullable(errorsTolerance).ifPresent(builder::errorsTolerance);
+            Optional.ofNullable(copyExisting).ifPresent(builder::copyExisting);
+            Optional.ofNullable(copyExistingPipeline).ifPresent(builder::copyExistingPipeline);
+            Optional.ofNullable(copyExistingMaxThreads).ifPresent(builder::copyExistingMaxThreads);
+            Optional.ofNullable(copyExistingQueueSize).ifPresent(builder::copyExistingQueueSize);
+            Optional.ofNullable(batchSize).ifPresent(builder::batchSize);
+            Optional.ofNullable(pollMaxBatchSize).ifPresent(builder::pollMaxBatchSize);
+            Optional.ofNullable(pollAwaitTimeMillis).ifPresent(builder::pollAwaitTimeMillis);
+            Optional.ofNullable(heartbeatIntervalMillis).ifPresent(builder::heartbeatIntervalMillis);
+            Optional.ofNullable(inlongMetric).ifPresent(builder::inlongMetric);
+            Optional.ofNullable(inlongAudit).ifPresent(builder::inlongAudit);
+            Optional.ofNullable(sourceMultipleEnable).ifPresent(builder::migrateAll);
+            DebeziumSourceFunction<RowData> sourceFunction = builder.build();
+
+            return SourceFunctionProvider.of(sourceFunction, false);
+        }
     }
 
     protected MetadataConverter[] getMetadataConverters() {
@@ -251,10 +295,14 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                         copyExistingPipeline,
                         copyExistingMaxThreads,
                         copyExistingQueueSize,
+                        batchSize,
                         pollMaxBatchSize,
                         pollAwaitTimeMillis,
                         heartbeatIntervalMillis,
                         localTimeZone,
+                        enableParallelRead,
+                        splitMetaGroupSize,
+                        splitSizeMB,
                         inlongMetric,
                         inlongAudit,
                         rowValidator,
@@ -286,10 +334,14 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                 && Objects.equals(copyExistingPipeline, that.copyExistingPipeline)
                 && Objects.equals(copyExistingMaxThreads, that.copyExistingMaxThreads)
                 && Objects.equals(copyExistingQueueSize, that.copyExistingQueueSize)
+                && Objects.equals(batchSize, that.batchSize)
                 && Objects.equals(pollMaxBatchSize, that.pollMaxBatchSize)
                 && Objects.equals(pollAwaitTimeMillis, that.pollAwaitTimeMillis)
                 && Objects.equals(heartbeatIntervalMillis, that.heartbeatIntervalMillis)
                 && Objects.equals(localTimeZone, that.localTimeZone)
+                && Objects.equals(enableParallelRead, that.enableParallelRead)
+                && Objects.equals(splitMetaGroupSize, that.splitMetaGroupSize)
+                && Objects.equals(splitSizeMB, that.splitSizeMB)
                 && Objects.equals(producedDataType, that.producedDataType)
                 && Objects.equals(metadataKeys, that.metadataKeys)
                 && Objects.equals(inlongMetric, that.inlongMetric)
@@ -312,10 +364,14 @@ public class MongoDBTableSource implements ScanTableSource, SupportsReadingMetad
                 copyExistingPipeline,
                 copyExistingMaxThreads,
                 copyExistingQueueSize,
+                batchSize,
                 pollMaxBatchSize,
                 pollAwaitTimeMillis,
                 heartbeatIntervalMillis,
                 localTimeZone,
+                enableParallelRead,
+                splitMetaGroupSize,
+                splitSizeMB,
                 producedDataType,
                 metadataKeys,
                 inlongMetric,

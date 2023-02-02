@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements. See the NOTICE file distributed with
@@ -27,7 +28,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.inlong.common.enums.MetaField;
-import org.apache.inlong.sort.formats.common.StringFormatInfo;
+import org.apache.inlong.sort.formats.common.VarBinaryFormatInfo;
 import org.apache.inlong.sort.parser.impl.FlinkSqlParser;
 import org.apache.inlong.sort.parser.result.ParseResult;
 import org.apache.inlong.sort.protocol.FieldInfo;
@@ -40,35 +41,49 @@ import org.apache.inlong.sort.protocol.node.format.CanalJsonFormat;
 import org.apache.inlong.sort.protocol.node.format.CsvFormat;
 import org.apache.inlong.sort.protocol.node.load.DorisLoadNode;
 import org.apache.inlong.sort.protocol.node.load.KafkaLoadNode;
+import org.apache.inlong.sort.protocol.node.load.StarRocksLoadNode;
 import org.apache.inlong.sort.protocol.transformation.FieldRelation;
 import org.apache.inlong.sort.protocol.transformation.relation.NodeRelation;
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * A demo of transferring data between PostgreSQL Server and other database, using postgres-cdc-inlong connector.
- */
 public class AllMigratePostgreSQLTest {
 
     private PostgresExtractNode buildAllMigrateExtractNode() {
         List<FieldInfo> fields = Arrays.asList(
-                new MetaFieldInfo("data", MetaField.DATA_CANAL));
+                new MetaFieldInfo("data", MetaField.DATA_BYTES_CANAL));
         Map<String, String> option = new HashMap<>();
         option.put("source.multiple.enable", "true");
-        List<String> tableNames = Arrays.asList("table");
-        // List<String> tableNames = Arrays.asList("*");
+        //List<String> tableNames = Arrays.asList("vote_record_01", "vote_record_02");
+        List<String> tableNames = Arrays.asList("vote_record_02");
+        //List<String> tableNames = Arrays.asList("*");
         PostgresExtractNode node = new PostgresExtractNode("1", "pg_input", fields,
                 null, option, null, tableNames, "localhost", "user",
-                "password", "db", "schema", 1234,
-                null, "Asia/Shanghai", "initial");
+                "password", "database", "schema", 5432,
+                null, "Asia/Shanghai", null
+        );
+        return node;
+    }
+
+    private PostgresExtractNode buildAllMigrateExtractNodeWithBytesFormat() {
+        List<FieldInfo> fields = Arrays.asList(
+                new MetaFieldInfo("data", MetaField.DATA_BYTES_CANAL));
+        Map<String, String> option = new HashMap<>();
+        option.put("source.multiple.enable", "true");
+        List<String> tableNames = Arrays.asList("vote_record_01", "vote_record_02");
+        PostgresExtractNode node = new PostgresExtractNode("1", "pg_input", fields,
+                null, option, null, tableNames, "localhost", "user",
+                "password", "database", "schema", 5432,
+                null, null, null
+        );
         return node;
     }
 
     private KafkaLoadNode buildAllMigrateKafkaNode() {
-        List<FieldInfo> fields = Arrays.asList(new FieldInfo("data", new StringFormatInfo()));
+        List<FieldInfo> fields = Arrays.asList(new FieldInfo("data", new VarBinaryFormatInfo()));
         List<FieldRelation> relations = Arrays
-                .asList(new FieldRelation(new FieldInfo("data", new StringFormatInfo()),
-                        new FieldInfo("data", new StringFormatInfo())));
+                .asList(new FieldRelation(new FieldInfo("data", new VarBinaryFormatInfo()),
+                        new FieldInfo("data", new VarBinaryFormatInfo())));
         CsvFormat csvFormat = new CsvFormat();
         csvFormat.setDisableQuoteCharacter(true);
         return new KafkaLoadNode("2", "kafka_output", fields, relations, null, null,
@@ -77,14 +92,43 @@ public class AllMigratePostgreSQLTest {
                 null, null);
     }
 
-    private DorisLoadNode buildAllMigrateDorisNode() {
-        List<FieldInfo> fields = Arrays.asList(new FieldInfo("data", new StringFormatInfo()));
-        List<FieldRelation> relations = Arrays.asList(new FieldRelation(new FieldInfo("data", new StringFormatInfo()),
-                new FieldInfo("data", new StringFormatInfo())));
-        return new DorisLoadNode("2", "doris_output", fields, relations, null, null,
-                null, null, "localhost:1234", "user", "password",
-                null, null, true, new CanalJsonFormat(),
-                "${database}", "${table}");
+    private KafkaLoadNode buildAllMigrateKafkaNodeWithBytesFormat() {
+        List<FieldInfo> fields = Collections.singletonList(
+                new FieldInfo("data", new VarBinaryFormatInfo()));
+        List<FieldRelation> relations = Collections.singletonList(
+                new FieldRelation(new FieldInfo("data", new VarBinaryFormatInfo()),
+                        new FieldInfo("data", new VarBinaryFormatInfo())));
+        CsvFormat csvFormat = new CsvFormat();
+        csvFormat.setDisableQuoteCharacter(true);
+        return new KafkaLoadNode("2", "kafka_output", fields, relations, null, null,
+                "pg_db", "localhost:9092",
+                csvFormat, null,
+                null, null);
+    }
+
+    private DorisLoadNode buildDorisLoadNodeWithMultipleSink(String databasePattern, String tablePattern) {
+        List<FieldInfo> fields = Collections.singletonList(new FieldInfo("data", new VarBinaryFormatInfo()));
+        List<FieldRelation> relations = Collections
+                .singletonList(new FieldRelation(new FieldInfo("data", new VarBinaryFormatInfo()),
+                        new FieldInfo("data", new VarBinaryFormatInfo())));
+        Map<String, String> option = new HashMap<>();
+        //option.put("sink.properties.format", "csv");
+        return new DorisLoadNode("2", "doris_output", fields, relations,
+                null, null, 1, option,
+                "localhost:8030", "user", "password", null,
+                null, true, new CanalJsonFormat(), databasePattern, tablePattern);
+    }
+
+    private StarRocksLoadNode buildAllMigrateStarRocksNode() {
+        List<FieldInfo> fields = Arrays.asList(new FieldInfo("data", new VarBinaryFormatInfo()));
+        List<FieldRelation> relations = Arrays.asList(
+                new FieldRelation(new FieldInfo("data", new VarBinaryFormatInfo()),
+                        new FieldInfo("data", new VarBinaryFormatInfo())));
+        return new StarRocksLoadNode("2", "starrocks_output", fields, relations, null, null,
+                null, null, "jdbc:mysql://localhost:9030",
+                "localhost:8030", "user", "password", "database", "table",
+                null, true, new CanalJsonFormat(),
+                "database", "table");
     }
 
     private NodeRelation buildNodeRelation(List<Node> inputs, List<Node> outputs) {
@@ -110,8 +154,39 @@ public class AllMigratePostgreSQLTest {
         env.enableCheckpointing(10000);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env, settings);
         Node inputNode = buildAllMigrateExtractNode();
-        Node outputNode = buildAllMigrateKafkaNode();
-        // Node outputNode = buildAllMigrateDorisNode();
+//        Node outputNode = buildAllMigrateKafkaNode();
+//        Node outputNode = buildAllMigrateDorisNode();
+        Node outputNode = buildAllMigrateStarRocksNode();
+        StreamInfo streamInfo = new StreamInfo("1", Arrays.asList(inputNode, outputNode),
+                Collections.singletonList(buildNodeRelation(Collections.singletonList(inputNode),
+                        Collections.singletonList(outputNode))));
+        GroupInfo groupInfo = new GroupInfo("1", Collections.singletonList(streamInfo));
+        FlinkSqlParser parser = FlinkSqlParser.getInstance(tableEnv, groupInfo);
+        ParseResult result = parser.parse();
+        //Assert.assertTrue(result.tryExecute());
+        result.execute();
+
+        Thread.sleep(10000 * 1000);
+    }
+
+    /**
+     * Test all migrate, the full database data is represented as bytes of canal json
+     *
+     * @throws Exception The exception may throws when execute the case
+     */
+    @Test
+    public void testAllMigrateWithBytesFormat() throws Exception {
+        EnvironmentSettings settings = EnvironmentSettings
+                .newInstance()
+                .useBlinkPlanner()
+                .inStreamingMode()
+                .build();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        env.enableCheckpointing(10000);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env, settings);
+        Node inputNode = buildAllMigrateExtractNodeWithBytesFormat();
+        Node outputNode = buildAllMigrateKafkaNodeWithBytesFormat();
         StreamInfo streamInfo = new StreamInfo("1", Arrays.asList(inputNode, outputNode),
                 Collections.singletonList(buildNodeRelation(Collections.singletonList(inputNode),
                         Collections.singletonList(outputNode))));

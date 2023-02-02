@@ -17,6 +17,8 @@
 
 package org.apache.inlong.sort.doris.table;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.doris.flink.cfg.DorisExecutionOptions;
 import org.apache.doris.flink.cfg.DorisOptions;
@@ -25,6 +27,7 @@ import org.apache.doris.flink.exception.DorisException;
 import org.apache.doris.flink.exception.StreamLoadException;
 import org.apache.doris.flink.rest.RestService;
 import org.apache.doris.flink.rest.models.Schema;
+import org.apache.doris.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.doris.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.api.common.state.ListState;
@@ -102,6 +105,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
      * Mark the record for not delete
      */
     private static final String DORIS_DELETE_FALSE = "0";
+    private static final String FORMAT_JSON_VALUE = "json";
+    private static final String FORMAT_CSV_VALUE = "csv";
+    private static final String FORMAT_KEY = "format";
     private static final String FIELD_DELIMITER_KEY = "column_separator";
     private static final String FIELD_DELIMITER_DEFAULT = "\t";
     private static final String LINE_DELIMITER_KEY = "line_delimiter";
@@ -146,9 +152,36 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private volatile RowData.FieldGetter[] fieldGetters;
     private String fieldDelimiter;
     private String lineDelimiter;
+    private String columns;
     private final LogicalType[] logicalTypes;
-    private final DirtyOptions dirtyOptions;
-    private @Nullable final DirtySink<Object> dirtySink;
+    private final DirtyOptions dirtyOptions = null;
+    private @Nullable final DirtySink<Object> dirtySink = null;
+
+    public DorisDynamicSchemaOutputFormat(DorisOptions option,
+            DorisReadOptions readOptions,
+            DorisExecutionOptions executionOptions,
+            String dynamicSchemaFormat,
+            String databasePattern,
+            String tablePattern,
+            boolean ignoreSingleTableErrors,
+            String inlongMetric,
+            String auditHostAndPorts,
+            boolean multipleSink) {
+        this.options = option;
+        this.readOptions = readOptions;
+        this.executionOptions = executionOptions;
+        this.tableIdentifier = null;
+        this.dynamicSchemaFormat = dynamicSchemaFormat;
+        this.databasePattern = databasePattern;
+        this.tablePattern = tablePattern;
+        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
+        this.fieldNames = null;
+        this.multipleSink = multipleSink;
+        this.inlongMetric = inlongMetric;
+        this.auditHostAndPorts = auditHostAndPorts;
+        this.logicalTypes = new LogicalType[0];
+        handleStreamLoadProp();
+    }
 
     public DorisDynamicSchemaOutputFormat(DorisOptions option,
             DorisReadOptions readOptions,
@@ -156,30 +189,23 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             String tableIdentifier,
             LogicalType[] logicalTypes,
             String[] fieldNames,
-            String dynamicSchemaFormat,
-            String databasePattern,
-            String tablePattern,
-            boolean ignoreSingleTableErrors,
             String inlongMetric,
             String auditHostAndPorts,
-            boolean multipleSink,
-            DirtyOptions dirtyOptions,
-            @Nullable DirtySink<Object> dirtySink) {
+            boolean multipleSink) {
         this.options = option;
         this.readOptions = readOptions;
         this.executionOptions = executionOptions;
         this.tableIdentifier = tableIdentifier;
+        this.dynamicSchemaFormat = null;
+        this.databasePattern = null;
+        this.tablePattern = null;
+        this.ignoreSingleTableErrors = false;
         this.fieldNames = fieldNames;
         this.multipleSink = multipleSink;
         this.inlongMetric = inlongMetric;
         this.auditHostAndPorts = auditHostAndPorts;
         this.logicalTypes = logicalTypes;
-        this.dynamicSchemaFormat = dynamicSchemaFormat;
-        this.databasePattern = databasePattern;
-        this.tablePattern = tablePattern;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
-        this.dirtyOptions = dirtyOptions;
-        this.dirtySink = dirtySink;
+        handleStreamLoadProp();
     }
 
     /**
@@ -211,18 +237,20 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             props.remove(ESCAPE_DELIMITERS_KEY);
         }
 
+        // save `sink.properties.columns` parameter from options
+        this.columns = (String) props.get(COLUMNS_KEY);
         // add column key when fieldNames is not empty
         if (!props.containsKey(COLUMNS_KEY) && fieldNames != null && fieldNames.length > 0) {
-            String columns = Arrays.stream(fieldNames)
-                    .map(item -> String.format("`%s`", item.trim().replace("`", "")))
+            String columns = Arrays.stream(fieldNames).map(item -> String.format("`%s`", item.trim().replace("`", "")))
                     .collect(Collectors.joining(","));
             props.put(COLUMNS_KEY, columns);
         }
 
         // if enable batch delete, the columns must add tag '__DORIS_DELETE_SIGN__'
         String columns = (String) props.get(COLUMNS_KEY);
-        if (!columns.contains(DORIS_DELETE_SIGN) && enableBatchDelete()) {
-            props.put(COLUMNS_KEY, String.format("%s,%s", columns, DORIS_DELETE_SIGN));
+        if (columns != null && !columns.contains(DORIS_DELETE_SIGN) && enableBatchDelete()) {
+            columns = String.format("%s,%s", columns, DORIS_DELETE_SIGN);
+            props.put(COLUMNS_KEY, columns);
         }
     }
 
@@ -248,7 +276,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         dorisStreamLoad = new DorisStreamLoad(getBackend(), options.getUsername(), options.getPassword(), loadProps);
         if (!multipleSink) {
             this.jsonFormat = true;
-            handleStreamLoadProp();
+            //handleStreamLoadProp();
             this.fieldGetters = new RowData.FieldGetter[logicalTypes.length];
             for (int i = 0; i < logicalTypes.length; i++) {
                 fieldGetters[i] = RowData.createFieldGetter(logicalTypes[i], i);
@@ -265,11 +293,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         }
 
         if (multipleSink && StringUtils.isNotBlank(dynamicSchemaFormat)) {
-            jsonDynamicSchemaFormat =
-                    (JsonDynamicSchemaFormat) DynamicSchemaFormatFactory.getFormat(dynamicSchemaFormat);
+            jsonDynamicSchemaFormat = (JsonDynamicSchemaFormat) DynamicSchemaFormatFactory.getFormat(
+                    dynamicSchemaFormat);
         }
-        MetricOption metricOption = MetricOption.builder()
-                .withInlongLabels(inlongMetric)
+        MetricOption metricOption = MetricOption.builder().withInlongLabels(inlongMetric)
                 .withInlongAudit(auditHostAndPorts)
                 .withInitRecords(metricState != null ? metricState.getMetricValue(NUM_RECORDS_OUT) : 0L)
                 .withInitBytes(metricState != null ? metricState.getMetricValue(NUM_BYTES_OUT) : 0L)
@@ -394,6 +421,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 // Ignore ddl change for now
                 return;
             }
+
             String tableIdentifier;
             List<RowKind> rowKinds;
             JsonNode physicalData;
@@ -594,8 +622,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             StringBuilder sb = new StringBuilder();
             while (fieldNames.hasNext()) {
                 String item = fieldNames.next();
-                sb.append("`").append(item.trim()
-                        .replace("`", "")).append("`,");
+                sb.append("`").append(item.trim().replace("`", "")).append("`,");
             }
             if (enableBatchDelete()) {
                 sb.append(DORIS_DELETE_SIGN);
@@ -644,8 +671,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         }
         batchBytes = 0;
         size = 0;
-        LOG.info("Doris sink statistics: readInNum: {}, writeOutNum: {}, errorNum: {}, ddlNum: {}",
-                readInNum.get(), writeOutNum.get(), errorNum.get(), ddlNum.get());
+        LOG.info("Doris sink statistics: readInNum: {}, writeOutNum: {}, errorNum: {}, ddlNum: {}", readInNum.get(),
+                writeOutNum.get(), errorNum.get(), ddlNum.get());
         flushing = false;
     }
 
@@ -657,7 +684,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         String loadValue = null;
         RespContent respContent = null;
         try {
-            loadValue = OBJECT_MAPPER.writeValueAsString(values);
+            // support csv and json format
+            String format = executionOptions.getStreamLoadProp().getProperty(FORMAT_KEY, FORMAT_JSON_VALUE);
+            loadValue = serialize(values, format);
             respContent = load(tableIdentifier, loadValue);
             try {
                 if (null != metricData && null != respContent) {
@@ -707,6 +736,60 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         }
     }
 
+    /**
+     * format data to csv or json
+     *
+     * @param values
+     * @param format
+     * @return string
+     * @throws JsonProcessingException
+     */
+    private String serialize(List values, String format) throws JsonProcessingException {
+        if (FORMAT_CSV_VALUE.equalsIgnoreCase(format)) {
+            LOG.info("doris data format: {}", format);
+            // set columns, and format json data to csv
+            String columns = null;
+            StringBuilder csvData = new StringBuilder();
+            for (Object item : values) {
+                if (item instanceof Map) {
+                    Map<String, String> map = (Map<String, String>) item;
+                    Set<String> fieldNameSet = new LinkedHashSet<>(map.keySet());
+                    if (columns == null) {
+                        // when single table synchronizing, parameter `sink.properties.columns` in options may
+                        // contain hll or bitmap function.
+                        // columns: dt,id,name,province,os, pv=hll_hash(id)
+                        if (this.columns != null) {
+                            for (String fieldName : this.columns.split(",")) {
+                                if (fieldName.contains("=")) {
+                                    fieldNameSet.add(fieldName);
+                                }
+                            }
+                        }
+                        columns = StringUtils.join(fieldNameSet, ",");
+                        executionOptions.getStreamLoadProp().put(COLUMNS_KEY, columns);
+                    }
+                    int idx = 0;
+                    int len = map.values().size();
+                    for (String val : map.values()) {
+                        csvData.append(null == val ? "\\N" : val);
+                        if (idx++ < len - 1) {
+                            csvData.append(this.fieldDelimiter);
+                        }
+                    }
+                    csvData.append(this.lineDelimiter);
+                }
+            }
+            return csvData.toString();
+        } else {
+            // header columns doesn't need when json format
+            // Dynamic set COLUMNS_KEY for tableIdentifier every time for multiple sink scenario
+            if (multipleSink) {
+                executionOptions.getStreamLoadProp().put(COLUMNS_KEY, columnsMap.get(tableIdentifier));
+            }
+            return OBJECT_MAPPER.writeValueAsString(values);
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     private boolean hasRecords() {
         if (batchMap.isEmpty()) {
@@ -725,10 +808,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private RespContent load(String tableIdentifier, String result) throws IOException {
         String[] tableWithDb = tableIdentifier.split("\\.");
         RespContent respContent = null;
-        // Dynamic set COLUMNS_KEY for tableIdentifier every time for multiple sink scenario
-        if (multipleSink) {
-            executionOptions.getStreamLoadProp().put(COLUMNS_KEY, columnsMap.get(tableIdentifier));
-        }
         for (int i = 0; i <= executionOptions.getMaxRetries(); i++) {
             try {
                 respContent = dorisStreamLoad.load(tableWithDb[0], tableWithDb[1], result);
@@ -772,9 +851,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     public void initializeState(FunctionInitializationContext context) throws Exception {
         if (this.inlongMetric != null) {
             this.metricStateListState = context.getOperatorStateStore().getUnionListState(
-                    new ListStateDescriptor<>(
-                            INLONG_METRIC_STATE_NAME, TypeInformation.of(new TypeHint<MetricState>() {
-                            })));
+                    new ListStateDescriptor<>(INLONG_METRIC_STATE_NAME, TypeInformation.of(new TypeHint<MetricState>() {
+                    })));
         }
         if (context.isRestored()) {
             metricState = MetricStateUtils.restoreMetricState(metricStateListState,
@@ -847,8 +925,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             return this;
         }
 
-        public DorisDynamicSchemaOutputFormat.Builder setDynamicSchemaFormat(
-                String dynamicSchemaFormat) {
+        public DorisDynamicSchemaOutputFormat.Builder setDynamicSchemaFormat(String dynamicSchemaFormat) {
             this.dynamicSchemaFormat = dynamicSchemaFormat;
             return this;
         }
@@ -895,15 +972,17 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
         @SuppressWarnings({"rawtypes"})
         public DorisDynamicSchemaOutputFormat build() {
-            LogicalType[] logicalTypes = null;
             if (!multipleSink) {
-                logicalTypes = Arrays.stream(fieldDataTypes)
-                        .map(DataType::getLogicalType).toArray(LogicalType[]::new);
+                LogicalType[] logicalTypes = Arrays.stream(fieldDataTypes).map(DataType::getLogicalType)
+                        .toArray(LogicalType[]::new);
+
+                return new DorisDynamicSchemaOutputFormat(optionsBuilder.setTableIdentifier(tableIdentifier).build(),
+                        readOptions, executionOptions, tableIdentifier, logicalTypes, fieldNames, inlongMetric,
+                        auditHostAndPorts, multipleSink);
             }
-            return new DorisDynamicSchemaOutputFormat(
-                    optionsBuilder.setTableIdentifier(tableIdentifier).build(), readOptions, executionOptions,
-                    tableIdentifier, logicalTypes, fieldNames, dynamicSchemaFormat, databasePattern, tablePattern,
-                    ignoreSingleTableErrors, inlongMetric, auditHostAndPorts, multipleSink, dirtyOptions, dirtySink);
+            return new DorisDynamicSchemaOutputFormat(optionsBuilder.build(), readOptions, executionOptions,
+                    dynamicSchemaFormat, databasePattern, tablePattern, ignoreSingleTableErrors, inlongMetric,
+                    auditHostAndPorts, multipleSink);
         }
     }
 }

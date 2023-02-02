@@ -72,8 +72,8 @@ public class SourceRequest {
     @ApiModelProperty("Inlong cluster name")
     private String inlongClusterName;
 
-    @ApiModelProperty("Inlong cluster node tag")
-    private String inlongClusterNodeTag;
+    @ApiModelProperty("Inlong cluster node group for filtering stream source collect task")
+    private String inlongClusterNodeGroup;
 
     @ApiModelProperty("Data node name")
     private String dataNodeName;

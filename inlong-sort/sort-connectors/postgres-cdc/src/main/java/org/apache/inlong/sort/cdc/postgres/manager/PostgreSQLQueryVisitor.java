@@ -135,7 +135,7 @@ public class PostgreSQLQueryVisitor implements Serializable {
      *
      * @param query
      * @param args
-     * @return
+     * @return List
      * @throws ClassNotFoundException
      * @throws SQLException
      */

@@ -22,8 +22,10 @@ import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionProvider;
 import com.starrocks.connector.flink.manager.StarRocksQueryVisitor;
 import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.manager.StarRocksStreamLoadFailedException;
+import com.starrocks.connector.flink.row.sink.StarRocksDelimiterParser;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkSemantic;
+import com.starrocks.shade.com.alibaba.fastjson.JSON;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -42,6 +44,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.Histogram;
@@ -74,7 +77,7 @@ public class StarRocksSinkManager implements Serializable {
     private final StarRocksQueryVisitor starrocksQueryVisitor;
     private StarRocksStreamLoadVisitor starrocksStreamLoadVisitor;
     private final StarRocksSinkOptions sinkOptions;
-    final LinkedBlockingDeque<StarRocksSinkBufferEntity> flushQueue = new LinkedBlockingDeque<>(1);
+    final LinkedBlockingDeque<SinkBufferEntity> flushQueue = new LinkedBlockingDeque<>(1);
 
     private transient Counter totalFlushBytes;
     private transient Counter totalFlushRows;
@@ -109,7 +112,7 @@ public class StarRocksSinkManager implements Serializable {
     private static final String HISTOGRAM_WRITE_DATA_TIME_MS = "writeDataTimeMs";
     private static final String HISTOGRAM_LOAD_TIME_MS = "loadTimeMs";
 
-    private final Map<String, StarRocksSinkBufferEntity> bufferMap = new ConcurrentHashMap<>();
+    private final Map<String, SinkBufferEntity> bufferMap = new ConcurrentHashMap<>();
     private static final long FLUSH_QUEUE_POLL_TIMEOUT = 3000;
     private volatile boolean closed = false;
     private volatile boolean flushThreadAlive = false;
@@ -267,6 +270,47 @@ public class StarRocksSinkManager implements Serializable {
         }
     }
 
+    public final synchronized void writeRecords(String database, String table, List<Map<String, String>> records)
+            throws IOException {
+        checkFlushException();
+        try {
+            if (0 == records.size()) {
+                return;
+            }
+            String bufferKey = String.format("%s,%s", database, table);
+            SinkBufferEntity bufferEntity = bufferMap.computeIfAbsent(bufferKey,
+                    k -> new SinkBufferEntity(database, table, sinkOptions.getLabelPrefix()));
+            Map<String, String> head = records.get(0);
+            String columns = StringUtils.join(head.keySet(), ",");
+            bufferEntity.setColumns(columns);
+            String columnSeparator = StarRocksDelimiterParser.parse(
+                    sinkOptions.getSinkStreamLoadProperties().get("column_separator"), "\t");
+            if (StarRocksSinkOptions.StreamLoadFormat.CSV.equals(sinkOptions.getStreamLoadFormat())) {
+                for (Map<String, String> record : records) {
+                    StringBuilder sb = new StringBuilder();
+                    int idx = 0;
+                    int len = record.values().size();
+                    for (String val : record.values()) {
+                        sb.append(null == val ? "\\N" : val);
+                        if (idx++ < len - 1) {
+                            sb.append(columnSeparator);
+                        }
+                    }
+                    byte[] bts = sb.toString().getBytes(StandardCharsets.UTF_8);
+                    bufferEntity.addToBuffer(bts);
+                }
+            } else {
+                for (Map<String, String> record : records) {
+                    byte[] bts = JSON.toJSONString(record).getBytes(StandardCharsets.UTF_8);
+                    bufferEntity.addToBuffer(bts);
+                }
+            }
+            writeRecords(bufferEntity);
+        } catch (Exception e) {
+            throw new IOException("Writing records to StarRocks failed.", e);
+        }
+    }
+
     public final synchronized void writeRecords(String database, String table, String... records) throws IOException {
         checkFlushException();
         try {
@@ -274,15 +318,27 @@ public class StarRocksSinkManager implements Serializable {
                 return;
             }
             String bufferKey = String.format("%s,%s", database, table);
-            StarRocksSinkBufferEntity bufferEntity = bufferMap.computeIfAbsent(bufferKey,
-                    k -> new StarRocksSinkBufferEntity(database, table, sinkOptions.getLabelPrefix()));
+            SinkBufferEntity bufferEntity = bufferMap.computeIfAbsent(bufferKey,
+                    k -> new SinkBufferEntity(database, table, sinkOptions.getLabelPrefix()));
             for (String record : records) {
                 byte[] bts = record.getBytes(StandardCharsets.UTF_8);
                 bufferEntity.addToBuffer(bts);
             }
+            writeRecords(bufferEntity);
+        } catch (Exception e) {
+            throw new IOException("Writing records to StarRocks failed.", e);
+        }
+    }
+
+    public final synchronized void writeRecords(SinkBufferEntity bufferEntity) throws IOException {
+        checkFlushException();
+        try {
             if (StarRocksSinkSemantic.EXACTLY_ONCE.equals(sinkOptions.getSemantic())) {
                 return;
             }
+            String database = bufferEntity.getDatabase();
+            String table = bufferEntity.getTable();
+            String bufferKey = String.format("%s,%s", database, table);
             if (bufferEntity.getBatchCount() >= sinkOptions.getSinkMaxRows()
                     || bufferEntity.getBatchSize() >= sinkOptions.getSinkMaxBytes()) {
                 LOGGER.info(
@@ -345,13 +401,13 @@ public class StarRocksSinkManager implements Serializable {
         checkFlushException();
     }
 
-    public Map<String, StarRocksSinkBufferEntity> getBufferedBatchMap() {
-        Map<String, StarRocksSinkBufferEntity> clone = new HashMap<>();
+    public Map<String, SinkBufferEntity> getBufferedBatchMap() {
+        Map<String, SinkBufferEntity> clone = new HashMap<>();
         clone.putAll(bufferMap);
         return clone;
     }
 
-    public void setBufferedBatchMap(Map<String, StarRocksSinkBufferEntity> bufferMap) throws IOException {
+    public void setBufferedBatchMap(Map<String, SinkBufferEntity> bufferMap) throws IOException {
         if (!StarRocksSinkSemantic.EXACTLY_ONCE.equals(sinkOptions.getSemantic())) {
             return;
         }
@@ -365,7 +421,7 @@ public class StarRocksSinkManager implements Serializable {
      * @return false if met eof and flush thread will exit.
      */
     private boolean asyncFlush() throws Exception {
-        StarRocksSinkBufferEntity flushData = flushQueue.poll(FLUSH_QUEUE_POLL_TIMEOUT, TimeUnit.MILLISECONDS);
+        SinkBufferEntity flushData = flushQueue.poll(FLUSH_QUEUE_POLL_TIMEOUT, TimeUnit.MILLISECONDS);
         if (flushData == null || (0 == flushData.getBatchCount() && !flushData.EOF())) {
             return true;
         }
@@ -375,13 +431,18 @@ public class StarRocksSinkManager implements Serializable {
         stopScheduler();
 
         String tableIdentifier = flushData.getDatabase() + "." + flushData.getTable();
-
         if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy && ignoreWriteTables.contains(
                 tableIdentifier)) {
             LOGGER.warn(
                     String.format("Stop writing to db[%s] table[%s] because of former errors and stop_partial policy",
                             flushData.getDatabase(), flushData.getTable()));
             return true;
+        }
+
+        StarRocksSinkOptions.StreamLoadFormat format = sinkOptions.getStreamLoadFormat();
+        LOGGER.info("StarRocks data format: {}", format.name());
+        if (multipleSink && StarRocksSinkOptions.StreamLoadFormat.CSV.equals(format)) {
+            sinkOptions.getSinkStreamLoadProperties().put("columns", flushData.getColumns());
         }
 
         LOGGER.info(String.format("Async stream load: db[%s] table[%s] rows[%d] bytes[%d] label[%s].",
@@ -474,12 +535,12 @@ public class StarRocksSinkManager implements Serializable {
 
     private void waitAsyncFlushingDone() throws InterruptedException {
         // wait for previous flushings
-        offer(new StarRocksSinkBufferEntity(null, null, null));
-        offer(new StarRocksSinkBufferEntity(null, null, null));
+        offer(new SinkBufferEntity(null, null, null));
+        offer(new SinkBufferEntity(null, null, null));
         checkFlushException();
     }
 
-    void offer(StarRocksSinkBufferEntity bufferEntity) throws InterruptedException {
+    void offer(SinkBufferEntity bufferEntity) throws InterruptedException {
         if (!flushThreadAlive) {
             LOGGER.info(String.format("Flush thread already exit, ignore offer request for label[%s]",
                     bufferEntity.getLabel()));
@@ -499,7 +560,7 @@ public class StarRocksSinkManager implements Serializable {
 
     private void offerEOF() {
         try {
-            offer(new StarRocksSinkBufferEntity(null, null, null).asEOF());
+            offer(new SinkBufferEntity(null, null, null).asEOF());
         } catch (Exception e) {
             LOGGER.warn("Writing EOF failed.", e);
         }

@@ -134,6 +134,7 @@ public final class MonitorTextFile {
             } catch (Exception e) {
                 // set position 0 when split file
                 fileReaderOperator.position = 0;
+                fileReaderOperator.bytePosition = 0;
                 LOGGER.error(String.format("monitor file %s error, reset position to 0", file.getName()), e);
                 return;
             }
@@ -141,6 +142,7 @@ public final class MonitorTextFile {
             // if change symbolic links
             if (attributesAfter.isSymbolicLink() && !path.equals(currentPath)) {
                 fileReaderOperator.position = 0;
+                fileReaderOperator.bytePosition = 0;
                 path = currentPath;
             }
 
