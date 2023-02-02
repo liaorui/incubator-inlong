@@ -340,7 +340,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     }
 
     @Override
-    public synchronized void writeRecord(T row) {
+    public synchronized void writeRecord(T row) throws IOException {
         addBatch(row);
         boolean valid = (executionOptions.getBatchSize() > 0 && size >= executionOptions.getBatchSize())
                 || batchBytes >= executionOptions.getMaxBatchBytes();
@@ -399,7 +399,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
     }
 
-    private void addBatch(T row) {
+    private void addBatch(T row) throws IOException {
         readInNum.incrementAndGet();
         if (!multipleSink) {
             addSingle(row);
@@ -469,7 +469,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
     @SuppressWarnings({"unchecked"})
     private void addRow(RowKind rowKind, JsonNode rootNode, JsonNode physicalNode, JsonNode updateBeforeNode,
-            Map<String, String> physicalData, Map<String, String> updateBeforeData) {
+            Map<String, String> physicalData, Map<String, String> updateBeforeData) throws IOException {
+        String tableIdentifier = StringUtils.join(
+                jsonDynamicSchemaFormat.parse(rootNode, databasePattern), ".",
+                jsonDynamicSchemaFormat.parse(rootNode, tablePattern));
         switch (rowKind) {
             case INSERT:
             case UPDATE_AFTER:
