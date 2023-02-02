@@ -54,6 +54,7 @@ import org.apache.inlong.sort.base.format.JsonDynamicSchemaFormat;
 import org.apache.inlong.sort.base.metric.MetricOption;
 import org.apache.inlong.sort.base.metric.MetricState;
 import org.apache.inlong.sort.base.metric.sub.SinkTableMetricData;
+import org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy;
 import org.apache.inlong.sort.base.util.MetricStateUtils;
 import org.apache.inlong.sort.doris.model.RespContent;
 import org.apache.inlong.sort.doris.util.DorisParseUtils;
@@ -119,6 +120,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     @SuppressWarnings({"rawtypes"})
     private final Map<String, List> batchMap = new HashMap<>();
     private final Map<String, String> columnsMap = new HashMap<>();
+    /**
+     * data will not be submitted when table is in errorTables list
+     */
     private final List<String> errorTables = new ArrayList<>();
     private final DorisOptions options;
     private final DorisReadOptions readOptions;
@@ -156,6 +160,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private final LogicalType[] logicalTypes;
     private final DirtyOptions dirtyOptions = null;
     private @Nullable final DirtySink<Object> dirtySink = null;
+    private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
 
     public DorisDynamicSchemaOutputFormat(DorisOptions option,
             DorisReadOptions readOptions,
@@ -164,6 +169,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             String databasePattern,
             String tablePattern,
             boolean ignoreSingleTableErrors,
+            SchemaUpdateExceptionPolicy schemaUpdatePolicy,
             String inlongMetric,
             String auditHostAndPorts,
             boolean multipleSink) {
@@ -175,6 +181,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         this.databasePattern = databasePattern;
         this.tablePattern = tablePattern;
         this.ignoreSingleTableErrors = ignoreSingleTableErrors;
+        this.schemaUpdatePolicy = schemaUpdatePolicy;
         this.fieldNames = null;
         this.multipleSink = multipleSink;
         this.inlongMetric = inlongMetric;
@@ -199,7 +206,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         this.dynamicSchemaFormat = null;
         this.databasePattern = null;
         this.tablePattern = null;
-        this.ignoreSingleTableErrors = false;
+        this.ignoreSingleTableErrors = true;
+        this.schemaUpdatePolicy = null;
         this.fieldNames = fieldNames;
         this.multipleSink = multipleSink;
         this.inlongMetric = inlongMetric;
@@ -276,7 +284,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         dorisStreamLoad = new DorisStreamLoad(getBackend(), options.getUsername(), options.getPassword(), loadProps);
         if (!multipleSink) {
             this.jsonFormat = true;
-            //handleStreamLoadProp();
+            // handleStreamLoadProp();
             this.fieldGetters = new RowData.FieldGetter[logicalTypes.length];
             for (int i = 0; i < logicalTypes.length; i++) {
                 fieldGetters[i] = RowData.createFieldGetter(logicalTypes[i], i);
@@ -333,7 +341,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         if (!multipleSink || ex == null) {
             return false;
         }
-        if (!ignoreSingleTableErrors) {
+        if (!ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
             throw new RuntimeException("Writing records to streamload failed, tableIdentifier=" + tableIdentifier, ex);
         }
         return true;
@@ -384,7 +392,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 batchMap.putIfAbsent(tableIdentifier, mapData);
             } catch (Exception e) {
                 LOG.error(String.format("serialize error, raw data: %s", row), e);
-                handleDirtyData(row, DirtyType.SERIALIZE_ERROR, e);
+                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                    handleDirtyData(row, DirtyType.SERIALIZE_ERROR, e);
+                }
             }
         } else if (row instanceof String) {
             batchBytes += ((String) row).getBytes(StandardCharsets.UTF_8).length;
@@ -393,8 +403,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             batchMap.putIfAbsent(tableIdentifier, mapData);
         } else {
             LOG.error(String.format("The type of element should be 'RowData' or 'String' only., raw data: %s", row));
-            handleDirtyData(row, DirtyType.UNSUPPORTED_DATA_TYPE,
-                    new RuntimeException("The type of element should be 'RowData' or 'String' only."));
+            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                handleDirtyData(row, DirtyType.UNSUPPORTED_DATA_TYPE,
+                        new RuntimeException("The type of element should be 'RowData' or 'String' only."));
+            }
         }
 
     }
@@ -412,7 +424,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 rootNode = jsonDynamicSchemaFormat.deserialize(rowData.getBinary(0));
             } catch (Exception e) {
                 LOG.error(String.format("deserialize error, raw data: %s", new String(rowData.getBinary(0))), e);
-                handleDirtyData(new String(rowData.getBinary(0)), DirtyType.DESERIALIZE_ERROR, e);
+                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                    handleDirtyData(new String(rowData.getBinary(0)), DirtyType.DESERIALIZE_ERROR, e);
+                }
                 return;
             }
             boolean isDDL = jsonDynamicSchemaFormat.extractDDLFlag(rootNode);
@@ -446,7 +460,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 }
             } catch (Exception e) {
                 LOG.error(String.format("json parse error, raw data: %s", new String(rowData.getBinary(0))), e);
-                handleDirtyData(new String(rowData.getBinary(0)), DirtyType.JSON_PROCESS_ERROR, e);
+                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                    handleDirtyData(new String(rowData.getBinary(0)), DirtyType.JSON_PROCESS_ERROR, e);
+                }
                 return;
             }
             for (int i = 0; i < physicalDataList.size(); i++) {
@@ -462,8 +478,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
         } else {
             LOG.error(String.format("The type of element should be 'RowData' only, raw data: %s", row));
-            handleDirtyData(row, DirtyType.UNSUPPORTED_DATA_TYPE,
-                    new RuntimeException("The type of element should be 'RowData' only."));
+            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                handleDirtyData(row, DirtyType.UNSUPPORTED_DATA_TYPE,
+                        new RuntimeException("The type of element should be 'RowData' only."));
+            }
         }
     }
 
@@ -556,7 +574,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         try {
             rootNode = jsonDynamicSchemaFormat.deserialize(((RowData) dirtyData).getBinary(0));
         } catch (Exception ex) {
-            handleDirtyData(dirtyData, DirtyType.DESERIALIZE_ERROR, e);
+            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                handleDirtyData(dirtyData, DirtyType.DESERIALIZE_ERROR, e);
+            }
             return;
         }
 
@@ -713,26 +733,34 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             if (respContent != null && StringUtils.isNotBlank(respContent.getErrorURL())) {
                 flushExceptionMap.put(tableIdentifier, e);
                 errorNum.getAndAdd(values.size());
-                for (Object value : values) {
-                    try {
-                        handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
-                                DirtyType.BATCH_LOAD_ERROR, e);
-                    } catch (IOException ex) {
-                        if (!dirtyOptions.ignoreSideOutputErrors()) {
-                            throw new RuntimeException(ex);
-                        }
-                        LOG.warn("Dirty sink failed", ex);
-                    }
-                }
-                if (!ignoreSingleTableErrors) {
+
+                if (!ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
                     throw new RuntimeException(
                             String.format("Writing records to streamload of tableIdentifier:%s failed, the value: %s.",
                                     tableIdentifier, loadValue),
                             e);
                 }
-                errorTables.add(tableIdentifier);
-                LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future"
-                        + " because the option 'sink.multiple.ignore-single-table-errors' is 'true'", tableIdentifier);
+                if (ignoreSingleTableErrors || SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
+                    errorTables.add(tableIdentifier);
+                    LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future"
+                            + " because the option 'sink.multiple.ignore-single-table-errors' is 'true' "
+                            + "or 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'", tableIdentifier);
+                    return;
+                }
+                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                    // archive dirty data when 'sink.multiple.schema-update.policy' is 'LOG_WITH_IGNORE'
+                    for (Object value : values) {
+                        try {
+                            handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
+                                    DirtyType.BATCH_LOAD_ERROR, e);
+                        } catch (IOException ex) {
+                            if (!dirtyOptions.ignoreSideOutputErrors()) {
+                                throw new RuntimeException(ex);
+                            }
+                            LOG.warn("Dirty sink failed", ex);
+                        }
+                    }
+                }
             } else {
                 throw new RuntimeException(e);
             }
@@ -875,6 +903,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         private String databasePattern;
         private String tablePattern;
         private boolean ignoreSingleTableErrors;
+        private SchemaUpdateExceptionPolicy schemaUpdatePolicy;
         private boolean multipleSink;
         private String inlongMetric;
         private String auditHostAndPorts;
@@ -973,6 +1002,12 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             return this;
         }
 
+        public DorisDynamicSchemaOutputFormat.Builder setSchemaUpdatePolicy(
+                SchemaUpdateExceptionPolicy schemaUpdatePolicy) {
+            this.schemaUpdatePolicy = schemaUpdatePolicy;
+            return this;
+        }
+
         @SuppressWarnings({"rawtypes"})
         public DorisDynamicSchemaOutputFormat build() {
             if (!multipleSink) {
@@ -980,12 +1015,26 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                         .toArray(LogicalType[]::new);
 
                 return new DorisDynamicSchemaOutputFormat(optionsBuilder.setTableIdentifier(tableIdentifier).build(),
-                        readOptions, executionOptions, tableIdentifier, logicalTypes, fieldNames, inlongMetric,
-                        auditHostAndPorts, multipleSink);
+                        readOptions,
+                        executionOptions,
+                        tableIdentifier,
+                        logicalTypes,
+                        fieldNames,
+                        inlongMetric,
+                        auditHostAndPorts,
+                        multipleSink);
             }
-            return new DorisDynamicSchemaOutputFormat(optionsBuilder.build(), readOptions, executionOptions,
-                    dynamicSchemaFormat, databasePattern, tablePattern, ignoreSingleTableErrors, inlongMetric,
-                    auditHostAndPorts, multipleSink);
+            return new DorisDynamicSchemaOutputFormat(optionsBuilder.build(),
+                    readOptions,
+                    executionOptions,
+                    dynamicSchemaFormat,
+                    databasePattern,
+                    tablePattern,
+                    ignoreSingleTableErrors,
+                    schemaUpdatePolicy,
+                    inlongMetric,
+                    auditHostAndPorts,
+                    multipleSink);
         }
     }
 }

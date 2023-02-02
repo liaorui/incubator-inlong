@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy;
 
 import static org.apache.doris.flink.cfg.ConfigurationOptions.DORIS_BATCH_SIZE_DEFAULT;
 import static org.apache.doris.flink.cfg.ConfigurationOptions.DORIS_DESERIALIZE_ARROW_ASYNC_DEFAULT;
@@ -62,6 +63,7 @@ import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_DATABASE_PATTE
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_ENABLE;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_FORMAT;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_IGNORE_SINGLE_TABLE_ERRORS;
+import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_SCHEMA_UPDATE_POLICY;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TABLE_PATTERN;
 
 /**
@@ -214,6 +216,7 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
         options.add(SINK_MULTIPLE_TABLE_PATTERN);
         options.add(SINK_MULTIPLE_ENABLE);
         options.add(SINK_MULTIPLE_IGNORE_SINGLE_TABLE_ERRORS);
+        options.add(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
         options.add(INLONG_METRIC);
         options.add(INLONG_AUDIT);
         options.add(FactoryUtil.SINK_PARALLELISM);
@@ -300,6 +303,7 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
         String tablePattern = helper.getOptions().getOptional(SINK_MULTIPLE_TABLE_PATTERN).orElse(null);
         boolean multipleSink = helper.getOptions().get(SINK_MULTIPLE_ENABLE);
         boolean ignoreSingleTableErrors = helper.getOptions().get(SINK_MULTIPLE_IGNORE_SINGLE_TABLE_ERRORS);
+        SchemaUpdateExceptionPolicy schemaUpdatePolicy = helper.getOptions().get(SINK_MULTIPLE_SCHEMA_UPDATE_POLICY);
         String sinkMultipleFormat = helper.getOptions().getOptional(SINK_MULTIPLE_FORMAT).orElse(null);
         validateSinkMultiple(physicalSchema.toPhysicalRowDataType(),
                 multipleSink, sinkMultipleFormat, databasePattern, tablePattern);
@@ -314,9 +318,18 @@ public final class DorisDynamicTableFactory implements DynamicTableSourceFactory
                 getDorisOptions(helper.getOptions()),
                 getDorisReadOptions(helper.getOptions()),
                 getDorisExecutionOptions(helper.getOptions(), streamLoadProp),
-                physicalSchema, multipleSink, sinkMultipleFormat, databasePattern,
-                tablePattern, ignoreSingleTableErrors, inlongMetric, auditHostAndPorts, parallelism,
-                dirtyOptions, dirtySink);
+                physicalSchema,
+                multipleSink,
+                sinkMultipleFormat,
+                databasePattern,
+                tablePattern,
+                ignoreSingleTableErrors,
+                schemaUpdatePolicy,
+                inlongMetric,
+                auditHostAndPorts,
+                parallelism,
+                dirtyOptions,
+                dirtySink);
     }
 
     private void validateSinkMultiple(DataType physicalDataType, boolean multipleSink, String sinkMultipleFormat,
