@@ -120,6 +120,7 @@ public class DorisStreamLoad implements Serializable {
 
         try {
             final String loadUrlStr = String.format(LOAD_URL_PATTERN, hostPort, db, tbl);
+            LOG.info("Streamload Url:{}", loadUrlStr);
             HttpPut put = new HttpPut(loadUrlStr);
             put.setHeader(HttpHeaders.EXPECT, "100-continue");
             put.setHeader(HttpHeaders.AUTHORIZATION, this.authEncoding);
