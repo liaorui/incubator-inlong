@@ -140,6 +140,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private final String tablePattern;
     private final String dynamicSchemaFormat;
     private final boolean ignoreSingleTableErrors;
+    private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
     private long batchBytes = 0L;
     private int size;
     private DorisStreamLoad dorisStreamLoad;
@@ -158,37 +159,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private String lineDelimiter;
     private String columns;
     private final LogicalType[] logicalTypes;
-    private final DirtyOptions dirtyOptions = null;
-    private @Nullable final DirtySink<Object> dirtySink = null;
-    private final SchemaUpdateExceptionPolicy schemaUpdatePolicy;
-
-    public DorisDynamicSchemaOutputFormat(DorisOptions option,
-            DorisReadOptions readOptions,
-            DorisExecutionOptions executionOptions,
-            String dynamicSchemaFormat,
-            String databasePattern,
-            String tablePattern,
-            boolean ignoreSingleTableErrors,
-            SchemaUpdateExceptionPolicy schemaUpdatePolicy,
-            String inlongMetric,
-            String auditHostAndPorts,
-            boolean multipleSink) {
-        this.options = option;
-        this.readOptions = readOptions;
-        this.executionOptions = executionOptions;
-        this.tableIdentifier = null;
-        this.dynamicSchemaFormat = dynamicSchemaFormat;
-        this.databasePattern = databasePattern;
-        this.tablePattern = tablePattern;
-        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
-        this.schemaUpdatePolicy = schemaUpdatePolicy;
-        this.fieldNames = null;
-        this.multipleSink = multipleSink;
-        this.inlongMetric = inlongMetric;
-        this.auditHostAndPorts = auditHostAndPorts;
-        this.logicalTypes = new LogicalType[0];
-        handleStreamLoadProp();
-    }
+    private final DirtyOptions dirtyOptions;
+    private @Nullable final DirtySink<Object> dirtySink;
 
     public DorisDynamicSchemaOutputFormat(DorisOptions option,
             DorisReadOptions readOptions,
@@ -196,23 +168,33 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             String tableIdentifier,
             LogicalType[] logicalTypes,
             String[] fieldNames,
+            String dynamicSchemaFormat,
+            String databasePattern,
+            String tablePattern,
+            boolean ignoreSingleTableErrors,
+            SchemaUpdateExceptionPolicy schemaUpdatePolicy,
             String inlongMetric,
             String auditHostAndPorts,
-            boolean multipleSink) {
+            boolean multipleSink,
+            DirtyOptions dirtyOptions,
+            @Nullable DirtySink<Object> dirtySink) {
         this.options = option;
         this.readOptions = readOptions;
         this.executionOptions = executionOptions;
         this.tableIdentifier = tableIdentifier;
-        this.dynamicSchemaFormat = null;
-        this.databasePattern = null;
-        this.tablePattern = null;
-        this.ignoreSingleTableErrors = true;
-        this.schemaUpdatePolicy = null;
         this.fieldNames = fieldNames;
         this.multipleSink = multipleSink;
         this.inlongMetric = inlongMetric;
         this.auditHostAndPorts = auditHostAndPorts;
         this.logicalTypes = logicalTypes;
+        this.dynamicSchemaFormat = dynamicSchemaFormat;
+        this.databasePattern = databasePattern;
+        this.tablePattern = tablePattern;
+        this.ignoreSingleTableErrors = ignoreSingleTableErrors;
+        this.schemaUpdatePolicy = schemaUpdatePolicy;
+        this.dirtyOptions = dirtyOptions;
+        this.dirtySink = dirtySink;
+
         handleStreamLoadProp();
     }
 
@@ -1010,23 +992,18 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
         @SuppressWarnings({"rawtypes"})
         public DorisDynamicSchemaOutputFormat build() {
+            LogicalType[] logicalTypes = null;
             if (!multipleSink) {
-                LogicalType[] logicalTypes = Arrays.stream(fieldDataTypes).map(DataType::getLogicalType)
-                        .toArray(LogicalType[]::new);
-
-                return new DorisDynamicSchemaOutputFormat(optionsBuilder.setTableIdentifier(tableIdentifier).build(),
-                        readOptions,
-                        executionOptions,
-                        tableIdentifier,
-                        logicalTypes,
-                        fieldNames,
-                        inlongMetric,
-                        auditHostAndPorts,
-                        multipleSink);
+                logicalTypes = Arrays.stream(fieldDataTypes)
+                        .map(DataType::getLogicalType).toArray(LogicalType[]::new);
             }
-            return new DorisDynamicSchemaOutputFormat(optionsBuilder.build(),
+            return new DorisDynamicSchemaOutputFormat(
+                    optionsBuilder.setTableIdentifier(tableIdentifier).build(),
                     readOptions,
                     executionOptions,
+                    tableIdentifier,
+                    logicalTypes,
+                    fieldNames,
                     dynamicSchemaFormat,
                     databasePattern,
                     tablePattern,
@@ -1034,7 +1011,9 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                     schemaUpdatePolicy,
                     inlongMetric,
                     auditHostAndPorts,
-                    multipleSink);
+                    multipleSink,
+                    dirtyOptions,
+                    dirtySink);
         }
     }
 }
