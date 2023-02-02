@@ -20,7 +20,6 @@ package org.apache.inlong.sort.starrocks.manager;
 import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionOptions;
 import com.starrocks.connector.flink.connection.StarRocksJdbcConnectionProvider;
 import com.starrocks.connector.flink.manager.StarRocksQueryVisitor;
-import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
 import com.starrocks.connector.flink.manager.StarRocksStreamLoadFailedException;
 import com.starrocks.connector.flink.row.sink.StarRocksDelimiterParser;
 import com.starrocks.connector.flink.table.sink.StarRocksSinkOptions;
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -270,7 +270,12 @@ public class StarRocksSinkManager implements Serializable {
         }
     }
 
-    public final synchronized void writeRecords(String database, String table, List<Map<String, String>> records)
+    public final synchronized void writeRecords(String database,
+            String table,
+            List<Map<String, String>> records,
+            String dirtyLogTag,
+            String dirtyInditify,
+            String dirtyLabel)
             throws IOException {
         checkFlushException();
         try {
@@ -283,6 +288,10 @@ public class StarRocksSinkManager implements Serializable {
             Map<String, String> head = records.get(0);
             String columns = StringUtils.join(head.keySet(), ",");
             bufferEntity.setColumns(columns);
+            bufferEntity.setDirtyLogTag(dirtyLogTag);
+            bufferEntity.setDirtyInditify(dirtyInditify);
+            bufferEntity.setDirtyLabel(dirtyLabel);
+
             String columnSeparator = StarRocksDelimiterParser.parse(
                     sinkOptions.getSinkStreamLoadProperties().get("column_separator"), "\t");
             if (StarRocksSinkOptions.StreamLoadFormat.CSV.equals(sinkOptions.getStreamLoadFormat())) {
@@ -320,6 +329,10 @@ public class StarRocksSinkManager implements Serializable {
             String bufferKey = String.format("%s,%s", database, table);
             SinkBufferEntity bufferEntity = bufferMap.computeIfAbsent(bufferKey,
                     k -> new SinkBufferEntity(database, table, sinkOptions.getLabelPrefix()));
+            bufferEntity.setDirtyLogTag(dirtySinkHelper.getDirtyOptions().getLogTag());
+            bufferEntity.setDirtyInditify(dirtySinkHelper.getDirtyOptions().getIdentifier());
+            bufferEntity.setDirtyLabel(dirtySinkHelper.getDirtyOptions().getLabels());
+
             for (String record : records) {
                 byte[] bts = record.getBytes(StandardCharsets.UTF_8);
                 bufferEntity.addToBuffer(bts);
@@ -508,23 +521,37 @@ public class StarRocksSinkManager implements Serializable {
         return true;
     }
 
-    private void handleDirtyData(StarRocksSinkBufferEntity flushData, Exception e) throws JsonProcessingException {
+    private void handleDirtyData(SinkBufferEntity flushData, Exception e) throws JsonProcessingException {
         // archive dirty data
         if (StarRocksSinkOptions.StreamLoadFormat.CSV.equals(sinkOptions.getStreamLoadFormat())) {
+            String columnSeparator = StarRocksDelimiterParser.parse(
+                    sinkOptions.getSinkStreamLoadProperties().get("column_separator"), "\t");
+            String[] col = flushData.getColumns().split(",");
+            int len = col.length;
             for (byte[] row : flushData.getBuffer()) {
-                dirtySinkHelper.invokeMultiple(
-                        flushData.getDatabase() + "." + flushData.getTable(),
-                        new String(row, StandardCharsets.UTF_8),
-                        DirtyType.BATCH_LOAD_ERROR, e,
-                        sinkMultipleFormat);
+                Map<String, String> jsonData = new LinkedHashMap<>(16);
+                // convert csv to json
+                String[] values = new String(row, StandardCharsets.UTF_8).split(columnSeparator);
+                for (int i = 0; i < len && i < values.length; i++) {
+                    jsonData.put(col[i], values[i]);
+                }
+                dirtySinkHelper.invoke(
+                        OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(jsonData)),
+                        DirtyType.BATCH_LOAD_ERROR,
+                        flushData.getDirtyLabel(),
+                        flushData.getDirtyLogTag(),
+                        flushData.getDirtyInditify(),
+                        e);
             }
         } else if (StarRocksSinkOptions.StreamLoadFormat.JSON.equals(sinkOptions.getStreamLoadFormat())) {
             for (byte[] row : flushData.getBuffer()) {
-                dirtySinkHelper.invokeMultiple(
-                        flushData.getDatabase() + "." + flushData.getTable(),
-                        new String(row, StandardCharsets.UTF_8),
-                        DirtyType.BATCH_LOAD_ERROR, e,
-                        sinkMultipleFormat);
+                dirtySinkHelper.invoke(
+                        OBJECT_MAPPER.readTree(new String(row, StandardCharsets.UTF_8)),
+                        DirtyType.BATCH_LOAD_ERROR,
+                        flushData.getDirtyLabel(),
+                        flushData.getDirtyLogTag(),
+                        flushData.getDirtyInditify(),
+                        e);
             }
         }
 
@@ -623,7 +650,7 @@ public class StarRocksSinkManager implements Serializable {
                             + Arrays.asList(flinkSchema.getFieldNames()).stream().collect(Collectors.joining(","))
                             + "\n realTab[" + rows.size() + "]:"
                             + rows.stream().map((r) -> String.valueOf(r.get("COLUMN_NAME")))
-                                    .collect(Collectors.joining(",")));
+                            .collect(Collectors.joining(",")));
         }
         List<TableColumn> flinkCols = flinkSchema.getTableColumns();
         for (int i = 0; i < rows.size(); i++) {
@@ -632,7 +659,7 @@ public class StarRocksSinkManager implements Serializable {
             List<TableColumn> matchedFlinkCols = flinkCols.stream()
                     .filter(col -> col.getName().toLowerCase().equals(starrocksField)
                             && (!typesMap.containsKey(starrocksType) || typesMap.get(starrocksType)
-                                    .contains(col.getType().getLogicalType().getTypeRoot())))
+                            .contains(col.getType().getLogicalType().getTypeRoot())))
                     .collect(Collectors.toList());
             if (matchedFlinkCols.isEmpty()) {
                 throw new IllegalArgumentException("Fields name or type mismatch for:" + starrocksField);

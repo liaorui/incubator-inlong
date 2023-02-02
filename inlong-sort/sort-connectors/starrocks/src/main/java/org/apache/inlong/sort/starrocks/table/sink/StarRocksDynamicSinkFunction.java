@@ -248,6 +248,10 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
             }
             String databaseName = jsonDynamicSchemaFormat.parse(rootNode, databasePattern);
             String tableName = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
+            String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode, dirtySinkHelper.getDirtyOptions().getLogTag());
+            String dirtyIndentify = jsonDynamicSchemaFormat.parse(rootNode,
+                    dirtySinkHelper.getDirtyOptions().getIdentifier());
+            String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode, dirtySinkHelper.getDirtyOptions().getLabels());
 
             List<RowKind> rowKinds = jsonDynamicSchemaFormat.opType2RowKind(
                     jsonDynamicSchemaFormat.getOpType(rootNode));
@@ -284,7 +288,7 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
                     records.add(record);
                 }
             }
-            sinkManager.writeRecords(databaseName, tableName, records);
+            sinkManager.writeRecords(databaseName, tableName, records, dirtyLogTag, dirtyIndentify, dirtyLabel);
         } else {
             String record = serializer.serialize(rowTransformer.transform(value, sinkOptions.supportUpsertDelete()));
             sinkManager.writeRecords(sinkOptions.getDatabaseName(), sinkOptions.getTableName(), record);

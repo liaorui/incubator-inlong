@@ -612,7 +612,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
         }
         try {
-            metricData.outputDirtyMetricsWithEstimate(database, table, 1, content.getBytes(StandardCharsets.UTF_8).length);
+            metricData.outputDirtyMetricsWithEstimate(database, table, 1,
+                    content.getBytes(StandardCharsets.UTF_8).length);
         } catch (Exception ex) {
             metricData.invokeDirty(1, dirtyData.toString().getBytes(StandardCharsets.UTF_8).length);
         }

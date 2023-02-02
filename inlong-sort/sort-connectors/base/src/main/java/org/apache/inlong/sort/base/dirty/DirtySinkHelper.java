@@ -72,11 +72,27 @@ public class DirtySinkHelper<T> implements Serializable {
 
     /**
      * Dirty data sink
+     *
      * @param dirtyData The dirty data
      * @param dirtyType The dirty type {@link DirtyType}
      * @param e The cause of dirty data
      */
     public void invoke(T dirtyData, DirtyType dirtyType, Throwable e) {
+        invoke(dirtyData, dirtyType, dirtyOptions.getLabels(), dirtyOptions.getLogTag(), dirtyOptions.getIdentifier(),
+                e);
+    }
+
+    /**
+     * Dirty data sink
+     *
+     * @param dirtyData The dirty data
+     * @param dirtyType The dirty type {@link DirtyType}
+     * @param label The dirty label
+     * @param logTag The dirty logTag
+     * @param identifier The dirty identifier
+     * @param e The cause of dirty data
+     */
+    public void invoke(T dirtyData, DirtyType dirtyType, String label, String logTag, String identifier, Throwable e) {
         if (!dirtyOptions.ignoreDirty()) {
             RuntimeException ex;
             if (e instanceof RuntimeException) {
@@ -91,10 +107,10 @@ public class DirtySinkHelper<T> implements Serializable {
             try {
                 builder.setData(dirtyData)
                         .setDirtyType(dirtyType)
-                        .setLabels(dirtyOptions.getLabels())
-                        .setLogTag(dirtyOptions.getLogTag())
+                        .setLabels(label)
+                        .setLogTag(logTag)
                         .setDirtyMessage(e.getMessage())
-                        .setIdentifier(dirtyOptions.getIdentifier());
+                        .setIdentifier(identifier);
                 dirtySink.invoke(builder.build());
             } catch (Exception ex) {
                 if (!dirtyOptions.ignoreSideOutputErrors()) {

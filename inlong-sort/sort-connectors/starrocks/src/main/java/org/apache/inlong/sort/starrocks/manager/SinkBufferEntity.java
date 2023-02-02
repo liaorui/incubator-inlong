@@ -24,6 +24,9 @@ import com.starrocks.connector.flink.manager.StarRocksSinkBufferEntity;
  */
 public class SinkBufferEntity extends StarRocksSinkBufferEntity {
 
+    private String dirtyLogTag;
+    private String dirtyLabel;
+    private String dirtyInditify;
     private String columns;
 
     public SinkBufferEntity(String database, String table, String labelPrefix) {
@@ -36,6 +39,30 @@ public class SinkBufferEntity extends StarRocksSinkBufferEntity {
 
     public void setColumns(String columns) {
         this.columns = columns;
+    }
+
+    public String getDirtyLogTag() {
+        return dirtyLogTag;
+    }
+
+    public void setDirtyLogTag(String dirtyLogTag) {
+        this.dirtyLogTag = dirtyLogTag;
+    }
+
+    public String getDirtyLabel() {
+        return dirtyLabel;
+    }
+
+    public void setDirtyLabel(String dirtyLabel) {
+        this.dirtyLabel = dirtyLabel;
+    }
+
+    public String getDirtyInditify() {
+        return dirtyInditify;
+    }
+
+    public void setDirtyInditify(String dirtyInditify) {
+        this.dirtyInditify = dirtyInditify;
     }
 
     @Override
