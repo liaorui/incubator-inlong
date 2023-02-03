@@ -539,8 +539,11 @@ public class FlinkSink {
         private SingleOutputStreamOperator<Void> appendCommitter(SingleOutputStreamOperator<WriteResult> writerStream) {
             IcebergProcessOperator<WriteResult, Void> filesCommitter = new IcebergProcessOperator<>(
                     new IcebergSingleFileCommiter(
-                            TableIdentifier.of(table.name()), tableLoader, flinkWriteConf.overwriteMode(),
-                            actionProvider, tableOptions));
+                            TableIdentifier.of(table.name()),
+                            tableLoader,
+                            flinkWriteConf.overwriteMode(),
+                            actionProvider,
+                            tableOptions));
             SingleOutputStreamOperator<Void> committerStream = writerStream
                     .transform(operatorName(ICEBERG_FILES_COMMITTER_NAME), Types.VOID, filesCommitter)
                     .setParallelism(1)
@@ -553,9 +556,14 @@ public class FlinkSink {
 
         private SingleOutputStreamOperator<Void> appendMultipleCommitter(
                 SingleOutputStreamOperator<MultipleWriteResult> writerStream) {
-            IcebergProcessOperator<MultipleWriteResult, Void> multipleFilesCommiter =
-                    new IcebergProcessOperator<>(new IcebergMultipleFilesCommiter(catalogLoader,
-                            flinkWriteConf.overwriteMode(), actionProvider, tableOptions));
+            boolean overwrite = Boolean.valueOf(
+                    writeOptions.getOrDefault(FlinkWriteOptions.OVERWRITE_MODE.key(), "true"));
+            IcebergProcessOperator<MultipleWriteResult, Void> multipleFilesCommiter = new IcebergProcessOperator<>(
+                    new IcebergMultipleFilesCommiter(
+                            catalogLoader,
+                            overwrite,
+                            actionProvider,
+                            tableOptions));
             SingleOutputStreamOperator<Void> committerStream = writerStream
                     .transform(operatorName(ICEBERG_MULTIPLE_FILES_COMMITTER_NAME), Types.VOID, multipleFilesCommiter)
                     .setParallelism(1)
