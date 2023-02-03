@@ -676,7 +676,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             return;
         }
         String loadValue = null;
-        RespContent respContent = null;
+        RespContent respContent;
         try {
             // support csv and json format
             String format = executionOptions.getStreamLoadProp().getProperty(FORMAT_KEY, FORMAT_JSON_VALUE);
@@ -731,6 +731,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                     }
                 }
             }
+
+            values.clear();
         }
     }
 
