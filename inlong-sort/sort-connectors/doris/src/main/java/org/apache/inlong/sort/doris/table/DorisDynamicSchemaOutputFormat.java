@@ -317,7 +317,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
     private boolean checkFlushException(String tableIdentifier) {
         Exception ex = flushExceptionMap.get(tableIdentifier);
-        if (!multipleSink || ex == null) {
+        if (!multipleSink || ex == null || SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
             return false;
         }
         if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
