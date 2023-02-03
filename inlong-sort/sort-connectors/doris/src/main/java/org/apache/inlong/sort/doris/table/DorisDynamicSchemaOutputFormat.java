@@ -471,12 +471,12 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         String table = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
         String tableIdentifier = StringUtils.join(database, ".", table);
         DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
-        String dirtyLabel = DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null,
-                new String[]{database, table});
-        String dirtyLogTag = DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null,
-                new String[]{database, table});
-        String dirtyIdentifier = DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null,
-                new String[]{database, table});
+        String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null));
+        String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null));
+        String dirtyIdentifier = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null));
         physicalData.put(DIRTY_LOG_TAG, dirtyLogTag);
         physicalData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
         physicalData.put(DIRTY_LABEL, dirtyLabel);

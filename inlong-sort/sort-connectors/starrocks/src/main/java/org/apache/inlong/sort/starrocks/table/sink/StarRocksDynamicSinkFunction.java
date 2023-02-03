@@ -252,12 +252,12 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
             String tableName = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
 
             DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
-            String dirtyLogTag = DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR,
-                    null, new String[]{databaseName, tableName});
-            String dirtyIdentify = DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(),
-                    DirtyType.BATCH_LOAD_ERROR, null, new String[]{databaseName, tableName});
-            String dirtyLabel = DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null,
-                    new String[]{databaseName, tableName});
+            String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode,
+                    DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null));
+            String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode,
+                    DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null));
+            String dirtyIdentify = jsonDynamicSchemaFormat.parse(rootNode,
+                    DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null));
 
             List<RowKind> rowKinds = jsonDynamicSchemaFormat.opType2RowKind(
                     jsonDynamicSchemaFormat.getOpType(rootNode));
