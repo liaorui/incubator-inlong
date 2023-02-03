@@ -707,7 +707,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         batchBytes = 0;
         size = 0;
         LOG.info("Doris sink statistics: readInNum: {}, writeOutNum: {}, errorNum: {}, ddlNum: {}", readInNum.get(),
-                writeOutNum.get(), errorNum.get(), ddlNum.get());
+                writeOutNum.get(), readInNum.get() - writeOutNum.get(), ddlNum.get());
         flushing = false;
     }
 
@@ -741,8 +741,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             values.clear();
         } catch (Exception e) {
             LOG.error(String.format("Flush table: %s error", tableIdentifier), e);
-            // Makesure it is a dirty data
             flushExceptionMap.put(tableIdentifier, e);
+            // may count repeatedly
             errorNum.getAndAdd(values.size());
 
             if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {

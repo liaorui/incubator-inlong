@@ -650,7 +650,7 @@ public class StarRocksSinkManager implements Serializable {
                             + Arrays.asList(flinkSchema.getFieldNames()).stream().collect(Collectors.joining(","))
                             + "\n realTab[" + rows.size() + "]:"
                             + rows.stream().map((r) -> String.valueOf(r.get("COLUMN_NAME")))
-                            .collect(Collectors.joining(",")));
+                                    .collect(Collectors.joining(",")));
         }
         List<TableColumn> flinkCols = flinkSchema.getTableColumns();
         for (int i = 0; i < rows.size(); i++) {
@@ -659,7 +659,7 @@ public class StarRocksSinkManager implements Serializable {
             List<TableColumn> matchedFlinkCols = flinkCols.stream()
                     .filter(col -> col.getName().toLowerCase().equals(starrocksField)
                             && (!typesMap.containsKey(starrocksType) || typesMap.get(starrocksType)
-                            .contains(col.getType().getLogicalType().getTypeRoot())))
+                                    .contains(col.getType().getLogicalType().getTypeRoot())))
                     .collect(Collectors.toList());
             if (matchedFlinkCols.isEmpty()) {
                 throw new IllegalArgumentException("Fields name or type mismatch for:" + starrocksField);
