@@ -713,7 +713,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                 errorTables.add(tableIdentifier);
                 LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
-                                + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                        + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
                         tableIdentifier);
                 return;
             }
