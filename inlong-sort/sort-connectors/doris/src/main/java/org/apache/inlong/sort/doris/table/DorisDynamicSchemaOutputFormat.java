@@ -371,7 +371,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 batchMap.putIfAbsent(tableIdentifier, mapData);
             } catch (Exception e) {
                 LOG.error(String.format("serialize error, raw data: %s", row), e);
-                if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                if (multipleSink && SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
                     handleDirtyData(row, DirtyType.SERIALIZE_ERROR, e);
                 }
             }
@@ -382,7 +382,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             batchMap.putIfAbsent(tableIdentifier, mapData);
         } else {
             LOG.error(String.format("The type of element should be 'RowData' or 'String' only., raw data: %s", row));
-            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+            if (multipleSink && SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
                 handleDirtyData(row, DirtyType.UNSUPPORTED_DATA_TYPE,
                         new RuntimeException("The type of element should be 'RowData' or 'String' only."));
             }
@@ -704,20 +704,20 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             // may count repeatedly
             errorNum.getAndAdd(values.size());
 
-            if (SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
+            if (multipleSink && SchemaUpdateExceptionPolicy.THROW_WITH_STOP == schemaUpdatePolicy) {
                 throw new RuntimeException(
                         String.format("Writing records to streamload of tableIdentifier:%s failed, the value: %s.",
                                 tableIdentifier, loadValue),
                         e);
             }
-            if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
+            if (multipleSink && SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                 errorTables.add(tableIdentifier);
                 LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
                                 + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
                         tableIdentifier);
                 return;
             }
-            if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+            if (multipleSink && SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
                 // archive dirty data when 'sink.multiple.schema-update.policy' is 'LOG_WITH_IGNORE'
                 for (Object value : values) {
                     try {
