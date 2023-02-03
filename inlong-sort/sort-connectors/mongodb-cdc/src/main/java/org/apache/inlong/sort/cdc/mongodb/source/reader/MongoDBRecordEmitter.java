@@ -28,15 +28,18 @@ import static com.ververica.cdc.connectors.mongodb.source.utils.MongoRecordUtils
 import com.ververica.cdc.connectors.base.source.meta.offset.Offset;
 import com.ververica.cdc.connectors.base.source.meta.offset.OffsetFactory;
 import com.ververica.cdc.connectors.base.source.reader.IncrementalSourceReader;
+import com.ververica.cdc.connectors.mongodb.internal.MongoDBEnvelope;
 import com.ververica.cdc.connectors.mongodb.source.offset.ChangeStreamOffset;
-import java.nio.charset.StandardCharsets;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.flink.util.Collector;
+import org.apache.inlong.sort.base.enums.ReadPhase;
 import org.apache.inlong.sort.cdc.mongodb.debezium.DebeziumDeserializationSchema;
+import org.apache.inlong.sort.cdc.mongodb.debezium.utils.RecordUtils;
 import org.apache.inlong.sort.cdc.mongodb.source.meta.split.SourceSplitState;
 import org.apache.inlong.sort.cdc.mongodb.source.meta.split.StreamSplitState;
 import org.apache.inlong.sort.cdc.mongodb.source.metrics.InlongSourceReaderMetrics;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -85,8 +88,16 @@ public final class MongoDBRecordEmitter<T> extends IncrementalSourceRecordEmitte
 
                         @Override
                         public void collect(final T t) {
-                            long byteNum = t.toString().getBytes(StandardCharsets.UTF_8).length;
-                            sourceReaderMetrics.outputMetrics(1L, byteNum);
+                            Struct value = (Struct) element.value();
+                            Struct source = value.getStruct(MongoDBEnvelope.NAMESPACE_FIELD);
+                            if (null == source) {
+                                source = value.getStruct(RecordUtils.DOCUMENT_TO_FIELD);
+                            }
+                            String dbName = source.getString(MongoDBEnvelope.NAMESPACE_DATABASE_FIELD);
+                            String collectionName =
+                                    source.getString(MongoDBEnvelope.NAMESPACE_COLLECTION_FIELD);
+                            sourceReaderMetrics
+                                    .outputMetrics(dbName, collectionName, splitState.isSnapshotSplitState(), value);
                             output.collect(t);
                         }
 
@@ -109,6 +120,10 @@ public final class MongoDBRecordEmitter<T> extends IncrementalSourceRecordEmitte
             offset.updatePosition(resumeToken);
         }
         splitState.asStreamSplitState().setStartingOffset(offset);
+        // record the time metric to enter the incremental phase
+        if (sourceReaderMetrics != null) {
+            sourceReaderMetrics.outputReadPhaseMetrics(ReadPhase.INCREASE_PHASE);
+        }
     }
 
     @Override

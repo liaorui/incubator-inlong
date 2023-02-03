@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.flink.annotation.Experimental;
@@ -48,7 +49,7 @@ import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcher
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
-import org.apache.inlong.sort.base.metric.SourceMetricData;
+import org.apache.inlong.sort.base.metric.sub.SourceTableMetricData;
 import org.apache.inlong.sort.cdc.mongodb.source.config.SourceConfig;
 import org.apache.inlong.sort.cdc.mongodb.source.dialect.DataSourceDialect;
 import org.apache.inlong.sort.cdc.mongodb.source.meta.split.SnapshotSplit;
@@ -60,6 +61,7 @@ import org.apache.inlong.sort.cdc.mongodb.source.meta.split.StreamSplit;
 import org.apache.inlong.sort.cdc.mongodb.source.meta.split.StreamSplitState;
 import org.apache.inlong.sort.cdc.mongodb.source.metrics.InlongSourceReaderMetrics;
 import org.apache.inlong.sort.cdc.mongodb.source.splitters.InlongMetricSplit;
+import org.apache.inlong.sort.cdc.mongodb.source.splitters.InlongMetricSplit.MongoTableMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,12 +136,19 @@ public class IncrementalSourceReader<T, C extends SourceConfig>
         // add stream splits who are uncompleted
         stateSplits.addAll(uncompletedStreamSplits.values());
 
-        SourceMetricData sourceMetricData = sourceReaderMetrics.getSourceMetricData();
+        SourceTableMetricData sourceMetricData = sourceReaderMetrics.getSourceMetricData();
         LOG.info("inlong-metric-states snapshot sourceMetricData:{}", sourceMetricData);
         if (sourceMetricData != null) {
-            stateSplits.add(
-                    new InlongMetricSplit(sourceMetricData.getNumBytesIn().getCount(),
-                            sourceMetricData.getNumRecordsIn().getCount()));
+            long countNumBytesIn = sourceMetricData.getNumBytesIn().getCount();
+            long countNumRecordsIn = sourceMetricData.getNumRecordsIn().getCount();
+            Map<String, Long> readPhaseMetricMap = sourceMetricData.getReadPhaseMetricMap().entrySet().stream().collect(
+                    Collectors.toMap(v -> v.getKey().getPhase(), e -> e.getValue().getReadPhase().getCount()));
+            Map<String, MongoTableMetric> tableMetricMap = sourceMetricData.getSubSourceMetricMap().entrySet().stream()
+                    .collect(Collectors.toMap(Entry::getKey,
+                            e -> new MongoTableMetric(e.getValue().getNumRecordsIn().getCount(),
+                                    e.getValue().getNumBytesIn().getCount())));
+            stateSplits
+                    .add(new InlongMetricSplit(countNumBytesIn, countNumRecordsIn, readPhaseMetricMap, tableMetricMap));
         }
 
         return stateSplits;
@@ -169,7 +178,8 @@ public class IncrementalSourceReader<T, C extends SourceConfig>
                 InlongMetricSplit metricSplit = (InlongMetricSplit) split;
                 LOG.info("inlong-metric-states restore metricSplit:{}", metricSplit);
                 sourceReaderMetrics.initMetrics(metricSplit.getNumRecordsIn(),
-                        metricSplit.getNumBytesIn());
+                        metricSplit.getNumBytesIn(), metricSplit.getReadPhaseMetricMap(),
+                        metricSplit.getTableMetricMap());
                 LOG.info("inlong-metric-states restore sourceReaderMetrics:{}",
                         sourceReaderMetrics.getSourceMetricData());
                 continue;
