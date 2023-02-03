@@ -45,8 +45,8 @@ import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.RowKind;
 import org.apache.flink.util.Preconditions;
-import org.apache.inlong.sort.base.dirty.DirtyData;
 import org.apache.inlong.sort.base.dirty.DirtyOptions;
+import org.apache.inlong.sort.base.dirty.DirtySinkHelper;
 import org.apache.inlong.sort.base.dirty.DirtyType;
 import org.apache.inlong.sort.base.dirty.sink.DirtySink;
 import org.apache.inlong.sort.base.format.DynamicSchemaFormatFactory;
@@ -163,8 +163,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
     private String lineDelimiter;
     private String columns;
     private final LogicalType[] logicalTypes;
-    private final DirtyOptions dirtyOptions;
-    private @Nullable final DirtySink<Object> dirtySink;
+    private DirtySinkHelper<Object> dirtySinkHelper;
 
     public DorisDynamicSchemaOutputFormat(DorisOptions option,
             DorisReadOptions readOptions,
@@ -194,8 +193,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         this.databasePattern = databasePattern;
         this.tablePattern = tablePattern;
         this.schemaUpdatePolicy = schemaUpdatePolicy;
-        this.dirtyOptions = dirtyOptions;
-        this.dirtySink = dirtySink;
+        this.dirtySinkHelper = new DirtySinkHelper<>(dirtyOptions, dirtySink);
 
         handleStreamLoadProp();
     }
@@ -305,13 +303,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 metricData.registerSubMetricsGroup(metricState);
             }
         }
-        if (dirtySink != null) {
-            try {
-                dirtySink.open(new Configuration());
-            } catch (Exception e) {
-                throw new IOException(e);
-            }
-        }
+        dirtySinkHelper.open(new Configuration());
         if (executionOptions.getBatchIntervalMs() != 0 && executionOptions.getBatchSize() != 1) {
             this.scheduler = new ScheduledThreadPoolExecutor(1,
                     new ExecutorThreadFactory("doris-streamload-output-format"));
@@ -478,17 +470,21 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         String database = jsonDynamicSchemaFormat.parse(rootNode, databasePattern);
         String table = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
         String tableIdentifier = StringUtils.join(database, ".", table);
-        String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLogTag());
-        String dirtyIndentifier = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getIdentifier());
-        String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode, dirtyOptions.getLabels());
+        DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
+        String dirtyLabel = DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null,
+                new String[]{database, table});
+        String dirtyLogTag = DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null,
+                new String[]{database, table});
+        String dirtyIdentifier = DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null,
+                new String[]{database, table});
         physicalData.put(DIRTY_LOG_TAG, dirtyLogTag);
-        physicalData.put(DIRTY_IDENTIFIER, dirtyIndentifier);
+        physicalData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
         physicalData.put(DIRTY_LABEL, dirtyLabel);
         physicalData.put(DATABASE, database);
         physicalData.put(TABLE, table);
         if (updateBeforeData != null) {
             updateBeforeData.put(DIRTY_LOG_TAG, dirtyLogTag);
-            updateBeforeData.put(DIRTY_IDENTIFIER, dirtyIndentifier);
+            updateBeforeData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
             updateBeforeData.put(DIRTY_LABEL, dirtyLabel);
             updateBeforeData.put(DATABASE, database);
             updateBeforeData.put(TABLE, table);
@@ -536,15 +532,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
 
     private void handleDirtyData(Object dirtyData, DirtyType dirtyType, Exception e) {
         errorNum.incrementAndGet();
-        if (!dirtyOptions.ignoreDirty()) {
-            RuntimeException ex;
-            if (e instanceof RuntimeException) {
-                ex = (RuntimeException) e;
-            } else {
-                ex = new RuntimeException(e);
-            }
-            throw ex;
-        }
 
         if (multipleSink) {
             if (dirtyType == DirtyType.DESERIALIZE_ERROR) {
@@ -559,23 +546,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             }
         }
 
-        if (dirtySink != null) {
-            DirtyData.Builder<Object> builder = DirtyData.builder();
-            try {
-                builder.setData(dirtyData)
-                        .setDirtyType(dirtyType)
-                        .setLabels(dirtyOptions.getLabels())
-                        .setLogTag(dirtyOptions.getLogTag())
-                        .setDirtyMessage(e.getMessage())
-                        .setIdentifier(dirtyOptions.getIdentifier());
-                dirtySink.invoke(builder.build());
-            } catch (Exception ex) {
-                if (!dirtyOptions.ignoreSideOutputErrors()) {
-                    throw new RuntimeException(ex);
-                }
-                LOG.warn("Dirty sink failed", ex);
-            }
-        }
+        DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
+        dirtySinkHelper.invoke(dirtyData, dirtyType, dirtyOptions.getLabels(), dirtyOptions.getLogTag(),
+                dirtyOptions.getIdentifier(), e);
+
         metricData.invokeDirty(1, dirtyData.toString().getBytes(StandardCharsets.UTF_8).length);
     }
 
@@ -594,23 +568,8 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         String table = rawData.remove(TABLE);
         String content = OBJECT_MAPPER.writeValueAsString(rawData);
 
-        if (dirtySink != null) {
-            DirtyData.Builder<Object> builder = DirtyData.builder();
-            try {
-                builder.setData(OBJECT_MAPPER.readTree(content))
-                        .setDirtyType(dirtyType)
-                        .setLabels(label)
-                        .setLogTag(logTag)
-                        .setDirtyMessage(e.getMessage())
-                        .setIdentifier(identifier);
-                dirtySink.invoke(builder.build());
-            } catch (Exception ex) {
-                if (!dirtyOptions.ignoreSideOutputErrors()) {
-                    throw new RuntimeException(ex);
-                }
-                LOG.warn("Dirty sink failed", ex);
-            }
-        }
+        dirtySinkHelper.invoke(OBJECT_MAPPER.readTree(content), dirtyType, label, logTag, identifier, e);
+
         try {
             metricData.outputDirtyMetricsWithEstimate(database, table, 1,
                     content.getBytes(StandardCharsets.UTF_8).length);
@@ -754,7 +713,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                 errorTables.add(tableIdentifier);
                 LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
-                        + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                                + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
                         tableIdentifier);
                 return;
             }
@@ -765,7 +724,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                         handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
                                 DirtyType.BATCH_LOAD_ERROR, e);
                     } catch (IOException ex) {
-                        if (!dirtyOptions.ignoreSideOutputErrors()) {
+                        if (!dirtySinkHelper.getDirtyOptions().ignoreSideOutputErrors()) {
                             throw new RuntimeException(ex);
                         }
                         LOG.warn("Dirty sink failed", ex);

@@ -59,7 +59,9 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.binary.NestedRowData;
 import org.apache.flink.types.RowKind;
 import org.apache.flink.util.InstantiationUtil;
+import org.apache.inlong.sort.base.dirty.DirtyOptions;
 import org.apache.inlong.sort.base.dirty.DirtySinkHelper;
+import org.apache.inlong.sort.base.dirty.DirtyType;
 import org.apache.inlong.sort.base.format.DynamicSchemaFormatFactory;
 import org.apache.inlong.sort.base.format.JsonDynamicSchemaFormat;
 import org.apache.inlong.sort.base.metric.MetricOption;
@@ -248,10 +250,14 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
             }
             String databaseName = jsonDynamicSchemaFormat.parse(rootNode, databasePattern);
             String tableName = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
-            String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode, dirtySinkHelper.getDirtyOptions().getLogTag());
-            String dirtyIndentify = jsonDynamicSchemaFormat.parse(rootNode,
-                    dirtySinkHelper.getDirtyOptions().getIdentifier());
-            String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode, dirtySinkHelper.getDirtyOptions().getLabels());
+
+            DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
+            String dirtyLogTag = DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR,
+                    null, new String[]{databaseName, tableName});
+            String dirtyIdentify = DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(),
+                    DirtyType.BATCH_LOAD_ERROR, null, new String[]{databaseName, tableName});
+            String dirtyLabel = DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null,
+                    new String[]{databaseName, tableName});
 
             List<RowKind> rowKinds = jsonDynamicSchemaFormat.opType2RowKind(
                     jsonDynamicSchemaFormat.getOpType(rootNode));
@@ -288,7 +294,7 @@ public class StarRocksDynamicSinkFunction<T> extends RichSinkFunction<T> impleme
                     records.add(record);
                 }
             }
-            sinkManager.writeRecords(databaseName, tableName, records, dirtyLogTag, dirtyIndentify, dirtyLabel);
+            sinkManager.writeRecords(databaseName, tableName, records, dirtyLogTag, dirtyIdentify, dirtyLabel);
         } else {
             String record = serializer.serialize(rowTransformer.transform(value, sinkOptions.supportUpsertDelete()));
             sinkManager.writeRecords(sinkOptions.getDatabaseName(), sinkOptions.getTableName(), record);
