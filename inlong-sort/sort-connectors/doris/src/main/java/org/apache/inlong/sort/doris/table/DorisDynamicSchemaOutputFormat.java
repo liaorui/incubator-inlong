@@ -707,9 +707,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             // may count repeatedly
             errorNum.getAndAdd(values.size());
 
-            if(!multipleSink) {
+            if (!multipleSink) {
                 try {
                     handleSingleTable(e, values, loadValue);
+                    return;
                 } catch (Exception ex) {
                     throw new RuntimeException(e);
                 }
@@ -724,7 +725,7 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             if (SchemaUpdateExceptionPolicy.STOP_PARTIAL == schemaUpdatePolicy) {
                 errorTables.add(tableIdentifier);
                 LOG.warn("The tableIdentifier: {} load failed and the data will be throw away in the future "
-                                + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
+                        + "because the option 'sink.multiple.schema-update.policy' is 'STOP_PARTIAL'",
                         tableIdentifier);
                 return;
             }
@@ -746,7 +747,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             values.clear();
         }
     }
-
 
     private void handleSingleTable(Exception e, List values, String loadValue) {
         for (Object value : values) {
