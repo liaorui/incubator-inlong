@@ -113,6 +113,16 @@ public class MongoDBTableSourceFactory implements DynamicTableSourceFactory {
                             + "\"+U\" represents UPDATE_AFTER.\n"
                             + "\"-D\" represents DELETE.");
 
+    public static final ConfigOption<Integer> HEARTBEAT_INTERVAL_MILLIS =
+            ConfigOptions.key("heartbeat.interval.ms")
+                    .intType()
+                    .defaultValue(30000)
+                    .withDescription(
+                            "The length of time in milliseconds between sending heartbeat messages."
+                                    + "Heartbeat messages contain the post batch resume token and are sent when no source records "
+                                    + "have been published in the specified interval. This improves the resumability of the connector "
+                                    + "for low volume namespaces. Use 0 to disable. Defaults to 30000.");
+
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
         final FactoryUtil.TableFactoryHelper helper =
