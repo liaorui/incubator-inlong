@@ -707,9 +707,10 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             // may count repeatedly
             errorNum.getAndAdd(values.size());
 
-            if(!multipleSink) {
+            if (!multipleSink) {
                 try {
                     handleSingleTable(e, values, loadValue);
+                    return;
                 } catch (Exception ex) {
                     throw new RuntimeException(e);
                 }
@@ -746,7 +747,6 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
             values.clear();
         }
     }
-
 
     private void handleSingleTable(Exception e, List values, String loadValue) {
         for (Object value : values) {
