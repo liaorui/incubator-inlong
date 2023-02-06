@@ -40,6 +40,7 @@ import org.apache.flink.core.memory.DataOutputSerializer;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeParser;
 import org.apache.inlong.sort.cdc.mongodb.source.splitters.InlongMetricSplit;
+import org.apache.inlong.sort.cdc.mongodb.source.splitters.InlongMetricSplit.MongoTableMetric;
 
 /** A serializer for the {@link SourceSplitBase}. */
 public abstract class SourceSplitSerializer
@@ -115,6 +116,8 @@ public abstract class SourceSplitSerializer
             out.writeInt(METRIC_SPLIT_FLAG);
             out.writeLong(metricSplit.getNumBytesIn());
             out.writeLong(metricSplit.getNumRecordsIn());
+            writeReadPhaseMetric(metricSplit.getReadPhaseMetricMap(), out);
+            writeTableMetrics(metricSplit.getTableMetricMap(), out);
             final byte[] result = out.getCopyOfBuffer();
             out.clear();
             return result;
@@ -176,12 +179,62 @@ public abstract class SourceSplitSerializer
                     tableChangeMap,
                     totalFinishedSplitSize);
         } else if (splitKind == METRIC_SPLIT_FLAG) {
-            long numBytesIn = in.readLong();
-            long numRecordsIn = in.readLong();
-            return new InlongMetricSplit(numBytesIn, numRecordsIn);
+            long numBytesIn = 0L;
+            long numRecordsIn = 0L;
+            if (in.available() > 0) {
+                numBytesIn = in.readLong();
+                numRecordsIn = in.readLong();
+            }
+            Map<String, Long> readPhaseMetricMap = readReadPhaseMetric(in);
+            Map<String, MongoTableMetric> tableMetricMap = readTableMetrics(in);
+            return new InlongMetricSplit(numBytesIn, numRecordsIn, readPhaseMetricMap, tableMetricMap);
         } else {
             throw new IOException("Unknown split kind: " + splitKind);
         }
+    }
+
+    private static void writeReadPhaseMetric(Map<String, Long> readPhaseMetrics, DataOutputSerializer out)
+            throws IOException {
+        final int size = readPhaseMetrics.size();
+        out.writeInt(size);
+        for (Map.Entry<String, Long> entry : readPhaseMetrics.entrySet()) {
+            out.writeUTF(entry.getKey());
+            out.writeLong(entry.getValue());
+        }
+    }
+
+    private static Map<String, Long> readReadPhaseMetric(DataInputDeserializer in) throws IOException {
+        Map<String, Long> readPhaseMetrics = new HashMap<>();
+        if (in.available() > 0) {
+            final int size = in.readInt();
+            for (int i = 0; i < size; i++) {
+                readPhaseMetrics.put(in.readUTF(), in.readLong());
+            }
+        }
+        return readPhaseMetrics;
+    }
+
+    private static void writeTableMetrics(Map<String, MongoTableMetric> tableMetrics, DataOutputSerializer out)
+            throws IOException {
+        final int size = tableMetrics.size();
+        out.writeInt(size);
+        for (Map.Entry<String, MongoTableMetric> entry : tableMetrics.entrySet()) {
+            out.writeUTF(entry.getKey());
+            out.writeLong(entry.getValue().getNumRecordsIn());
+            out.writeLong(entry.getValue().getNumBytesIn());
+        }
+    }
+
+    private static Map<String, MongoTableMetric> readTableMetrics(DataInputDeserializer in) throws IOException {
+        Map<String, MongoTableMetric> tableMetrics = new HashMap<>();
+        if (in.available() > 0) {
+            final int size = in.readInt();
+            for (int i = 0; i < size; i++) {
+                String tableIdentify = in.readUTF();
+                tableMetrics.put(tableIdentify, new MongoTableMetric(in.readLong(), in.readLong()));
+            }
+        }
+        return tableMetrics;
     }
 
     public static void writeTableSchemas(
