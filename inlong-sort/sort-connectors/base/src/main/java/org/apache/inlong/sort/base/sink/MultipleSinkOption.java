@@ -27,6 +27,7 @@ import java.util.Map;
 import static org.apache.inlong.sort.base.Constants.SINK_MULTIPLE_TYPE_MAP_COMPATIBLE_WITH_SPARK;
 import static org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy.ALERT_WITH_IGNORE;
 import static org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE;
+import static org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy.STOP_PARTIAL;
 import static org.apache.inlong.sort.base.sink.SchemaUpdateExceptionPolicy.TRY_IT_BEST;
 
 /**
@@ -144,7 +145,7 @@ public class MultipleSinkOption implements Serializable {
             TableChange tableChange, SchemaUpdateExceptionPolicy policy) {
         if (TRY_IT_BEST.equals(policy)) {
             return true;
-        } else if (LOG_WITH_IGNORE.equals(policy) || ALERT_WITH_IGNORE.equals(policy)) {
+        } else if (LOG_WITH_IGNORE.equals(policy) || ALERT_WITH_IGNORE.equals(policy) || STOP_PARTIAL.equals(policy)) {
             LOG.warn("Ignore table {} schema change: {}.", tableName, tableChange);
             return false;
         }
