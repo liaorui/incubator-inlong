@@ -36,6 +36,12 @@
             <groupId>org.apache.inlong</groupId>
             <artifactId>sort-connector-iceberg</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>hive-exec</artifactId>
+                    <groupId>org.apache.hive</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.qcloud.cos</groupId>
