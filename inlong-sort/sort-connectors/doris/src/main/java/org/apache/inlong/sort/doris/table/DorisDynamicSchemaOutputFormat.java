@@ -473,24 +473,12 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
         String database = jsonDynamicSchemaFormat.parse(rootNode, databasePattern);
         String table = jsonDynamicSchemaFormat.parse(rootNode, tablePattern);
         String tableIdentifier = StringUtils.join(database, ".", table);
-        DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
-        String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode,
-                DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null));
-        String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode,
-                DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null));
-        String dirtyIdentifier = jsonDynamicSchemaFormat.parse(rootNode,
-                DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null));
-        physicalData.put(DIRTY_LOG_TAG, dirtyLogTag);
-        physicalData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
-        physicalData.put(DIRTY_LABEL, dirtyLabel);
-        physicalData.put(DATABASE, database);
-        physicalData.put(TABLE, table);
-        if (updateBeforeData != null) {
-            updateBeforeData.put(DIRTY_LOG_TAG, dirtyLogTag);
-            updateBeforeData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
-            updateBeforeData.put(DIRTY_LABEL, dirtyLabel);
-            updateBeforeData.put(DATABASE, database);
-            updateBeforeData.put(TABLE, table);
+        if (dirtySinkHelper.getDirtySink() != null) {
+            try {
+                fillDirtySink(rootNode, physicalData, updateBeforeData, database, table);
+            } catch (Exception e) {
+                LOG.warn("fill dirty sink parameters failed");
+            }
         }
         switch (rowKind) {
             case INSERT:
@@ -530,6 +518,30 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 }
                 break;
             default:
+        }
+    }
+
+    private void fillDirtySink(JsonNode rootNode, Map<String, String> physicalData,
+            Map<String, String> updateBeforeData, String database, String table)
+            throws IOException {
+        DirtyOptions dirtyOptions = dirtySinkHelper.getDirtyOptions();
+        String dirtyLabel = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getLabels(), DirtyType.BATCH_LOAD_ERROR, null));
+        String dirtyLogTag = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getLogTag(), DirtyType.BATCH_LOAD_ERROR, null));
+        String dirtyIdentifier = jsonDynamicSchemaFormat.parse(rootNode,
+                DirtySinkHelper.regexReplace(dirtyOptions.getIdentifier(), DirtyType.BATCH_LOAD_ERROR, null));
+        physicalData.put(DIRTY_LOG_TAG, dirtyLogTag);
+        physicalData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
+        physicalData.put(DIRTY_LABEL, dirtyLabel);
+        physicalData.put(DATABASE, database);
+        physicalData.put(TABLE, table);
+        if (updateBeforeData != null) {
+            updateBeforeData.put(DIRTY_LOG_TAG, dirtyLogTag);
+            updateBeforeData.put(DIRTY_IDENTIFIER, dirtyIdentifier);
+            updateBeforeData.put(DIRTY_LABEL, dirtyLabel);
+            updateBeforeData.put(DATABASE, database);
+            updateBeforeData.put(TABLE, table);
         }
     }
 
