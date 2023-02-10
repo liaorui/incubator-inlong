@@ -29,6 +29,10 @@
     <packaging>jar</packaging>
     <name>Apache InLong - Sort-connector-mongodb-cdc</name>
 
+    <properties>
+        <debezium.version>1.6.4.Final</debezium.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.ververica</groupId>
@@ -99,6 +103,7 @@
                                     <include>com.google.guava:*</include>
                                     <!--  Include fixed version 18.0-13.0 of flink shaded guava  -->
                                     <include>org.apache.flink:flink-shaded-guava</include>
+                                    <include>com.ververica:flink-cdc-base</include>
                                 </includes>
                             </artifactSet>
                             <filters>
@@ -142,6 +147,10 @@
                                 <relocation>
                                     <pattern>com.google</pattern>
                                     <shadedPattern>com.ververica.cdc.connectors.shaded.com.google</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.debezium</pattern>
+                                    <shadedPattern>org.apache.inlong.sort.cdc.mongodb.shaded.io.debezium</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

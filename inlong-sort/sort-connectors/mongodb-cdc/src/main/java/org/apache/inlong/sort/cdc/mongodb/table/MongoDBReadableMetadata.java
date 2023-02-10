@@ -38,10 +38,10 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.data.TimestampData;
 import org.apache.flink.table.types.DataType;
+import org.apache.inlong.sort.cdc.mongodb.debezium.DebeziumJson;
 import org.apache.inlong.sort.cdc.mongodb.debezium.table.MetadataConverter;
 import org.apache.inlong.sort.cdc.mongodb.debezium.utils.RecordUtils;
 import org.apache.inlong.sort.formats.json.canal.CanalJson;
-import org.apache.inlong.sort.formats.json.debezium.DebeziumJson;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -164,9 +164,6 @@ public enum MongoDBReadableMetadata {
                 public Object read(SourceRecord record,
                         @Nullable TableChanges.TableChange tableSchema, RowData rowData) {
                     // construct canal json
-                    Struct messageStruct = (Struct) record.value();
-                    Struct to = messageStruct.getStruct(MongoDBEnvelope.NAMESPACE_FIELD);
-                    Struct sourceStruct = messageStruct.getStruct(Envelope.FieldName.SOURCE);
                     String canalOp = getCanalOpType(rowData);
                     if (StringUtils.isBlank(canalOp)) {
                         return null;
@@ -177,6 +174,9 @@ public enum MongoDBReadableMetadata {
                     Map<String, Integer> sqlType = new HashMap<>();
                     mysqlType.forEach((name, value) -> sqlType.put(name, RecordUtils.getSqlType(value)));
                     List<Map<String, Object>> dataList = new ArrayList<>();
+                    Struct messageStruct = (Struct) record.value();
+                    Struct sourceStruct = messageStruct.getStruct(Envelope.FieldName.SOURCE);
+                    Struct to = messageStruct.getStruct(MongoDBEnvelope.NAMESPACE_FIELD);
                     dataList.add(field);
                     CanalJson canalJson = CanalJson.builder()
                             .data(dataList)

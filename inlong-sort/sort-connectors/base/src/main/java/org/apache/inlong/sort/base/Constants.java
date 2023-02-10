@@ -201,7 +201,7 @@ public final class Constants {
             ConfigOptions.key("sink.multiple.ignore-single-table-errors")
                     .booleanType()
                     .defaultValue(true)
-                    .withDescription("Whether ignore the single table erros when multiple sink writing scenario.");
+                    .withDescription("Whether ignore the single table errors when multiple sink writing scenario.");
 
     public static final ConfigOption<Boolean> SINK_MULTIPLE_PK_AUTO_GENERATED =
             ConfigOptions.key("sink.multiple.pk-auto-generated")
