@@ -120,6 +120,9 @@ public class DLCIcebergLoadNode extends LoadNode implements InlongMetric, Serial
         }
         options.putAll(DLCConstant.DLC_DEFAULT_IMPL);
         // for filesystem auth
+        if (!options.containsKey(DLCConstant.FS_COS_AUTH_PROVIDER)) {
+            options.put(DLCConstant.FS_COS_AUTH_PROVIDER, "org.apache.hadoop.fs.auth.DlcCloudCredentialsProvider");
+        }
         options.put(DLCConstant.FS_COS_REGION, options.get(DLCConstant.DLC_REGION));
         options.put(DLCConstant.FS_COS_SECRET_ID, options.get(DLCConstant.DLC_SECRET_ID));
         options.put(DLCConstant.FS_COS_SECRET_KEY, options.get(DLCConstant.DLC_SECRET_KEY));

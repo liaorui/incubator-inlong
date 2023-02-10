@@ -79,7 +79,6 @@ public class DLCConstant {
                 {
                     put(FS_LAKEFS_IMPL, "org.apache.hadoop.fs.CosFileSystem");
                     put(FS_COS_IMPL, "org.apache.hadoop.fs.CosFileSystem");
-                    put(FS_COS_AUTH_PROVIDER, "org.apache.hadoop.fs.auth.DlcCloudCredentialsProvider");
                     put("sink.multiple.typemap-compatible-with-spark", "true");
                     put("catalog-name", CatalogType.HYBRIS.name());
                     put("catalog-impl", DLCConstant.DLC_CATALOG_IMPL_CLASS);
