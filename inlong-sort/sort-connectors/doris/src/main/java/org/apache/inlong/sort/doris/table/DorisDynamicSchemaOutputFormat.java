@@ -742,12 +742,13 @@ public class DorisDynamicSchemaOutputFormat<T> extends RichOutputFormat<T> {
                 return;
             }
             if (SchemaUpdateExceptionPolicy.LOG_WITH_IGNORE == schemaUpdatePolicy) {
+                errorTables.add(tableIdentifier);
                 // archive dirty data when 'sink.multiple.schema-update.policy' is 'LOG_WITH_IGNORE'
                 for (Object value : values) {
                     try {
                         handleDirtyData(OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(value)),
                                 DirtyType.BATCH_LOAD_ERROR, e);
-                    } catch (IOException ex) {
+                    } catch (Exception ex) {
                         if (!dirtySinkHelper.getDirtyOptions().ignoreSideOutputErrors()) {
                             throw new RuntimeException(ex);
                         }
