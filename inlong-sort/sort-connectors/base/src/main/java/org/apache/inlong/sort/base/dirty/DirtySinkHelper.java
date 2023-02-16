@@ -46,8 +46,10 @@ public class DirtySinkHelper<T> implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final Logger LOGGER = LoggerFactory.getLogger(DirtySinkHelper.class);
     static final Pattern REGEX_PATTERN = Pattern.compile("\\$\\{\\s*([\\w.-]+)\\s*}", Pattern.CASE_INSENSITIVE);
-    static final String SYSTEM_TIME_KEY = "SYSTEM_TIME";
-
+    private static final String DIRTY_TYPE_KEY = "DIRTY_TYPE";
+    private static final String DIRTY_MESSAGE_KEY = "DIRTY_MESSAGE";
+    private static final String SYSTEM_TIME_KEY = "SYSTEM_TIME";
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private DirtyOptions dirtyOptions;
     private final @Nullable DirtySink<T> dirtySink;
 
@@ -133,15 +135,46 @@ public class DirtySinkHelper<T> implements Serializable {
             return null;
         }
 
-        final String DIRTY_TYPE_KEY = "DIRTY_TYPE";
-        final String DIRTY_MESSAGE_KEY = "DIRTY_MESSAGE";
-        final String SYSTEM_TIME_KEY = "SYSTEM_TIME";
-        final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        Map<String, String> paramMap = new HashMap<>(6);
+        paramMap.put(SYSTEM_TIME_KEY, DATE_TIME_FORMAT.format(LocalDateTime.now()));
+        paramMap.put(DIRTY_TYPE_KEY, dirtyType.format());
+        paramMap.put(DIRTY_MESSAGE_KEY, dirtyMessage);
+
+        Matcher matcher = REGEX_PATTERN.matcher(pattern);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String keyText = matcher.group(1);
+            String replacement = paramMap.get(keyText);
+            if (replacement == null) {
+                continue;
+            }
+            matcher.appendReplacement(sb, replacement);
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
+     * replace ${database} ${table} etc. Used in cases where jsonDynamicFormat.parse() is not usable.
+     */
+    public static String regexReplace(String pattern, DirtyType dirtyType, String dirtyMessage, String database,
+            String table, String schema) {
+        if (pattern == null) {
+            return null;
+        }
 
         Map<String, String> paramMap = new HashMap<>(6);
         paramMap.put(SYSTEM_TIME_KEY, DATE_TIME_FORMAT.format(LocalDateTime.now()));
         paramMap.put(DIRTY_TYPE_KEY, dirtyType.format());
         paramMap.put(DIRTY_MESSAGE_KEY, dirtyMessage);
+        paramMap.put("source.database", database);
+        paramMap.put("database", database);
+        paramMap.put("source.table", table);
+        paramMap.put("table", table);
+        if (schema != null) {
+            paramMap.put("source.schema", schema);
+            paramMap.put("schema", schema);
+        }
 
         Matcher matcher = REGEX_PATTERN.matcher(pattern);
         StringBuffer sb = new StringBuffer();
